@@ -1,6 +1,7 @@
 const express = require("express"); // import packages
 const cors = require("cors");
 const dotenv = require("dotenv");
+const prisma = require("./config/prisma");
 
 dotenv.config(); // load the variables from .env
 
@@ -17,6 +18,16 @@ app.get("/", (req, res) => {
 
 app.get("/api/test", (req, res) => {
   res.json({ message: "API works" });
+});
+
+app.get("/api/test-db", async (req, res) => {
+  try {
+    const products = await prisma.product.findMany();
+    res.status(200).json(products);
+  } catch (error) {
+    console.error("Database error:", error);
+    res.status(500).json({ message: "Database connection failed" });
+  }
 });
 
 const PORT = process.env.PORT || 5050;
