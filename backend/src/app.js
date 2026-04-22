@@ -30,6 +30,17 @@ app.get("/api/test-db", async (req, res) => {
   }
 });
 
+app.get("/api/products", async (req, res) => {
+  try {
+    const products = await prisma.product.findMany();
+
+    res.status(200).json(products);
+  } catch (error) {
+    console.error("Failed to fetch products:", error);
+    res.status(500).json({ message: "Failed to fetch products" });
+  }
+});
+
 const PORT = process.env.PORT || 5050;
 
 app.listen(PORT, () => {
