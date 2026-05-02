@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Star, ShoppingCart, ArrowLeft } from 'lucide-react'
 import { Button } from '@workspace/ui/components/button'
 import { cn } from '@workspace/ui/lib/utils'
+import { useCart } from '@/context/CartContext'
 
 type Product = {
   id: number
@@ -17,6 +18,9 @@ type Product = {
 
 export default function ProductDetail() {
   const { id } = useParams()
+  const navigate = useNavigate()
+  const { addToCart } = useCart()
+
   const [product, setProduct] = useState<Product | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -42,6 +46,21 @@ export default function ProductDetail() {
 
     fetchProduct()
   }, [id])
+
+  function handleAddToCart() {
+    if (!product) return
+
+    addToCart({
+      id: product.id,
+      name: product.name,
+      category: product.category,
+      price: product.price,
+      image: product.imageUrl || 'https://placehold.co/300x300?text=No+Image',
+    })
+
+    // 👉 danach automatisch zum Warenkorb
+    navigate('/cart')
+  }
 
   if (loading) {
     return (
@@ -78,6 +97,7 @@ export default function ProductDetail() {
       </Link>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+        {/* Bild */}
         <div className="bg-[#F5F5F5] rounded-2xl overflow-hidden">
           <img
             src={product.imageUrl || 'https://placehold.co/600x600?text=No+Image'}
@@ -86,6 +106,7 @@ export default function ProductDetail() {
           />
         </div>
 
+        {/* Infos */}
         <div>
           <p className="text-sm text-muted-foreground mb-2">
             {product.category}
@@ -127,7 +148,11 @@ export default function ProductDetail() {
             {product.description || 'Keine Beschreibung vorhanden.'}
           </p>
 
-          <Button className="bg-[#F5E6D3] text-foreground hover:bg-[#E8D5C0] rounded-full px-8">
+          {/* ✅ ADD TO CART */}
+          <Button
+            onClick={handleAddToCart}
+            className="bg-[#F5E6D3] text-foreground hover:bg-[#E8D5C0] rounded-full px-8"
+          >
             <ShoppingCart className="h-4 w-4 mr-2" />
             Add to Cart
           </Button>
