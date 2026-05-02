@@ -1,93 +1,143 @@
-# skin_care
+# README
 
+This file contains the main commands to run the project after a fresh clone or when reopening it.
 
+## Quick start after reopening the project
 
-## Getting started
+If your dependencies are already installed and the database already exists, run:
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+```bash
+# Start the database if it is not already running
+docker compose up -d db
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+# Start the backend in one terminal
+cd backend
+npm run dev
 
-## Add your files
-
-* [Create](https://docs.gitlab.com/user/project/repository/web_editor/#create-a-file) or [upload](https://docs.gitlab.com/user/project/repository/web_editor/#upload-a-file) files
-* [Add files using the command line](https://docs.gitlab.com/topics/git/add_files/#add-files-to-a-git-repository) or push an existing Git repository with the following command:
-
+# Start the frontend in another terminal
+cd ../frontend
+npm run dev
 ```
-cd existing_repo
-git remote add origin https://gitlab.bht-berlin.de/project_bachelor/ss26/skin_care/skin_care.git
-git branch -M main
-git push -uf origin main
+
+- Backend URL: `http://localhost:5050`
+- Frontend URL: `http://localhost:5173`
+
+## When you need to install dependencies again
+
+If this is a fresh clone or your dependencies changed, run:
+
+```bash
+cd backend
+npm install
+cd ../frontend
+npm install
 ```
 
-## Integrate with your tools
+## When to run seeding and importing commands
 
-* [Set up project integrations](https://gitlab.bht-berlin.de/project_bachelor/ss26/skin_care/skin_care/-/settings/integrations)
+```bash
+`node import-products.js`
+```
+Run this when:
+- you need to import product data from CSV files into the database
+- the database is set up and you want to populate it with product information
 
-## Collaborate with your team
+It imports data from `db/data/` CSV files.
 
-* [Invite team members and collaborators](https://docs.gitlab.com/user/project/members/)
-* [Create a new merge request](https://docs.gitlab.com/user/project/merge_requests/creating_merge_requests/)
-* [Automatically close issues from merge requests](https://docs.gitlab.com/user/project/issues/managing_issues/#closing-issues-automatically)
-* [Enable merge request approvals](https://docs.gitlab.com/user/project/merge_requests/approvals/)
-* [Set auto-merge](https://docs.gitlab.com/user/project/merge_requests/auto_merge/)
+```bash
+`npm run seed`
+```
+Run this when:
+- you want to seed the database with sample data
+- for testing or initial setup after migrations
 
-## Test and Deploy
+## When to run Prisma commands
 
-Use the built-in continuous integration in GitLab.
+### `npx prisma migrate deploy`
+Run this when:
+- the local database is new/fresh
+- you are setting up the database for the first time
+- you need to apply existing migrations to a local environment
 
-* [Get started with GitLab CI/CD](https://docs.gitlab.com/ci/quick_start/)
-* [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/user/application_security/sast/)
-* [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/topics/autodevops/requirements/)
-* [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/user/clusters/agent/)
-* [Set up protected environments](https://docs.gitlab.com/ci/environments/protected_environments/)
+It applies the migrations already stored in `backend/prisma/migrations`.
 
-***
+### `npx prisma generate`
+Run this when:
+- `backend/prisma/schema.prisma` changed
+- you added or removed a model
+- you renamed or changed a field
+- you added or changed a relation
+- you upgraded or reinstalled `@prisma/client` or `prisma`
+- you switched branches and the Prisma schema changed
 
-# Editing this README
+### `npx prisma migrate dev`
+Run this when you are actively developing locally and want Prisma to:
+- create a new migration file
+- apply it to the local database
+- regenerate the Prisma client
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
+Use it after changing `backend/prisma/schema.prisma` during development.
 
-## Suggestions for a good README
+## Full setup
 
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+1. Clone the repository:
 
-## Name
-Choose a self-explaining name for your project.
+```bash
+git clone git@gitlab.bht-berlin.de:project_bachelor/ss26/skin_care/skin_care.git
+cd skin_care
+```
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+2. Install backend dependencies:
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+```bash
+cd backend
+npm install
+```
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+3. Install frontend dependencies:
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+```bash
+cd ../frontend
+npm install
+```
 
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+4. Start the database:
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+```bash
+cd ..
+docker compose up -d db
+```
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
+5. Apply database migrations and generate Prisma client:
 
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
+```bash
+cd backend
+npx prisma migrate deploy
+npx prisma generate
+```
 
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
+6. Seed sample data:
 
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
+```bash
+npm run seed
+```
 
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
+7. Start the backend:
 
-## License
-For open source projects, say how it is licensed.
+```bash
+npm run dev
+```
 
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+8. Start the frontend in a new terminal:
+
+```bash
+cd frontend
+npm run dev
+```
+
+## Notes
+
+- `backend/.env` defines the database connection string.
+- `backend/prisma/schema.prisma` is the Prisma schema source file.
+- Generated Prisma client code is located in `backend/node_modules/@prisma/client`.
+- `db/data/` contains source CSV data, not the database itself.
