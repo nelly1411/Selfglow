@@ -1,20 +1,18 @@
-const express = require("express"); // import packages
+const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
 const prisma = require("./config/prisma");
 
-dotenv.config(); // load the variables from .env
+dotenv.config();
 
-const app = express(); // create the main backend application
+const app = express();
 
-// Middleware: processing steps
-app.use(cors());  // allow cross-origin access
-app.use(express.json()); // raw json -> JavaScript object, req.body works
+app.use(cors());
+app.use(express.json());
 
-// Test route
 app.get("/", (req, res) => {
   res.send("SelfGlow backend is running");
-}); 
+});
 
 app.get("/api/test", (req, res) => {
   res.json({ message: "API works" });
@@ -38,6 +36,29 @@ app.get("/api/products", async (req, res) => {
   } catch (error) {
     console.error("Failed to fetch products:", error);
     res.status(500).json({ message: "Failed to fetch products" });
+  }
+});
+
+app.get("/api/products/:id", async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+
+    if (Number.isNaN(id)) {
+      return res.status(400).json({ message: "Invalid product id" });
+    }
+
+    const product = await prisma.product.findUnique({
+      where: { id: id },
+    });
+
+    if (!product) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+
+    res.status(200).json(product);
+  } catch (error) {
+    console.error("Failed to fetch product:", error);
+    res.status(500).json({ message: "Failed to fetch product" });
   }
 });
 

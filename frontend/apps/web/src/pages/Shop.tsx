@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import { Star, ChevronDown, ChevronUp, ShoppingCart, Filter, X } from 'lucide-react'
 import { Button } from '@workspace/ui/components/button'
 import { Checkbox } from '@workspace/ui/components/checkbox'
@@ -74,48 +75,52 @@ function ProductCard({ product }: { product: Product }) {
 
   return (
     <div className="group bg-background rounded-xl border border-border overflow-hidden hover:shadow-lg transition-shadow">
-      <div className="aspect-square overflow-hidden bg-[#F5F5F5]">
-        <img
-          src={product.imageUrl || 'https://placehold.co/300x300?text=No+Image'}
-          alt={product.name}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-        />
-      </div>
+      <Link to={`/product/${product.id}`} className="block">
+        <div className="aspect-square overflow-hidden bg-[#F5F5F5]">
+          <img
+            src={product.imageUrl || 'https://placehold.co/300x300?text=No+Image'}
+            alt={product.name}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+          />
+        </div>
 
-      <div className="p-4">
-        <p className="text-xs text-muted-foreground mb-1">{product.category}</p>
+        <div className="p-4 pb-2">
+          <p className="text-xs text-muted-foreground mb-1">{product.category}</p>
 
-        <h3 className="font-medium text-foreground text-sm mb-1 line-clamp-2">
-          {product.name}
-        </h3>
+          <h3 className="font-medium text-foreground text-sm mb-1 line-clamp-2">
+            {product.name}
+          </h3>
 
-        <p className="text-xs text-muted-foreground mb-2">{product.brand}</p>
+          <p className="text-xs text-muted-foreground mb-2">{product.brand}</p>
 
-        <div className="flex items-center gap-1 mb-2">
-          <div className="flex">
-            {[...Array(5)].map((_, i) => (
-              <Star
-                key={i}
-                className={cn(
-                  'h-3 w-3',
-                  i < Math.floor(rating)
-                    ? 'fill-[#D4A574] text-[#D4A574]'
-                    : 'fill-muted text-muted'
-                )}
-              />
-            ))}
+          <div className="flex items-center gap-1 mb-2">
+            <div className="flex">
+              {[...Array(5)].map((_, i) => (
+                <Star
+                  key={i}
+                  className={cn(
+                    'h-3 w-3',
+                    i < Math.floor(rating)
+                      ? 'fill-[#D4A574] text-[#D4A574]'
+                      : 'fill-muted text-muted'
+                  )}
+                />
+              ))}
+            </div>
+            <span className="text-xs text-muted-foreground">
+              {rating.toFixed(1)}
+            </span>
           </div>
-          <span className="text-xs text-muted-foreground">
-            {rating.toFixed(1)}
-          </span>
-        </div>
 
-        <div className="flex items-center gap-2 mb-3">
-          <span className="font-bold text-foreground">
-            €{product.price.toFixed(2)}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-foreground">
+              €{product.price.toFixed(2)}
+            </span>
+          </div>
         </div>
+      </Link>
 
+      <div className="px-4 pb-4">
         <Button className="w-full bg-[#F5E6D3] text-foreground hover:bg-[#E8D5C0] rounded-full text-sm">
           <ShoppingCart className="h-4 w-4 mr-2" />
           Add to Cart
@@ -129,11 +134,13 @@ export default function Shop() {
   const [products, setProducts] = useState<Product[]>([])
   const [priceRange, setPriceRange] = useState([0, 200])
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
-
   const [visibleCount, setVisibleCount] = useState(PRODUCTS_PER_PAGE)
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  const [searchParams] = useSearchParams()
+  const searchQuery = searchParams.get('search')?.toLowerCase().trim() || ''
 
   useEffect(() => {
     async function fetchProducts() {
@@ -157,17 +164,26 @@ export default function Shop() {
     fetchProducts()
   }, [])
 
-  const filteredProducts = products.filter(
-    (product) =>
+  const filteredProducts = products.filter((product) => {
+    const matchesPrice =
       product.price >= priceRange[0] &&
       product.price <= priceRange[1]
-  )
+
+    const matchesSearch =
+      searchQuery === '' ||
+      product.name.toLowerCase().includes(searchQuery) ||
+      product.brand.toLowerCase().includes(searchQuery) ||
+      product.category.toLowerCase().includes(searchQuery) ||
+      product.description?.toLowerCase().includes(searchQuery)
+
+    return matchesPrice && matchesSearch
+  })
 
   const visibleProducts = filteredProducts.slice(0, visibleCount)
 
   useEffect(() => {
     setVisibleCount(PRODUCTS_PER_PAGE)
-  }, [priceRange])
+  }, [priceRange, searchQuery])
 
   const FilterContent = () => (
     <>
@@ -261,7 +277,18 @@ export default function Shop() {
           {loading && <p>Produkte werden geladen...</p>}
           {error && <p className="text-red-500">{error}</p>}
 
-          {!loading && !error && (
+          {!loading && !error && searchQuery && (
+            <p className="mb-4 text-sm text-muted-foreground">
+              Suchergebnisse für:{' '}
+              <span className="font-medium text-foreground">{searchQuery}</span>
+            </p>
+          )}
+
+          {!loading && !error && filteredProducts.length === 0 && (
+            <p className="text-muted-foreground">Keine Produkte gefunden.</p>
+          )}
+
+          {!loading && !error && filteredProducts.length > 0 && (
             <>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 {visibleProducts.map((product) => (
@@ -269,7 +296,6 @@ export default function Shop() {
                 ))}
               </div>
 
-              {/* 🔥 Pagination / Load More */}
               <div className="mt-10 flex flex-col items-center gap-3">
                 <p className="text-sm text-muted-foreground">
                   Zeige 1 - {Math.min(visibleCount, filteredProducts.length)} von{' '}
@@ -278,9 +304,7 @@ export default function Shop() {
 
                 {visibleCount < filteredProducts.length && (
                   <Button
-                    onClick={() =>
-                      setVisibleCount((prev) => prev + PRODUCTS_PER_PAGE)
-                    }
+                    onClick={() => setVisibleCount((prev) => prev + PRODUCTS_PER_PAGE)}
                     className="bg-[#F5E6D3] text-foreground hover:bg-[#E8D5C0] rounded-full px-8"
                   >
                     Weitere Produkte laden

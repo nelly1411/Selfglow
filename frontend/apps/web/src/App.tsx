@@ -7,6 +7,7 @@ import About from './pages/About'
 
 import Cart from './pages/Cart'
 import Chatbot from './pages/Chatbot'
+import ProductDetail from './pages/ProductDetail'
 
 function App() {
   return (
@@ -18,6 +19,7 @@ function App() {
         <Route path="about" element={<About />} />
         <Route path="cart" element={<Cart />} />
         <Route path="/chatbot" element={<Chatbot />} />
+        <Route path="/product/:id" element={<ProductDetail />} />
       </Route>
     </Routes>
     </CartProvider>
