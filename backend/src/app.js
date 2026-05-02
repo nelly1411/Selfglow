@@ -2,7 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
 const prisma = require("./config/prisma");
-const authRoutes = require("./src/routes/auth");
+const authRoutes = require("./routes/auth");
 
 dotenv.config();
 
