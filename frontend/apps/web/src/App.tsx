@@ -1,19 +1,29 @@
-import { Button } from "@workspace/ui/components/button"
+import { Routes, Route } from 'react-router-dom'
+import { CartProvider } from './context/CartContext'
+import Layout from './components/Layout'
+import Home from './pages/Home'
+import Shop from './pages/Shop'
+import About from './pages/About'
 
-export function App() {
+import Cart from './pages/Cart'
+import Chatbot from './pages/Chatbot'
+import ProductDetail from './pages/ProductDetail'
+
+function App() {
   return (
-    <div className="flex min-h-svh p-6">
-      <div className="flex max-w-md min-w-0 flex-col gap-4 text-sm leading-loose">
-        <div>
-          <h1 className="font-medium">Project ready!</h1>
-          <p>You may now add components and start building.</p>
-          <p>We&apos;ve already added the button component for you.</p>
-          <Button className="mt-2">Button</Button>
-        </div>
-        <div className="text-muted-foreground font-mono text-xs">
-          (Press <kbd>d</kbd> to toggle dark mode)
-        </div>
-      </div>
-    </div>
+     <CartProvider>
+    <Routes>
+      <Route path="/" element={<Layout />}>
+        <Route index element={<Home />} />
+        <Route path="shop" element={<Shop />} />
+        <Route path="about" element={<About />} />
+        <Route path="cart" element={<Cart />} />
+        <Route path="/chatbot" element={<Chatbot />} />
+        <Route path="/product/:id" element={<ProductDetail />} />
+      </Route>
+    </Routes>
+    </CartProvider>
   )
 }
+
+export default App
