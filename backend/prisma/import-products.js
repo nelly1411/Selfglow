@@ -5,7 +5,7 @@ const { PrismaClient } = require("@prisma/client");
 
 const prisma = new PrismaClient();
 
-const filePath = path.join(__dirname, "../db/data/test-products.csv");
+const filePath = path.join(__dirname, "../db/data/chosen2-products.csv");
 
 function parsePrice(value) {
   if (!value) return 0;
@@ -17,20 +17,16 @@ function parsePrice(value) {
 async function main() {
   const products = [];
 
+  function toBool(value) {
+    return String(value).trim().toLowerCase() === "true";
+  }
+
   fs.createReadStream(filePath)
-    .pipe(csv())
+    .pipe(csv({ separator: ";" }))
     .on("data", (row) => {
       if (!row.product_name) return;
 
-      products.push({
-        name: row.product_name,
-        brand: row.brand_name || row.merchant_name || "Unknown Brand",
-        category: row.category_name || row.merchant_category || "Uncategorized",
-        price: parsePrice(row.search_price),
-        imageUrl: row.merchant_image_url || row.aw_image_url || null,
-        description: row.description || row.product_short_description || null,
-        rating: row.average_rating ? parseFloat(row.average_rating) || 0 : 0,
-      });
+      products.push({ name: row.product_name, brand: row.brand_name || "Unknown Brand", category: row.category || "Uncategorized", price: parsePrice(row.search_price), imageUrl: row.merchant_image_url || null, description: row.description || null, ingredients: row.ingredients || null, vegan: toBool(row.vegan), alcoholFree: toBool(row.alcoholFree), fragranceFree: toBool(row.fragranceFree) });
     })
     .on("end", async () => {
       console.log(`Importiere ${products.length} Produkte...`);
@@ -49,3 +45,4 @@ main().catch(async (error) => {
   console.error(error);
   await prisma.$disconnect();
 });
+

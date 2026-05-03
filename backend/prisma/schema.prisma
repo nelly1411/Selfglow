@@ -15,9 +15,10 @@ model Product {
   price            Float
   imageUrl         String?
   description      String?
+  ingredients      String?
+  alcoholFree      Boolean  @default(false)
   fragranceFree    Boolean  @default(false)
   vegan            Boolean  @default(false)
-  naturalCosmetics Boolean  @default(false)
   rating           Float?   @default(0)
 
   createdAt        DateTime @default(now())
