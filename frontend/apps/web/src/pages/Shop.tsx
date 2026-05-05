@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { Star, ChevronDown, ChevronUp, ShoppingCart, Filter, X } from 'lucide-react'
+import { Star, ChevronDown, ChevronUp, ShoppingCart, Filter, X, Heart, Check } from 'lucide-react'
 import { Button } from '@workspace/ui/components/button'
 import { Checkbox } from '@workspace/ui/components/checkbox'
 import { Slider } from '@workspace/ui/components/slider'
 import { cn } from '@workspace/ui/lib/utils'
+import { useCart } from '@/context/CartContext'
+import { useWishlist } from '@/context/WishlistContext'
 
 type Product = {
   id: number
@@ -72,22 +74,74 @@ function FilterSection({ title, children, defaultOpen = true }: FilterSectionPro
 
 function ProductCard({ product }: { product: Product }) {
   const rating = product.rating ?? 0
+  const { addToCart, items } = useCart()
+  const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist()
+  const [justAdded, setJustAdded] = useState(false)
+  const isInCart = items.some((item) => item.id === product.id)
+  const inWishlist = isInWishlist(product.id)
+
+  const handleAddToCart = () => {
+    addToCart({
+      id: product.id,
+      name: product.name,
+      category: product.category,
+      price: product.price,
+      image: product.imageUrl || 'https://placehold.co/300x300?text=No+Image',
+    })
+    setJustAdded(true)
+    setTimeout(() => setJustAdded(false), 1500)
+  }
+
+  const handleWishlistToggle = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (inWishlist) {
+      removeFromWishlist(product.id)
+    } else {
+      addToWishlist({
+        id: product.id,
+        name: product.name,
+        category: product.category,
+        price: product.price,
+        image: product.imageUrl || 'https://placehold.co/300x300?text=No+Image',
+        rating: product.rating ?? 0,
+        reviews: 0,
+      })
+    }
+  }
 
   return (
     <div className="group bg-background rounded-xl border border-border overflow-hidden hover:shadow-lg transition-shadow">
-      <Link to={`/product/${product.id}`} className="block">
-        <div className="aspect-square overflow-hidden bg-[#F5F5F5]">
-          <img
-            src={product.imageUrl || 'https://placehold.co/300x300?text=No+Image'}
-            alt={product.name}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-          />
-        </div>
+      <div className="relative">
+        <Link to={`/product/${product.id}`} className="block">
+          <div className="aspect-square overflow-hidden bg-[#F5F5F5]">
+            <img
+              src={product.imageUrl || 'https://placehold.co/300x300?text=No+Image'}
+              alt={product.name}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            />
+          </div>
+        </Link>
+        
+        <button
+          onClick={handleWishlistToggle}
+          className={cn(
+            "absolute top-3 right-3 p-2 rounded-full shadow-md transition-colors z-10",
+            inWishlist 
+              ? "bg-red-50 hover:bg-red-100" 
+              : "bg-white hover:bg-gray-50"
+          )}
+          aria-label={inWishlist ? "Aus Merkliste entfernen" : "Zur Merkliste hinzufügen"}
+        >
+          <Heart className={cn("h-4 w-4", inWishlist ? 'fill-[#D4A574] text-[#D4A574]' : "text-gray-500")} />
+        </button>
+      </div>
 
+      <Link to={`/product/${product.id}`} className="block">
         <div className="p-4 pb-2">
           <p className="text-xs text-muted-foreground mb-1">{product.category}</p>
 
-          <h3 className="font-medium text-foreground text-sm mb-1 line-clamp-2">
+          <h3 className="font-medium text-foreground text-sm mb-1 line-clamp-2 hover:text-[#D4A574] transition-colors">
             {product.name}
           </h3>
 
@@ -121,9 +175,28 @@ function ProductCard({ product }: { product: Product }) {
       </Link>
 
       <div className="px-4 pb-4">
-        <Button className="w-full bg-[#F5E6D3] text-foreground hover:bg-[#E8D5C0] rounded-full text-sm">
-          <ShoppingCart className="h-4 w-4 mr-2" />
-          Add to Cart
+        <Button 
+          onClick={handleAddToCart}
+          className={cn(
+            "w-full rounded-full text-sm transition-colors",
+            justAdded 
+              ? "bg-[#D4A574] text-white hover:bg-[#C49464]"
+              : isInCart 
+                ? "bg-[#D4A574] text-white hover:bg-[#C49464]"
+                : "bg-[#F5E6D3] text-foreground hover:bg-[#E8D5C0]"
+          )}
+        >
+          {justAdded ? (
+            <>
+              <Check className="h-4 w-4 mr-2" />
+              Hinzugefügt!
+            </>
+          ) : (
+            <>
+              <ShoppingCart className="h-4 w-4 mr-2" />
+              {isInCart ? 'Nochmal hinzufügen' : 'In den Warenkorb'}
+            </>
+          )}
         </Button>
       </div>
     </div>
@@ -243,7 +316,7 @@ export default function Shop() {
           className="w-full"
         >
           <Filter className="h-4 w-4 mr-2" />
-          Filters
+          Filter
         </Button>
       </div>
 
@@ -255,7 +328,7 @@ export default function Shop() {
           />
           <div className="absolute left-0 top-0 h-full w-80 bg-background p-6 overflow-y-auto">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-bold text-foreground">Filters</h2>
+              <h2 className="text-lg font-bold text-foreground">Filter</h2>
               <button onClick={() => setMobileFiltersOpen(false)}>
                 <X className="h-5 w-5 text-foreground" />
               </button>

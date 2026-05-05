@@ -1,0 +1,137 @@
+import { Link } from 'react-router-dom'
+import { Heart, ShoppingCart, Trash2, Star } from 'lucide-react'
+import { Button } from '@workspace/ui/components/button'
+import { useWishlist, type WishlistItem } from '@/context/WishlistContext'
+import { useCart } from '@/context/CartContext'
+import { cn } from '@workspace/ui/lib/utils'
+
+export default function Wishlist() {
+  const { items, removeFromWishlist } = useWishlist()
+  const { addToCart } = useCart()
+
+  const handleAddToCart = (item: WishlistItem) => {
+    addToCart({
+      id: item.id,
+      name: item.name,
+      category: item.category,
+      price: item.price,
+      image: item.image,
+    })
+  }
+
+  if (items.length === 0) {
+    return (
+      <div className="container mx-auto px-4 py-16 text-center">
+        <div className="w-24 h-24 bg-[#F5E6D3] rounded-full flex items-center justify-center mx-auto mb-6">
+          <Heart className="h-12 w-12 text-[#D4A574]" />
+        </div>
+
+        <h1 className="text-2xl font-bold mb-4">
+          Deine Merkliste ist leer
+        </h1>
+
+        <p className="text-muted-foreground mb-8">
+          Speichere deine Lieblingsprodukte, um sie später wiederzufinden.
+        </p>
+
+        <Link to="/shop">
+          <Button className="bg-[#D4A574] text-white hover:bg-[#C49464] rounded-full px-8">
+            Produkte entdecken
+          </Button>
+        </Link>
+      </div>
+    )
+  }
+
+  return (
+    <div className="container mx-auto px-4 py-8">
+      <h1 className="text-2xl font-bold mb-2">Meine Merkliste</h1>
+
+      <p className="text-muted-foreground mb-8">
+        {items.length} Produkt{items.length !== 1 && 'e'} gespeichert
+      </p>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        {items.map((item) => {
+          const rating = item.rating ?? 0
+
+          return (
+            <div
+              key={item.id}
+              className="group bg-background rounded-xl border overflow-hidden hover:shadow-lg transition"
+            >
+              {/* IMAGE */}
+              <div className="relative aspect-square bg-[#F5F5F5]">
+                <Link to={`/product/${item.id}`}>
+                  <img
+                    src={item.image}
+                    alt={item.name}
+                    className="w-full h-full object-cover group-hover:scale-105 transition"
+                  />
+                </Link>
+
+                {/* REMOVE */}
+                <button
+                  onClick={() => removeFromWishlist(item.id)}
+                  className="absolute top-3 right-3 p-2 bg-white rounded-full shadow hover:bg-red-50"
+                >
+                  <Trash2 className="h-4 w-4 text-[#D4A574]" />
+                </button>
+              </div>
+
+              {/* CONTENT */}
+              <div className="p-4">
+                <p className="text-xs text-muted-foreground mb-1">
+                  {item.category}
+                </p>
+
+                <Link to={`/product/${item.id}`}>
+                  <h3 className="text-sm font-medium mb-2 hover:text-[#D4A574]">
+                    {item.name}
+                  </h3>
+                </Link>
+
+                {/* RATING */}
+                <div className="flex items-center gap-1 mb-2">
+                  <div className="flex">
+                    {[...Array(5)].map((_, i) => (
+                      <Star
+                        key={i}
+                        className={cn(
+                          'h-3 w-3',
+                          i < Math.floor(rating)
+                            ? 'fill-[#D4A574] text-[#D4A574]'
+                            : 'fill-muted text-muted'
+                        )}
+                      />
+                    ))}
+                  </div>
+
+                  <span className="text-xs text-muted-foreground">
+                    ({item.reviews ?? 0})
+                  </span>
+                </div>
+
+                {/* PRICE */}
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="font-bold">
+                    €{item.price.toFixed(2)}
+                  </span>
+                </div>
+
+                {/* CART BUTTON */}
+                <Button
+                  onClick={() => handleAddToCart(item)}
+                  className="w-full bg-[#F5E6D3] hover:bg-[#E8D5C0] rounded-full"
+                >
+                  <ShoppingCart className="h-4 w-4 mr-2" />
+                  In den Warenkorb
+                </Button>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
