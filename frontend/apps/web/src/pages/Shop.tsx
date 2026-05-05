@@ -5,6 +5,8 @@ import { Button } from '@workspace/ui/components/button'
 import { Checkbox } from '@workspace/ui/components/checkbox'
 import { Slider } from '@workspace/ui/components/slider'
 import { cn } from '@workspace/ui/lib/utils'
+import { useCart } from '@/context/CartContext'
+import { apiUrl } from '@/lib/api'
 
 type Product = {
   id: number
@@ -72,6 +74,17 @@ function FilterSection({ title, children, defaultOpen = true }: FilterSectionPro
 
 function ProductCard({ product }: { product: Product }) {
   const rating = product.rating ?? 0
+  const { addToCart } = useCart()
+
+  function handleAddToCart() {
+    addToCart({
+      id: product.id,
+      name: product.name,
+      category: product.category,
+      price: product.price,
+      image: product.imageUrl || 'https://placehold.co/300x300?text=No+Image',
+    })
+  }
 
   return (
     <div className="group bg-background rounded-xl border border-border overflow-hidden hover:shadow-lg transition-shadow">
@@ -121,7 +134,10 @@ function ProductCard({ product }: { product: Product }) {
       </Link>
 
       <div className="px-4 pb-4">
-        <Button className="w-full bg-[#F5E6D3] text-foreground hover:bg-[#E8D5C0] rounded-full text-sm">
+        <Button
+          onClick={handleAddToCart}
+          className="w-full bg-[#F5E6D3] text-foreground hover:bg-[#E8D5C0] rounded-full text-sm"
+        >
           <ShoppingCart className="h-4 w-4 mr-2" />
           Add to Cart
         </Button>
@@ -145,7 +161,7 @@ export default function Shop() {
   useEffect(() => {
     async function fetchProducts() {
       try {
-        const response = await fetch('http://localhost:5050/api/products')
+        const response = await fetch(apiUrl('/api/products'))
 
         if (!response.ok) {
           throw new Error('Produkte konnten nicht geladen werden')
