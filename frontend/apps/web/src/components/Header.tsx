@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
-import { User, ShoppingCart, Search, Menu, X } from 'lucide-react'
+
+import { User, ShoppingCart, Search, Menu, X, Heart, LogOut } from 'lucide-react'
 import { cn } from '@workspace/ui/lib/utils'
 import { useCart } from '@/context/CartContext'
+import { useWishlist } from '@/context/WishlistContext'
+import { useAuth } from '@/context/AuthContext'
 
 const navLinkClass = (isActive: boolean) =>
   cn(
@@ -15,7 +18,10 @@ export default function Header() {
   const [searchTerm, setSearchTerm] = useState('')
 
   const { totalItems } = useCart()
+  const { totalItems: wishlistCount } = useWishlist()
+  const { isLoggedIn, logout, user } = useAuth()
   const navigate = useNavigate()
+
   const location = useLocation()
 
   useEffect(() => {
@@ -43,7 +49,7 @@ export default function Header() {
           SelfGlow
         </Link>
 
-        <nav className="hidden lg:flex items-center gap-8 xl:gap-10 absolute left-1/2 -translate-x-1/2 whitespace-nowrap">
+        <nav className="hidden lg:flex items-center gap-8 xl:gap-10 absolute left-[45%] -translate-x-1/2 whitespace-nowrap">
           <NavLink to="/" end className={({ isActive }) => navLinkClass(isActive)}>
             Home
           </NavLink>
@@ -61,7 +67,7 @@ export default function Header() {
           </NavLink>
         </nav>
 
-        <div className="ml-auto flex items-center justify-end gap-3 lg:gap-4">
+        <div className="ml-auto flex items-center justify-end gap-3 lg:gap-2">
           <div className="hidden md:flex items-center gap-2 bg-[#F5E6D3] px-3 lg:px-4 py-2 rounded-full w-[220px] lg:w-[260px] xl:w-[320px]">
             <Search className="h-4 w-4 lg:h-5 lg:w-5 text-muted-foreground shrink-0" />
 
@@ -103,9 +109,43 @@ export default function Header() {
             )}
           </NavLink>
 
-          <button className="p-2 hover:bg-accent rounded-full transition-colors" aria-label="Profile">
-            <User className="h-6 w-6 text-foreground" />
+          <button
+            onClick={() => navigate('/wishlist')}
+            className="relative p-2 hover:bg-accent rounded-full transition-colors"
+            aria-label="Wishlist"
+            type="button"
+          >
+            <Heart className="h-6 w-6 text-foreground" />
+            {wishlistCount > 0 && (
+              <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-[#D4A574] text-white text-xs flex items-center justify-center font-medium">
+                {wishlistCount > 9 ? '9+' : wishlistCount}
+              </span>
+            )}
           </button>
+
+          {isLoggedIn ? (
+            <button
+              className="hidden sm:inline-flex items-center gap-2 rounded-full px-3 py-2 text-sm font-medium text-foreground hover:bg-accent transition-colors"
+              onClick={logout}
+              type="button"
+            >
+              <span className="max-w-28 truncate">{user?.name || user?.email}</span>
+              <LogOut className="h-4 w-4" />
+            </button>
+          ) : (
+            <NavLink
+              to="/login"
+              className={({ isActive }) =>
+                cn(
+                  'p-2 hover:bg-accent rounded-full transition-colors',
+                  isActive ? 'bg-accent' : ''
+                )
+              }
+              aria-label="Login"
+            >
+              <User className="h-6 w-6 text-foreground" />
+            </NavLink>
+          )}
 
           <button
             className="lg:hidden p-2 hover:bg-accent rounded-full transition-colors"
@@ -162,6 +202,24 @@ export default function Header() {
             <NavLink to="/chatbot" onClick={() => setMobileMenuOpen(false)} className={({ isActive }) => navLinkClass(isActive)}>
               KI-Beratung
             </NavLink>
+
+            {isLoggedIn ? (
+              <button
+                className="flex items-center gap-2 text-left text-base font-medium text-[#5F5F5F] hover:text-[#D4A574]"
+                onClick={() => {
+                  logout()
+                  setMobileMenuOpen(false)
+                }}
+                type="button"
+              >
+                <LogOut className="h-4 w-4" />
+                Logout
+              </button>
+            ) : (
+              <NavLink to="/login" onClick={() => setMobileMenuOpen(false)} className={({ isActive }) => navLinkClass(isActive)}>
+                Login
+              </NavLink>
+            )}
           </div>
         </nav>
       )}

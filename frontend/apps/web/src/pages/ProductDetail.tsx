@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { Star, ShoppingCart, ArrowLeft } from 'lucide-react'
+import { Star, ShoppingCart, ArrowLeft, Heart, User, CheckCircle } from 'lucide-react'
 import { Button } from '@workspace/ui/components/button'
 import { cn } from '@workspace/ui/lib/utils'
 import { useCart } from '@/context/CartContext'
+import { useWishlist } from '@/context/WishlistContext'
 
 type Product = {
   id: number
@@ -15,11 +16,32 @@ type Product = {
   description?: string | null
   rating?: number | null
 }
+const mockReviews = [
+  {
+    id: 1,
+    userName: 'Maria S.',
+    rating: 5,
+    title: 'Absolut top!',
+    comment: 'Meine Haut hat sich extrem verbessert.',
+    date: '2026-01-10',
+    verified: true,
+  },
+  {
+    id: 2,
+    userName: 'Tom K.',
+    rating: 4,
+    title: 'Sehr gut',
+    comment: 'Zieht schnell ein und riecht angenehm.',
+    date: '2026-01-08',
+    verified: false,
+  },
+]
 
 export default function ProductDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { addToCart } = useCart()
+  const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist()
 
   const [product, setProduct] = useState<Product | null>(null)
   const [loading, setLoading] = useState(true)
@@ -58,9 +80,28 @@ export default function ProductDetail() {
       image: product.imageUrl || 'https://placehold.co/300x300?text=No+Image',
     })
 
-    // 👉 danach automatisch zum Warenkorb
     navigate('/cart')
   }
+
+  function handleWishlistToggle() {
+    if (!product) return
+    
+    if (isInWishlist(product.id)) {
+      removeFromWishlist(product.id)
+    } else {
+      addToWishlist({
+        id: product.id,
+        name: product.name,
+        category: product.category,
+        price: product.price,
+        image: product.imageUrl || 'https://placehold.co/300x300?text=No+Image',
+        rating: product.rating ?? 0,
+        reviews: 0,
+      })
+    }
+  }
+
+  const inWishlist = product ? isInWishlist(product.id) : false
 
   if (loading) {
     return (
@@ -148,16 +189,97 @@ export default function ProductDetail() {
             {product.description || 'Keine Beschreibung vorhanden.'}
           </p>
 
-          {/* ✅ ADD TO CART */}
-          <Button
-            onClick={handleAddToCart}
-            className="bg-[#F5E6D3] text-foreground hover:bg-[#E8D5C0] rounded-full px-8"
-          >
-            <ShoppingCart className="h-4 w-4 mr-2" />
-            Add to Cart
-          </Button>
+          {/* Buttons */}
+          <div className="flex gap-4">
+            <Button
+              onClick={handleAddToCart}
+              className="flex-1 bg-[#F5E6D3] text-foreground hover:bg-[#E8D5C0] rounded-full px-8"
+            >
+              <ShoppingCart className="h-4 w-4 mr-2" />
+              In den Warenkorb
+            </Button>
+            
+            <Button
+              onClick={handleWishlistToggle}
+              variant="outline"
+              className={cn(
+                "rounded-full px-4 border-2 transition-colors",
+                inWishlist 
+                  ? "border-[#D4A574]  hover:bg-red-100" 
+                  : "border-[#D4A574] hover:bg-[#F5E6D3]"
+              )}
+              aria-label={inWishlist ? "Aus Merkliste entfernen" : "Zur Merkliste hinzufügen"}
+            >
+              <Heart className={cn("h-5 w-5", inWishlist ? 'fill-[#D4A574] text-[#D4A574]' : "text-[#D4A574]")} />
+            </Button>
+          </div>
+          
         </div>
       </div>
-    </div>
+    {/* REVIEWS SECTION */}
+<div className="mt-12 border-t pt-10">
+  <h2 className="text-2xl font-bold mb-6">
+    Kundenbewertungen
+  </h2>
+
+  <div className="space-y-6">
+    {mockReviews.map((review) => (
+      <div key={review.id} className="border-b pb-5">
+
+        <div className="flex items-center justify-between mb-2">
+
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-[#F5E6D3] flex items-center justify-center">
+              <User className="h-5 w-5 text-[#D4A574]" />
+            </div>
+
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-medium">{review.userName}</span>
+
+                {review.verified && (
+                  <span className="text-xs flex items-center gap-1 text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
+                    <CheckCircle className="h-3 w-3" />
+                    Kauf bestätigt
+                  </span>
+                )}
+              </div>
+
+              <p className="text-xs text-muted-foreground">
+                {review.date}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex">
+            {[...Array(5)].map((_, i) => (
+              <Star
+                key={i}
+                className={cn(
+                  'h-4 w-4',
+                  i < review.rating
+                    ? 'fill-[#D4A574] text-[#D4A574]'
+                    : 'fill-muted text-muted'
+                )}
+              />
+            ))}
+          </div>
+
+        </div>
+
+        <h4 className="font-semibold mb-1">
+          {review.title}
+        </h4>
+
+        <p className="text-muted-foreground text-sm">
+          {review.comment}
+        </p>
+
+      </div>
+    ))}
+  </div>
+</div>
+</div>
+
   )
 }
