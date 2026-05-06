@@ -17,6 +17,11 @@ type Product = {
   imageUrl?: string | null
   description?: string | null
   rating?: number | null
+  skinTypes?: string | null
+  concerns?: string | null
+  vegan?: boolean
+  alcoholFree?: boolean
+  fragranceFree?: boolean
 }
 
 const PRODUCTS_PER_PAGE = 25
@@ -37,11 +42,17 @@ const concerns = [
 ]
 
 const productTypes = [
-  { name: 'Cleansers' },
-  { name: 'Serums' },
-  { name: 'Moisturizers' },
-  { name: 'Eyecream' },
-  { name: 'Gesichtsmasken' },
+  { name: 'Gesischtsreinigung' },
+  { name: 'Serum' },
+  { name: 'Toner' },
+  { name: 'Feuchtigkeitspflege' },
+  { name: 'Sonnenschutz' },
+]
+
+const productFeatures = [
+  { key: 'vegan', label: 'Vegan'},
+  { key: 'alcoholFree', label: 'Alcohol Free'},
+  { key: 'fragranceFree', label: 'Fragrance Free'},
 ]
 
 interface FilterSectionProps {
@@ -206,6 +217,10 @@ function ProductCard({ product }: { product: Product }) {
 export default function Shop() {
   const [products, setProducts] = useState<Product[]>([])
   const [priceRange, setPriceRange] = useState([0, 200])
+  const [selectedSkinType, setSelectedSkinType] = useState<string | null>(null)
+  const [selectedConcern, setSelectedConcern] = useState<string | null>(null)
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+  const [selectedFeatures, setSelectedFeatures] = useState<string[]>([])
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
   const [visibleCount, setVisibleCount] = useState(PRODUCTS_PER_PAGE)
 
@@ -249,21 +264,52 @@ export default function Shop() {
       product.category.toLowerCase().includes(searchQuery) ||
       product.description?.toLowerCase().includes(searchQuery)
 
-    return matchesPrice && matchesSearch
+      const matchesSkinType = 
+      !selectedSkinType ||
+      product.skinTypes?.toLowerCase().includes(selectedSkinType.toLowerCase())
+
+      const matchesConcern = 
+      !selectedConcern ||
+      product.concerns?.toLowerCase().includes(selectedConcern.toLowerCase())
+
+      const matchesCategory = 
+      !selectedCategory||
+      product.category === selectedCategory
+
+      const matchesFeatures =
+      selectedFeatures.length === 0 ||
+      selectedFeatures.every((feature) => product[feature as keyof Product] === true)
+
+    return (
+      matchesPrice &&
+      matchesSearch && 
+      matchesSkinType && 
+      matchesConcern && 
+      matchesCategory && 
+      matchesFeatures 
+    )
+
   })
 
   const visibleProducts = filteredProducts.slice(0, visibleCount)
 
   useEffect(() => {
     setVisibleCount(PRODUCTS_PER_PAGE)
-  }, [priceRange, searchQuery])
+  }, [priceRange, searchQuery, selectedSkinType, selectedConcern, selectedSkinType, selectedCategory, selectedFeatures ])
 
   const FilterContent = () => (
     <>
       <FilterSection title="Skin Type">
         {skinTypes.map((type) => (
           <label key={type.name} className="flex items-center gap-2 cursor-pointer">
-            <Checkbox />
+           <Checkbox
+              checked={selectedSkinType === type.name}
+              onCheckedChange={() =>
+                setSelectedSkinType(
+                  selectedSkinType === type.name ? null : type.name
+                )
+              }
+            />
             <span className="text-sm text-foreground">{type.name}</span>
             <span className="text-xs text-muted-foreground ml-auto">({type.count})</span>
           </label>
@@ -273,8 +319,31 @@ export default function Shop() {
       <FilterSection title="Concerns">
         {concerns.map((concern) => (
           <label key={concern.name} className="flex items-center gap-2 cursor-pointer">
-            <Checkbox />
+            <Checkbox
+            checked={selectedConcern === concern.name}
+            onCheckedChange={() =>
+              setSelectedConcern(selectedConcern === concern.name ? null : concern.name)
+              }
+            />
             <span className="text-sm text-foreground">{concern.name}</span>
+          </label>
+        ))}
+      </FilterSection>
+
+      <FilterSection title="Product Features">
+        {productFeatures.map((feature) => (
+          <label key={feature.key} className="flex items-center gap-2 cursor-pointer">
+            <Checkbox
+            checked={selectedFeatures.includes(feature.key)}
+            onCheckedChange={() =>
+              setSelectedFeatures((prev) =>
+                prev.includes(feature.key)
+                ? prev.filter((item) => item !== feature.key)
+                : [...prev, feature.key]
+              )
+            }
+          />
+          <span className="text-sm text-foreground">{feature.label}</span>
           </label>
         ))}
       </FilterSection>
@@ -282,7 +351,12 @@ export default function Shop() {
       <FilterSection title="Product Type">
         {productTypes.map((type) => (
           <label key={type.name} className="flex items-center gap-2 cursor-pointer">
-            <Checkbox />
+            <Checkbox
+            checked={selectedCategory === type.name}
+            onCheckedChange={() =>
+              setSelectedCategory(selectedCategory === type.name ? null : type.name)
+              }
+            />
             <span className="text-sm text-foreground">{type.name}</span>
           </label>
         ))}
