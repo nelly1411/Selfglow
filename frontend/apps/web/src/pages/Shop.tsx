@@ -7,6 +7,7 @@ import { Slider } from '@workspace/ui/components/slider'
 import { cn } from '@workspace/ui/lib/utils'
 import { useCart } from '@/context/CartContext'
 import { useWishlist } from '@/context/WishlistContext'
+import { apiUrl } from '@/lib/api'
 
 type Product = {
   id: number
@@ -233,7 +234,7 @@ export default function Shop() {
   useEffect(() => {
     async function fetchProducts() {
       try {
-        const response = await fetch('http://localhost:5050/api/products')
+        const response = await fetch(apiUrl('/api/products'))
 
         if (!response.ok) {
           throw new Error('Produkte konnten nicht geladen werden')

@@ -2,6 +2,8 @@ const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
 const productRoutes = require("./routes/product.routes");
+const prisma = require("./config/prisma");
+const authRoutes = require("./routes/auth");
 
 dotenv.config();
 
@@ -9,6 +11,8 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
+
+app.use("/api/auth", authRoutes);
 
 app.get("/", (req, res) => {
   res.send("SelfGlow backend is running");

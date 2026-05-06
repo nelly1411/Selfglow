@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
-import { User, ShoppingCart, Search, Menu, X, Heart } from 'lucide-react'
+
+import { User, ShoppingCart, Search, Menu, X, Heart, LogOut } from 'lucide-react'
 import { cn } from '@workspace/ui/lib/utils'
 import { useCart } from '@/context/CartContext'
 import { useWishlist } from '@/context/WishlistContext'
+import { useAuth } from '@/context/AuthContext'
 
 const navLinkClass = (isActive: boolean) =>
   cn(
@@ -16,7 +18,8 @@ export default function Header() {
   const [searchTerm, setSearchTerm] = useState('')
 
   const { totalItems } = useCart()
-const { totalItems: wishlistCount } = useWishlist()
+  const { totalItems: wishlistCount } = useWishlist()
+  const { isLoggedIn, logout, user } = useAuth()
   const navigate = useNavigate()
 
   const location = useLocation()
@@ -106,23 +109,44 @@ const { totalItems: wishlistCount } = useWishlist()
             )}
           </NavLink>
 
-          <button className="p-2 hover:bg-accent rounded-full transition-colors" aria-label="Profile">
-            <User className="h-6 w-6 text-foreground" />
+          <button
+            onClick={() => navigate('/wishlist')}
+            className="relative p-2 hover:bg-accent rounded-full transition-colors"
+            aria-label="Wishlist"
+            type="button"
+          >
+            <Heart className="h-6 w-6 text-foreground" />
+            {wishlistCount > 0 && (
+              <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-[#D4A574] text-white text-xs flex items-center justify-center font-medium">
+                {wishlistCount > 9 ? '9+' : wishlistCount}
+              </span>
+            )}
           </button>
-{/* Wishlist Icon */}
-<button
-  onClick={() => navigate('/wishlist')}
-  className="relative p-2 hover:bg-accent rounded-full transition-colors"
-  aria-label="Wishlist"
->
-  <Heart className="h-6 w-6 text-foreground" />
 
-  {wishlistCount > 0 && (
-    <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-[#D4A574] text-white text-white text-xs flex items-center justify-center font-medium">
-      {wishlistCount > 9 ? '9+' : wishlistCount}
-    </span>
-  )}
-</button>
+          {isLoggedIn ? (
+            <button
+              className="hidden sm:inline-flex items-center gap-2 rounded-full px-3 py-2 text-sm font-medium text-foreground hover:bg-accent transition-colors"
+              onClick={logout}
+              type="button"
+            >
+              <span className="max-w-28 truncate">{user?.name || user?.email}</span>
+              <LogOut className="h-4 w-4" />
+            </button>
+          ) : (
+            <NavLink
+              to="/login"
+              className={({ isActive }) =>
+                cn(
+                  'p-2 hover:bg-accent rounded-full transition-colors',
+                  isActive ? 'bg-accent' : ''
+                )
+              }
+              aria-label="Login"
+            >
+              <User className="h-6 w-6 text-foreground" />
+            </NavLink>
+          )}
+
           <button
             className="lg:hidden p-2 hover:bg-accent rounded-full transition-colors"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -178,6 +202,24 @@ const { totalItems: wishlistCount } = useWishlist()
             <NavLink to="/chatbot" onClick={() => setMobileMenuOpen(false)} className={({ isActive }) => navLinkClass(isActive)}>
               KI-Beratung
             </NavLink>
+
+            {isLoggedIn ? (
+              <button
+                className="flex items-center gap-2 text-left text-base font-medium text-[#5F5F5F] hover:text-[#D4A574]"
+                onClick={() => {
+                  logout()
+                  setMobileMenuOpen(false)
+                }}
+                type="button"
+              >
+                <LogOut className="h-4 w-4" />
+                Logout
+              </button>
+            ) : (
+              <NavLink to="/login" onClick={() => setMobileMenuOpen(false)} className={({ isActive }) => navLinkClass(isActive)}>
+                Login
+              </NavLink>
+            )}
           </div>
         </nav>
       )}
