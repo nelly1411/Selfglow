@@ -1,82 +1,121 @@
 # README
 
-This file contains the main commands to run the project after a fresh clone or when reopening it.
+## Main commands for running the project from the `develop` branch 06.05.2026 
 
-## Quick start after reopening the project
 
-If your dependencies are already installed and the database already exists, run:
+---
+
+## 1. Use the current `develop` branch
+If you don't have branch develop yet, create a new one:
+```bash
+git fetch origin
+git switch -c develop origin/develop
+```
+
+If you have branch develop locally, update it:
+```bash
+git switch develop
+git pull origin develop
+git status
+```
+
+
+
+Start new work from `develop`:
 
 ```bash
-# Start the database if it is not already running
+git switch -c feature/your-task-name
+```
+
+---
+
+## 2. Create local `.env`
+
+Check if you have `.env` under `/backend`.
+If not, create this file:
+
+```bash
+backend/.env
+```
+
+copy paste this into the .env file:
+
+```env
+DATABASE_URL="postgresql://selfglow_user:selfglow_password@localhost:5432/selfglow?schema=public"
+JWT_SECRET="your-local-secret-key"
+PORT=5050
+```
+
+Do **not** commit `backend/.env`.
+
+---
+
+## 3. Fresh setup / after pulling major changes
+
+From the project root, start the database:
+
+```bash
 docker compose up -d db
-
-# Start the backend in one terminal
-cd backend
-npm run dev
-
-# Start the frontend in another terminal
-cd ../frontend
-npm run dev
 ```
 
-- Backend URL: `http://localhost:5050`
-- Frontend URL: `http://localhost:5173`
-
-## When you need to install dependencies again
-
-If this is a fresh clone or your dependencies changed, run:
+Install dependencies:
 
 ```bash
 cd backend
 npm install
+
 cd ../frontend
 npm install
 ```
 
-## When to run seeding and importing commands
+Set up Prisma and database:
 
 ```bash
-`node import-products.js`
+cd ../backend
+npx prisma migrate dev
+npx prisma generate
+node prisma/import-products.js
 ```
-Run this when:
-- you need to import product data from CSV files into the database
-- the database is set up and you want to populate it with product information
 
-It imports data from `db/data/` CSV files.
+---
+
+## 4. Start the project
+
+### Terminal 1: database
+
+From the project root:
 
 ```bash
-`npm run seed`
+docker compose up -d db
 ```
-Run this when:
-- you want to seed the database with sample data
-- for testing or initial setup after migrations
 
-## When to run Prisma commands
+### Terminal 2: backend
 
-### `npx prisma migrate deploy`
-Run this when:
-- the local database is new/fresh
-- you are setting up the database for the first time
-- you need to apply existing migrations to a local environment
+```bash
+cd backend
+npm run dev
+```
 
-It applies the migrations already stored in `backend/prisma/migrations`.
+Backend URL:
 
-### `npx prisma generate`
-Run this when:
-- `backend/prisma/schema.prisma` changed
-- you added or removed a model
-- you renamed or changed a field
-- you added or changed a relation
-- you upgraded or reinstalled `@prisma/client` or `prisma`
-- you switched branches and the Prisma schema changed
+```text
+http://localhost:5050
+```
 
-### `npx prisma migrate dev`
-Run this when you are actively developing locally and want Prisma to:
-- create a new migration file
-- apply it to the local database
-- regenerate the Prisma client
+### Terminal 3: frontend
 
-Use it after changing `backend/prisma/schema.prisma` during development.
+```bash
+cd frontend
+npm run dev
+```
+
+Frontend URL:
+
+```text
+http://localhost:5173
+```
+
+#########################################
 
 ## Full setup
 
