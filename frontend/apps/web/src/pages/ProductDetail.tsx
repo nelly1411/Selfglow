@@ -5,6 +5,7 @@ import { Button } from '@workspace/ui/components/button'
 import { cn } from '@workspace/ui/lib/utils'
 import { useCart } from '@/context/CartContext'
 import { useWishlist } from '@/context/WishlistContext'
+import { useAuth } from '@/context/AuthContext'
 
 type Product = {
   id: number
@@ -42,6 +43,8 @@ export default function ProductDetail() {
   const navigate = useNavigate()
   const { addToCart } = useCart()
   const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist()
+  const { isLoggedIn } = useAuth()
+  const [showLoginHint, setShowLoginHint] = useState(false)
 
   const [product, setProduct] = useState<Product | null>(null)
   const [loading, setLoading] = useState(true)
@@ -71,7 +74,7 @@ export default function ProductDetail() {
 
   function handleAddToCart() {
     if (!product) return
-
+  
     addToCart({
       id: product.id,
       name: product.name,
@@ -85,7 +88,12 @@ export default function ProductDetail() {
 
   function handleWishlistToggle() {
     if (!product) return
-    
+
+      if (!isLoggedIn) {
+      setShowLoginHint(true)
+      return
+    }
+
     if (isInWishlist(product.id)) {
       removeFromWishlist(product.id)
     } else {
@@ -190,7 +198,7 @@ export default function ProductDetail() {
           </p>
 
           {/* Buttons */}
-          <div className="flex gap-4">
+          <div className="relative flex gap-4">
             <Button
               onClick={handleAddToCart}
               className="flex-1 bg-[#F5E6D3] text-foreground hover:bg-[#E8D5C0] rounded-full px-8"
@@ -212,6 +220,18 @@ export default function ProductDetail() {
             >
               <Heart className={cn("h-5 w-5", inWishlist ? 'fill-[#D4A574] text-[#D4A574]' : "text-[#D4A574]")} />
             </Button>
+
+            {showLoginHint && (
+              <div className="absolute top-14 right-0 z-20 w-64 rounded-xl bg-white p-3 text-xs shadow-lg border border-border">
+                <p className="mb-2 text-foreground">
+                  Bitte einloggen, um Produkte zu speichern.
+                </p>
+
+                <Link to="/login" className="font-medium text-[#D4A574] hover:underline">
+                  Zum Login
+                </Link>
+              </div>
+            )}
           </div>
           
         </div>
