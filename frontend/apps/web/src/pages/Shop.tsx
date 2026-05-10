@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link,useNavigate, useSearchParams } from 'react-router-dom'
 import { Star, ChevronDown, ChevronUp, ShoppingCart, Filter, X, Heart, Check } from 'lucide-react'
 import { Button } from '@workspace/ui/components/button'
 import { Checkbox } from '@workspace/ui/components/checkbox'
@@ -8,6 +8,7 @@ import { cn } from '@workspace/ui/lib/utils'
 import { useCart } from '@/context/CartContext'
 import { useWishlist } from '@/context/WishlistContext'
 import { apiUrl } from '@/lib/api'
+import { useAuth } from '@/context/AuthContext'
 
 type Product = {
   id: number
@@ -91,6 +92,9 @@ function ProductCard({ product }: { product: Product }) {
   const [justAdded, setJustAdded] = useState(false)
   const isInCart = items.some((item) => item.id === product.id)
   const inWishlist = isInWishlist(product.id)
+  const { isLoggedIn } = useAuth()
+  const navigate = useNavigate()
+  const [showLoginHint, setShowLoginHint] = useState(false)
 
   const handleAddToCart = () => {
     addToCart({
@@ -107,6 +111,14 @@ function ProductCard({ product }: { product: Product }) {
   const handleWishlistToggle = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
+    if (!isLoggedIn) {
+      // alert('Bitte melde dich an, um Produkte in deiner Merkliste zu speichern.')
+      // navigate('/login')
+      setShowLoginHint(true)
+      return
+    }
+
+
     if (inWishlist) {
       removeFromWishlist(product.id)
     } else {
@@ -147,6 +159,20 @@ function ProductCard({ product }: { product: Product }) {
         >
           <Heart className={cn("h-4 w-4", inWishlist ? 'fill-[#D4A574] text-[#D4A574]' : "text-gray-500")} />
         </button>
+        {showLoginHint && (
+        <div className="absolute top-12 left-3 right-3 z-20 rounded-xl bg-white p-3 text-xs shadow-lg border border-border">
+          <p className="mb-2 text-foreground">
+            Bitte einloggen, um Produkte zu speichern.
+          </p>
+
+          <Link
+            to="/login"
+            className="font-medium text-[#D4A574] hover:underline"
+          >
+            Zum Login
+          </Link>
+        </div>
+        )}
       </div>
 
       <Link to={`/product/${product.id}`} className="block">
