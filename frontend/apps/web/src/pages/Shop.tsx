@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link,useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { Star, ChevronDown, ChevronUp, ShoppingCart, Filter, X, Heart, Check } from 'lucide-react'
 import { Button } from '@workspace/ui/components/button'
 import { Checkbox } from '@workspace/ui/components/checkbox'
@@ -93,7 +93,6 @@ function ProductCard({ product }: { product: Product }) {
   const isInCart = items.some((item) => item.id === product.id)
   const inWishlist = isInWishlist(product.id)
   const { isLoggedIn } = useAuth()
-  const navigate = useNavigate()
   const [showLoginHint, setShowLoginHint] = useState(false)
 
   const handleAddToCart = () => {
@@ -256,16 +255,50 @@ export default function Shop() {
 
   const [searchParams] = useSearchParams()
   const searchQuery = searchParams.get('search')?.toLowerCase().trim() || ''
+  const categoryQuery = searchParams.get('category') || ''
+  const skinTypeQuery = searchParams.get('skinType') || ''
 
   useEffect(() => {
     async function fetchProducts() {
       try {
-        const response = await fetch(apiUrl('/api/products'))
 
+        setLoading(true)
+        setError(null)
+
+        const activeCategory = selectedCategory || categoryQuery
+        const activeSkinType = selectedSkinType || skinTypeQuery
+
+        const params = new URLSearchParams()
+
+        if (searchQuery) {
+          params.set('search', searchQuery)
+        }
+
+        if (activeCategory) {
+          params.set('category', activeCategory)
+        }
+
+        if (activeSkinType) {
+          params.set('skinType', activeSkinType)
+        }
+
+        if (selectedConcern) {
+          params.set('concern', selectedConcern)
+        }
+
+        selectedFeatures.forEach((feature) => {
+          params.set(feature, 'true')
+        })
+
+        const queryString = params.toString()
+        const response = await fetch(
+          apiUrl(`/api/products${queryString ? `?${queryString}` : ''}`)
+        )
+  
         if (!response.ok) {
           throw new Error('Produkte konnten nicht geladen werden')
         }
-
+  
         const data: Product[] = await response.json()
         setProducts(data)
       } catch (err) {
@@ -275,54 +308,31 @@ export default function Shop() {
         setLoading(false)
       }
     }
-
+  
     fetchProducts()
-  }, [])
+  }, [
+    searchQuery,
+    categoryQuery,
+    skinTypeQuery,
+    selectedCategory,
+    selectedSkinType,
+    selectedConcern,
+    selectedFeatures,
+  ])
 
   const filteredProducts = products.filter((product) => {
-    const matchesPrice =
+    return (
       product.price >= priceRange[0] &&
       product.price <= priceRange[1]
-
-    const matchesSearch =
-      searchQuery === '' ||
-      product.name.toLowerCase().includes(searchQuery) ||
-      product.brand.toLowerCase().includes(searchQuery) ||
-      product.category.toLowerCase().includes(searchQuery) ||
-      product.description?.toLowerCase().includes(searchQuery)
-
-      const matchesSkinType = 
-      !selectedSkinType ||
-      product.skinTypes?.toLowerCase().includes(selectedSkinType.toLowerCase())
-
-      const matchesConcern = 
-      !selectedConcern ||
-      product.concerns?.toLowerCase().includes(selectedConcern.toLowerCase())
-
-      const matchesCategory = 
-      !selectedCategory||
-      product.category === selectedCategory
-
-      const matchesFeatures =
-      selectedFeatures.length === 0 ||
-      selectedFeatures.every((feature) => product[feature as keyof Product] === true)
-
-    return (
-      matchesPrice &&
-      matchesSearch && 
-      matchesSkinType && 
-      matchesConcern && 
-      matchesCategory && 
-      matchesFeatures 
     )
-
   })
+
 
   const visibleProducts = filteredProducts.slice(0, visibleCount)
 
   useEffect(() => {
     setVisibleCount(PRODUCTS_PER_PAGE)
-  }, [priceRange, searchQuery, selectedSkinType, selectedConcern, selectedSkinType, selectedCategory, selectedFeatures ])
+  }, [priceRange, searchQuery, selectedSkinType, selectedConcern, selectedCategory, selectedFeatures, categoryQuery, skinTypeQuery, ])
 
   const FilterContent = () => (
     <>

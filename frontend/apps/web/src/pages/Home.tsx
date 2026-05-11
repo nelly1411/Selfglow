@@ -3,36 +3,41 @@ import { Bot, Sparkles, SlidersHorizontal } from 'lucide-react'
 import { Button } from "@workspace/ui/components/button"
 
 const skinTypes = [
-  { name: 'Normale Haut', image: 'https://images.unsplash.com/photo-1616394584738-fc6e612e71b9?w=200&h=200&fit=crop' },
-  { name: 'Fettige Haut', image: 'https://images.unsplash.com/photo-1594744803329-e58b31de8bf5?w=200&h=200&fit=crop' },
-  { name: 'Mischhaut', image: 'https://images.unsplash.com/photo-1609505848912-b7c3b8b4beda?w=200&h=200&fit=crop' },
-  { name: 'Sensible Haut', image: 'https://images.unsplash.com/photo-1512290923902-8a9f81dc236c?w=200&h=200&fit=crop' },
-  { name: 'Trockene Haut', image: 'https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=200&h=200&fit=crop' },
+  { name: 'Normale Haut', value: 'Normal', image: 'https://images.unsplash.com/photo-1616394584738-fc6e612e71b9?w=200&h=200&fit=crop' },
+  { name: 'Fettige Haut', value: 'Oily', image: 'https://images.unsplash.com/photo-1594744803329-e58b31de8bf5?w=200&h=200&fit=crop' },
+  { name: 'Mischhaut', value: 'Combination', image: 'https://images.unsplash.com/photo-1609505848912-b7c3b8b4beda?w=200&h=200&fit=crop' },
+  { name: 'Sensible Haut', value: 'Sensitive', image: 'https://images.unsplash.com/photo-1512290923902-8a9f81dc236c?w=200&h=200&fit=crop' },
+  { name: 'Trockene Haut', value: 'Dry', image: 'https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=200&h=200&fit=crop' },
 ]
 
 const categories = [
   { 
     name: 'Feuchtigkeitspflege', 
+    value: 'Feuchtigkeitspflege',
     image: 'https://images.unsplash.com/photo-1608248597279-f99d160bfcbc?w=400&h=600&fit=crop',
     size: 'large'
   },
   { 
-    name: 'GESICHTSSERUM', 
+    name: 'Serum', 
+    value: 'Serum', 
     image: 'https://images.unsplash.com/photo-1617897903246-719242758050?w=400&h=300&fit=crop',
     size: 'small'
   },
   { 
-    name: 'AUGENPFLEGE', 
+    name: 'Toner', 
+    value: 'Toner', 
     image: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=400&h=300&fit=crop',
     size: 'small'
   },
   { 
-    name: 'GESICHTSMASKEN', 
+    name: 'Sonnenschutz', 
+    value: 'Sonnenschutz', 
     image: 'https://images.unsplash.com/photo-1596755389378-c31d21fd1273?w=400&h=300&fit=crop',
     size: 'small'
   },
   { 
-    name: 'GESICHTSREINIGUNG', 
+    name: 'Gesischtsreinigung', 
+    value: 'Gesischtsreinigung',
     image: 'https://images.unsplash.com/photo-1556228578-0d85b1a4d571?w=400&h=300&fit=crop',
     size: 'small'
   },
@@ -79,7 +84,7 @@ export default function Home() {
           <div className="flex flex-wrap justify-center gap-6 lg:gap-8">
             {skinTypes.map((type) => (
               <Link 
-                to="/shop" 
+                to={`/shop?skinType=${encodeURIComponent(type.value)}`}
                 key={type.name}
                 className="flex flex-col items-center group cursor-pointer"
               >
@@ -113,7 +118,7 @@ export default function Home() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-5xl mx-auto">
             {/* Large card - Feuchtigkeitspflege */}
             <Link 
-              to="/shop" 
+              to={`/shop?category=${encodeURIComponent(categories[0].value)}`}
               className="row-span-2 relative group overflow-hidden rounded-xl"
             >
               <img
@@ -131,7 +136,7 @@ export default function Home() {
             {/* Small cards */}
             {categories.slice(1).map((category) => (
               <Link 
-                to="/shop" 
+                to={`/shop?category=${encodeURIComponent(category.value)}`}
                 key={category.name}
                 className="relative group overflow-hidden rounded-xl aspect-[4/3]"
               >
