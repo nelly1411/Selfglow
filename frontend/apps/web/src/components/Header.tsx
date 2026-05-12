@@ -58,15 +58,15 @@ export default function Header() {
   return (
     <>
       <header className="sticky top-0 z-50 bg-background/95 backdrop-blur border-b border-border/40">
-        <div className="w-full px-6 lg:px-10 xl:px-14 py-5 flex items-center relative">
+        <div className="w-full px-6 lg:px-10 xl:px-14 py-5 flex items-center gap-6">
           <Link
             to="/"
-            className="text-3xl font-serif text-[#D4A574] font-semibold tracking-wide whitespace-nowrap"
+            className="shrink-0 text-3xl font-serif text-[#D4A574] font-semibold tracking-wide whitespace-nowrap"
           >
             SelfGlow
           </Link>
 
-          <nav className="hidden lg:flex items-center gap-8 xl:gap-10 absolute left-[45%] -translate-x-1/2 whitespace-nowrap">
+          <nav className="hidden lg:flex min-w-0 flex-1 items-center justify-center gap-6 xl:gap-8 whitespace-nowrap">
             <NavLink to="/" end className={({ isActive }) => navLinkClass(isActive)}>
               Home
             </NavLink>
@@ -84,8 +84,8 @@ export default function Header() {
             </NavLink>
           </nav>
 
-          <div className="ml-auto flex items-center justify-end gap-3 lg:gap-2">
-            <div className="hidden md:flex items-center gap-2 bg-[#F5E6D3] px-3 lg:px-4 py-2 rounded-full w-[220px] lg:w-[260px] xl:w-[320px]">
+          <div className="ml-auto flex shrink-0 items-center justify-end gap-3 lg:gap-2">
+            <div className="hidden xl:flex items-center gap-2 bg-[#F5E6D3] px-4 py-2 rounded-full w-[280px]">
               <Search className="h-4 w-4 lg:h-5 lg:w-5 text-muted-foreground shrink-0" />
 
               <input
