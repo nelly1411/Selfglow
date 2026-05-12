@@ -133,6 +133,30 @@ function detectBooleanFilters(message) {
   };
 }
 
+function detectSpfFilter(message) {
+  const match = String(message || "").match(/\b(?:spf|lsf|lf)\s*(\d{2,3})\+?\b/i);
+  return match ? Number(match[1]) : undefined;
+}
+
+function extractProductSpfValues(product) {
+  const text = [
+    product.name,
+    product.category,
+    product.description,
+  ]
+    .join(" ")
+    .toLowerCase();
+
+  const values = new Set();
+  const matches = text.matchAll(/\b(?:spf|lsf|lf)\s*(\d{2,3})\+?\b/gi);
+
+  for (const match of matches) {
+    values.add(Number(match[1]));
+  }
+
+  return values;
+}
+
 // Build one searchable text blob per product for local scoring after Prisma
 // returns candidates. This lets us rank by all useful fields, including flags.
 function productText(product) {
@@ -169,6 +193,17 @@ function scoreProduct(product, terms, filters) {
   if (filters.vegan && product.vegan) score += 3;
   if (filters.alcoholFree && product.alcoholFree) score += 3;
   if (filters.fragranceFree && product.fragranceFree) score += 3;
+
+  if (filters.spf) {
+    const productSpfValues = extractProductSpfValues(product);
+
+    if (productSpfValues.has(filters.spf)) {
+      score += 8;
+    } else if (productSpfValues.size > 0) {
+      score -= 8;
+    }
+  }
+
   if (product.rating) score += Math.min(product.rating, 5) / 5;
 
   return score;
@@ -199,13 +234,18 @@ function toChatProduct(product) {
 // contains queries over the current Product table, then reranks candidates in JS.
 async function retrieveProducts(message) {
   const terms = extractTerms(message);
-  const filters = detectBooleanFilters(message);
+  const filters = {
+    ...detectBooleanFilters(message),
+    spf: detectSpfFilter(message),
+  };
 
   const where = {};
 
   // Add exact boolean filters first. Example: "parfumfrei" should prefer only
   // products where fragranceFree is true.
   for (const [key, value] of Object.entries(filters)) {
+    if (key === "spf") continue;
+
     if (value !== undefined) {
       where[key] = value;
     }
@@ -238,6 +278,8 @@ async function retrieveProducts(message) {
     const broadWhere = {};
 
     for (const [key, value] of Object.entries(filters)) {
+      if (key === "spf") continue;
+
       if (value !== undefined) {
         broadWhere[key] = value;
       }
@@ -248,6 +290,16 @@ async function retrieveProducts(message) {
       take: 80,
       orderBy: [{ rating: "desc" }, { name: "asc" }],
     });
+  }
+
+  if (filters.spf) {
+    const exactSpfProducts = products.filter((product) =>
+      extractProductSpfValues(product).has(filters.spf)
+    );
+
+    if (exactSpfProducts.length > 0) {
+      products = exactSpfProducts;
+    }
   }
 
   // Score, sort, limit, and shape the retrieved products before sending them to
