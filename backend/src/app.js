@@ -1,15 +1,15 @@
 const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
+
+dotenv.config();
+
 const productRoutes = require("./routes/product.routes");
 const prisma = require("./config/prisma");
 const authRoutes = require("./routes/auth");
 const chatRoutes = require("./routes/chat.routes");
 
 const wishlistRoutes = require("./routes/wishlist.routes");
-
-
-dotenv.config();
 
 const app = express();
 

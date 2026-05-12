@@ -1,5 +1,6 @@
 const fs = require("fs");
 const path = require("path");
+require("dotenv").config();
 const csv = require("csv-parser");
 const { PrismaClient } = require("@prisma/client");
 
@@ -150,4 +151,3 @@ main().catch(async (error) => {
   console.error(error);
   await prisma.$disconnect();
 });
-
