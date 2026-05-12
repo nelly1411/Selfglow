@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Loader2, LogIn, UserPlus } from 'lucide-react'
+import { Loader2, LogIn, UserPlus, X } from 'lucide-react'
 import { apiUrl } from '@/lib/api'
 import { useAuth, type User } from '@/context/AuthContext'
 
@@ -21,6 +21,10 @@ export default function Login() {
 
   const { login } = useAuth()
   const navigate = useNavigate()
+
+  function handleClose() {
+    navigate(-1)
+  }
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
@@ -73,9 +77,18 @@ export default function Login() {
     <div className="flex min-h-[70vh] items-center justify-center px-4 py-12">
       <form
         onSubmit={handleSubmit}
-        className="flex w-full max-w-md flex-col gap-5 rounded-lg border border-border bg-background p-6 shadow-sm"
+        className="relative flex w-full max-w-md flex-col gap-5 rounded-lg border border-border bg-background p-6 shadow-sm"
       >
-        <div className="space-y-2">
+        <button
+          type="button"
+          onClick={handleClose}
+          className="absolute right-4 top-4 rounded-full p-2 hover:bg-accent transition-colors"
+          aria-label="Close"
+        >
+          <X className="h-5 w-5 text-muted-foreground" />
+        </button>
+
+        <div className="space-y-2 pr-10">
           <h1 className="text-2xl font-bold text-foreground">
             {mode === 'login' ? 'Login' : 'Create account'}
           </h1>
@@ -126,9 +139,16 @@ export default function Login() {
           />
         </label>
 
-        {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
+        {error && (
+          <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">
+            {error}
+          </p>
+        )}
+
         {success && (
-          <p className="rounded-md bg-green-50 px-3 py-2 text-sm text-green-700">{success}</p>
+          <p className="rounded-md bg-green-50 px-3 py-2 text-sm text-green-700">
+            {success}
+          </p>
         )}
 
         <button

@@ -69,8 +69,8 @@ export default function About() {
               </h2>
               <div className="space-y-4 text-muted-foreground">
                 <p>
-                  SelfGlow wurde 2020 von Dr. Sarah Meyer gegründet, einer leidenschaftlichen
-                  Dermatologin mit über 15 Jahren Erfahrung. Frustriert von der Einheitslösung
+                  SelfGlow wurde 2026 von Fr. Istanbul, Fr. Hejazi, Fr. Almas, Fr. Zhong, Fr. Nzumegue, und Fr. Agha gegründet, leidenschaftliche
+                  Dermatologinnen mit über 15 Jahren Erfahrung. Frustriert von der Einheitslösung
                   der meisten Hautpflegemarken, machte sie es sich zur Mission, personalisierte
                   Hautpflege für jeden zugänglich zu machen.
                 </p>
