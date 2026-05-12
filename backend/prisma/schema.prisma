@@ -24,6 +24,8 @@ model Product {
   rating           Float?   @default(0)
   skinTypes        String? 
   concerns         String?
+
+  wishlistItems WishlistItem[]
   
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
@@ -34,6 +36,22 @@ model User {
   email     String   @unique
   password  String
   name      String?
+
+  wishlistItems WishlistItem[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
+model WishlistItem {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  productId Int
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id])
+  product   Product  @relation(fields: [productId], references: [id])
+
+  @@unique([userId, productId])
+}
+

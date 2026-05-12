@@ -6,6 +6,9 @@ const prisma = require("./config/prisma");
 const authRoutes = require("./routes/auth");
 const chatRoutes = require("./routes/chat.routes");
 
+const wishlistRoutes = require("./routes/wishlist.routes");
+
+
 dotenv.config();
 
 const app = express();
@@ -25,6 +28,8 @@ app.get("/api/test", (req, res) => {
 });
 
 app.use("/api/products", productRoutes);
+
+app.use("/api/wishlist", wishlistRoutes);
 
 const PORT = process.env.PORT || 5050;
 

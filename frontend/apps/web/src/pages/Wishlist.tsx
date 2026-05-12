@@ -4,10 +4,12 @@ import { Button } from '@workspace/ui/components/button'
 import { useWishlist, type WishlistItem } from '@/context/WishlistContext'
 import { useCart } from '@/context/CartContext'
 import { cn } from '@workspace/ui/lib/utils'
+import { useAuth } from '@/context/AuthContext'
 
 export default function Wishlist() {
   const { items, removeFromWishlist } = useWishlist()
   const { addToCart } = useCart()
+  const { isLoggedIn } = useAuth()
 
   const handleAddToCart = (item: WishlistItem) => {
     addToCart({
@@ -17,6 +19,30 @@ export default function Wishlist() {
       price: item.price,
       image: item.image,
     })
+  }
+
+  if (!isLoggedIn) {
+    return (
+      <div className="container mx-auto px-4 py-16 text-center">
+        <div className="w-24 h-24 bg-[#F5E6D3] rounded-full flex items-center justify-center mx-auto mb-6">
+          <Heart className="h-12 w-12 text-[#D4A574]" />
+        </div>
+
+        <h1 className="text-2xl font-bold mb-4">
+          Bitte einloggen
+        </h1>
+
+        <p className="text-muted-foreground mb-8">
+          Melde dich an, um deine Merkliste zu sehen und Produkte zu speichern.
+        </p>
+
+        <Link to="/login">
+          <Button className="bg-[#D4A574] text-white hover:bg-[#C49464] rounded-full px-8">
+            Zum Login
+          </Button>
+        </Link>
+      </div>
+    )
   }
 
   if (items.length === 0) {
