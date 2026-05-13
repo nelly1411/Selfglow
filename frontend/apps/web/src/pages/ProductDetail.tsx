@@ -14,6 +14,7 @@ import { cn } from '@workspace/ui/lib/utils'
 import { useCart } from '@/context/CartContext'
 import { useWishlist } from '@/context/WishlistContext'
 import { useAuth } from '@/context/AuthContext'
+import { apiUrl } from '@/lib/api'
 
 type Product = {
   id: number
@@ -63,7 +64,7 @@ export default function ProductDetail() {
   useEffect(() => {
     async function fetchProduct() {
       try {
-        const response = await fetch(`http://localhost:5050/api/products/${id}`)
+        const response = await fetch(apiUrl(`/api/products/${id}`))
 
         if (!response.ok) {
           throw new Error('Produkt konnte nicht geladen werden')

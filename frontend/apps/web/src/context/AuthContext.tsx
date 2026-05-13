@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
 
 export type User = {
   id: number
@@ -16,6 +16,26 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
+function isTokenExpired(token: string) {
+  try {
+    const payload = token.split('.')[1]
+    const normalizedPayload = payload.replace(/-/g, '+').replace(/_/g, '/')
+    const paddedPayload = normalizedPayload.padEnd(
+      normalizedPayload.length + ((4 - (normalizedPayload.length % 4)) % 4),
+      '='
+    )
+    const decodedPayload = JSON.parse(atob(paddedPayload))
+
+    if (typeof decodedPayload.exp !== 'number') {
+      return false
+    }
+
+    return decodedPayload.exp * 1000 <= Date.now()
+  } catch {
+    return true
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(null)
   const [user, setUser] = useState<User | null>(null)
@@ -26,6 +46,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (storedToken && storedUser) {
       try {
+        if (isTokenExpired(storedToken)) {
+          localStorage.removeItem('token')
+          localStorage.removeItem('user')
+          return
+        }
+
         setToken(storedToken)
         setUser(JSON.parse(storedUser))
       } catch {
@@ -35,19 +61,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  function login(token: string, user: User) {
+  const login = useCallback((token: string, user: User) => {
     localStorage.setItem('token', token)
     localStorage.setItem('user', JSON.stringify(user))
     setToken(token)
     setUser(user)
-  }
+  }, [])
 
-  function logout() {
+  const logout = useCallback(() => {
     localStorage.removeItem('token')
     localStorage.removeItem('user')
     setToken(null)
     setUser(null)
-  }
+  }, [])
 
   return (
     <AuthContext.Provider

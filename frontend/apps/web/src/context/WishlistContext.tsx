@@ -49,7 +49,7 @@ function mapBackendItem(item: BackendWishlistItem): WishlistItem {
 }
 
 export function WishlistProvider({ children }: { children: ReactNode }) {
-  const { token, isLoggedIn } = useAuth()
+  const { token, isLoggedIn, logout } = useAuth()
   const [items, setItems] = useState<WishlistItem[]>([])
 
   useEffect(() => {
@@ -66,6 +66,10 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
       })
 
       if (!response.ok) {
+        if (response.status === 401) {
+          logout()
+        }
+
         setItems([])
         return
       }
@@ -75,7 +79,7 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
     }
 
     loadWishlist()
-  }, [isLoggedIn, token])
+  }, [isLoggedIn, token, logout])
 
   const addToWishlist = async (item: WishlistItem) => {
     if (!isLoggedIn || !token) {
@@ -90,6 +94,11 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
     })
 
     if (!response.ok) {
+      if (response.status === 401) {
+        logout()
+        setItems([])
+      }
+
       return
     }
 
@@ -115,6 +124,11 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
     })
 
     if (!response.ok) {
+      if (response.status === 401) {
+        logout()
+        setItems([])
+      }
+
       return
     }
 
