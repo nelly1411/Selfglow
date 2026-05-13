@@ -13,6 +13,7 @@ import ProductDetail from './pages/ProductDetail'
 import { WishlistProvider } from './context/WishlistContext'
 import { ReviewsProvider } from '@/context/ReviewsContext'
 import Checkout from './pages/Checkout'
+import Profile from './pages/Profile'
 
 function App() {
   return (
@@ -30,6 +31,7 @@ function App() {
               <Route path="wishlist" element={<Wishlist />} />
               <Route path="product/:id" element={<ProductDetail />} />
               <Route path="/checkout" element={<Checkout />} />
+              <Route path="/profile" element={<Profile />} />
             </Route>
           </Routes>
         </ReviewsProvider>

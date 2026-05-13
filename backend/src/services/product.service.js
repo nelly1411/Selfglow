@@ -1,5 +1,9 @@
 const prisma = require("../config/prisma");
 
+function toBool(value) {
+  return String(value).trim().toLowerCase() === "true";
+}
+
 async function getAllProducts(query) {
   const where = {};
 
@@ -7,20 +11,30 @@ async function getAllProducts(query) {
     where.category = query.category;
   }
 
-  function toBool(value) {
-    return String(value).trim().toLowerCase() === "true";
+  if (query.skinType) {
+    where.skinTypes = {
+      contains: query.skinType,
+      mode: "insensitive",
+    };
+  }
+
+  if (query.concern) {
+    where.concerns = {
+      contains: query.concern,
+      mode: "insensitive",
+    };
   }
 
   if (query.vegan !== undefined) {
-    where.vegan = query.vegan === "true";
+    where.vegan = toBool(query.vegan);
   }
 
   if (query.alcoholFree !== undefined) {
-    where.alcoholFree = query.alcoholFree === "true";
+    where.alcoholFree = toBool(query.alcoholFree);
   }
 
   if (query.fragranceFree !== undefined) {
-    where.fragranceFree = query.fragranceFree === "true";
+    where.fragranceFree = toBool(query.fragranceFree);
   }
 
   if (query.search) {

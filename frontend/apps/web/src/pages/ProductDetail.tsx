@@ -1,10 +1,20 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
-import { Star, ShoppingCart, ArrowLeft, Heart, User, CheckCircle } from 'lucide-react'
+import { Link, useParams } from 'react-router-dom'
+import {
+  Star,
+  ShoppingCart,
+  ArrowLeft,
+  Heart,
+  User,
+  CheckCircle,
+  ChevronDown,
+} from 'lucide-react'
 import { Button } from '@workspace/ui/components/button'
 import { cn } from '@workspace/ui/lib/utils'
 import { useCart } from '@/context/CartContext'
 import { useWishlist } from '@/context/WishlistContext'
+import { useAuth } from '@/context/AuthContext'
+import { apiUrl } from '@/lib/api'
 
 type Product = {
   id: number
@@ -16,6 +26,7 @@ type Product = {
   description?: string | null
   rating?: number | null
 }
+
 const mockReviews = [
   {
     id: 1,
@@ -39,18 +50,21 @@ const mockReviews = [
 
 export default function ProductDetail() {
   const { id } = useParams()
-  const navigate = useNavigate()
   const { addToCart } = useCart()
   const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist()
+  const { isLoggedIn } = useAuth()
+  const [showLoginHint, setShowLoginHint] = useState(false)
 
   const [product, setProduct] = useState<Product | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [openSections, setOpenSections] = useState<string[]>(['description'])
+  const [addedToCart, setAddedToCart] = useState(false)
 
   useEffect(() => {
     async function fetchProduct() {
       try {
-        const response = await fetch(`http://localhost:5050/api/products/${id}`)
+        const response = await fetch(apiUrl(`/api/products/${id}`))
 
         if (!response.ok) {
           throw new Error('Produkt konnte nicht geladen werden')
@@ -80,12 +94,21 @@ export default function ProductDetail() {
       image: product.imageUrl || 'https://placehold.co/300x300?text=No+Image',
     })
 
-    navigate('/cart')
+    setAddedToCart(true)
+
+    setTimeout(() => {
+      setAddedToCart(false)
+    }, 1500)
   }
 
   function handleWishlistToggle() {
     if (!product) return
-    
+
+    if (!isLoggedIn) {
+      setShowLoginHint(true)
+      return
+    }
+
     if (isInWishlist(product.id)) {
       removeFromWishlist(product.id)
     } else {
@@ -101,7 +124,13 @@ export default function ProductDetail() {
     }
   }
 
-  const inWishlist = product ? isInWishlist(product.id) : false
+  function toggleSection(sectionId: string) {
+    setOpenSections((prev) =>
+      prev.includes(sectionId)
+        ? prev.filter((id) => id !== sectionId)
+        : [...prev, sectionId]
+    )
+  }
 
   if (loading) {
     return (
@@ -114,18 +143,39 @@ export default function ProductDetail() {
   if (error || !product) {
     return (
       <div className="container mx-auto px-4 py-10">
-        <p className="text-red-500 mb-4">{error || 'Produkt nicht gefunden.'}</p>
+        <p className="text-red-500 mb-4">
+          {error || 'Produkt nicht gefunden.'}
+        </p>
 
         <Link to="/shop">
-          <Button variant="outline">
-            Zurück zum Shop
-          </Button>
+          <Button variant="outline">Zurück zum Shop</Button>
         </Link>
       </div>
     )
   }
 
   const rating = product.rating ?? 0
+  const inWishlist = isInWishlist(product.id)
+
+  const detailSections = [
+    {
+      id: 'description',
+      title: 'Beschreibung',
+      content: product.description || 'Keine Beschreibung vorhanden.',
+    },
+    {
+      id: 'usage',
+      title: 'Anwendung',
+      content:
+        'Nach der Reinigung 2–3 Tropfen auf Gesicht und Hals auftragen. Sanft einklopfen und anschließend eine Feuchtigkeitspflege verwenden. Morgens und abends anwendbar. Am Morgen zusätzlich Sonnenschutz benutzen.',
+    },
+    {
+      id: 'ingredients',
+      title: 'Inhaltsstoffe',
+      content:
+        'Niacinamide, Tranexamic Acid, Ceramide, Hyaluronic Acid und weitere pflegende Inhaltsstoffe.',
+    },
+  ]
 
   return (
     <div className="container mx-auto px-4 py-10">
@@ -138,16 +188,14 @@ export default function ProductDetail() {
       </Link>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-        {/* Bild */}
-        <div className="bg-[#F5F5F5] rounded-2xl overflow-hidden">
+        <div className="rounded-2xl overflow-hidden flex items-start justify-center">
           <img
             src={product.imageUrl || 'https://placehold.co/600x600?text=No+Image'}
             alt={product.name}
-            className="w-full aspect-square object-cover"
+            className="max-h-[620px] w-auto object-contain"
           />
         </div>
 
-        {/* Infos */}
         <div>
           <p className="text-sm text-muted-foreground mb-2">
             {product.category}
@@ -157,9 +205,7 @@ export default function ProductDetail() {
             {product.name}
           </h1>
 
-          <p className="text-muted-foreground mb-4">
-            {product.brand}
-          </p>
+          <p className="text-muted-foreground mb-4">{product.brand}</p>
 
           <div className="flex items-center gap-2 mb-5">
             <div className="flex">
@@ -185,101 +231,151 @@ export default function ProductDetail() {
             €{product.price.toFixed(2)}
           </p>
 
-          <p className="text-muted-foreground leading-relaxed mb-8">
-            {product.description || 'Keine Beschreibung vorhanden.'}
-          </p>
+          <div className="mb-8 space-y-3">
+            {detailSections.map((section) => {
+              const isOpen = openSections.includes(section.id)
 
-          {/* Buttons */}
-          <div className="flex gap-4">
+              return (
+                <div
+                  key={section.id}
+                  className="rounded-2xl border border-[#E8D5C0] bg-white overflow-hidden"
+                >
+                  <button
+                    type="button"
+                    onClick={() => toggleSection(section.id)}
+                    className="w-full flex items-center justify-between px-5 py-4 text-left font-medium hover:bg-[#FDF7F0] transition"
+                  >
+                    {section.title}
+
+                    <ChevronDown
+                      className={cn(
+                        'h-5 w-5 text-[#D4A574] transition-transform',
+                        isOpen && 'rotate-180'
+                      )}
+                    />
+                  </button>
+
+                  {isOpen && (
+                    <div className="px-5 pb-5 text-muted-foreground leading-relaxed text-sm">
+                      {section.content}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+
+          <div className="relative flex gap-4">
             <Button
               onClick={handleAddToCart}
-              className="flex-1 bg-[#F5E6D3] text-foreground hover:bg-[#E8D5C0] rounded-full px-8"
+              className={cn(
+                'flex-1 rounded-full px-8 text-foreground transition-colors',
+                addedToCart
+                  ? 'bg-[#D4A574] text-white hover:bg-[#D4A574]'
+                  : 'bg-[#F5E6D3] hover:bg-[#E8D5C0]'
+              )}
             >
               <ShoppingCart className="h-4 w-4 mr-2" />
-              In den Warenkorb
+              {addedToCart ? 'Hinzugefügt' : 'In den Warenkorb'}
             </Button>
-            
+
             <Button
               onClick={handleWishlistToggle}
               variant="outline"
               className={cn(
-                "rounded-full px-4 border-2 transition-colors",
-                inWishlist 
-                  ? "border-[#D4A574]  hover:bg-red-100" 
-                  : "border-[#D4A574] hover:bg-[#F5E6D3]"
+                'rounded-full px-4 border-2 transition-colors',
+                inWishlist
+                  ? 'border-[#D4A574] hover:bg-red-100'
+                  : 'border-[#D4A574] hover:bg-[#F5E6D3]'
               )}
-              aria-label={inWishlist ? "Aus Merkliste entfernen" : "Zur Merkliste hinzufügen"}
+              aria-label={
+                inWishlist
+                  ? 'Aus Merkliste entfernen'
+                  : 'Zur Merkliste hinzufügen'
+              }
             >
-              <Heart className={cn("h-5 w-5", inWishlist ? 'fill-[#D4A574] text-[#D4A574]' : "text-[#D4A574]")} />
-            </Button>
-          </div>
-          
-        </div>
-      </div>
-    {/* REVIEWS SECTION */}
-<div className="mt-12 border-t pt-10">
-  <h2 className="text-2xl font-bold mb-6">
-    Kundenbewertungen
-  </h2>
-
-  <div className="space-y-6">
-    {mockReviews.map((review) => (
-      <div key={review.id} className="border-b pb-5">
-
-        <div className="flex items-center justify-between mb-2">
-
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-[#F5E6D3] flex items-center justify-center">
-              <User className="h-5 w-5 text-[#D4A574]" />
-            </div>
-
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="font-medium">{review.userName}</span>
-
-                {review.verified && (
-                  <span className="text-xs flex items-center gap-1 text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
-                    <CheckCircle className="h-3 w-3" />
-                    Kauf bestätigt
-                  </span>
-                )}
-              </div>
-
-              <p className="text-xs text-muted-foreground">
-                {review.date}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex">
-            {[...Array(5)].map((_, i) => (
-              <Star
-                key={i}
+              <Heart
                 className={cn(
-                  'h-4 w-4',
-                  i < review.rating
+                  'h-5 w-5',
+                  inWishlist
                     ? 'fill-[#D4A574] text-[#D4A574]'
-                    : 'fill-muted text-muted'
+                    : 'text-[#D4A574]'
                 )}
               />
-            ))}
+            </Button>
+
+            {showLoginHint && (
+              <div className="absolute top-14 right-0 z-20 w-64 rounded-xl bg-white p-3 text-xs shadow-lg border border-border">
+                <p className="mb-2 text-foreground">
+                  Bitte einloggen, um Produkte zu speichern.
+                </p>
+
+                <Link
+                  to="/login"
+                  className="font-medium text-[#D4A574] hover:underline"
+                >
+                  Zum Login
+                </Link>
+              </div>
+            )}
           </div>
-
         </div>
-
-        <h4 className="font-semibold mb-1">
-          {review.title}
-        </h4>
-
-        <p className="text-muted-foreground text-sm">
-          {review.comment}
-        </p>
-
       </div>
-    ))}
-  </div>
-</div>
-</div>
 
+      <div className="mt-12 border-t pt-10">
+        <h2 className="text-2xl font-bold mb-6">Kundenbewertungen</h2>
+
+        <div className="space-y-6">
+          {mockReviews.map((review) => (
+            <div key={review.id} className="border-b pb-5">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-[#F5E6D3] flex items-center justify-center">
+                    <User className="h-5 w-5 text-[#D4A574]" />
+                  </div>
+
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">{review.userName}</span>
+
+                      {review.verified && (
+                        <span className="text-xs flex items-center gap-1 text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
+                          <CheckCircle className="h-3 w-3" />
+                          Kauf bestätigt
+                        </span>
+                      )}
+                    </div>
+
+                    <p className="text-xs text-muted-foreground">
+                      {review.date}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex">
+                  {[...Array(5)].map((_, i) => (
+                    <Star
+                      key={i}
+                      className={cn(
+                        'h-4 w-4',
+                        i < review.rating
+                          ? 'fill-[#D4A574] text-[#D4A574]'
+                          : 'fill-muted text-muted'
+                      )}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <h4 className="font-semibold mb-1">{review.title}</h4>
+
+              <p className="text-muted-foreground text-sm">
+                {review.comment}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
   )
 }
