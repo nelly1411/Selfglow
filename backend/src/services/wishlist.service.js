@@ -15,8 +15,15 @@ async function getWishlistByUserId(userId) {
 
 //  Produkt in Merkliste speichern
 async function addToWishlist(userId, productId) {
-  return prisma.wishlistItem.create({
-    data: {
+  return prisma.wishlistItem.upsert({
+    where: {
+      userId_productId: {
+        userId,
+        productId,
+      },
+    },
+    update: {},
+    create: {
       userId,
       productId,
     },
@@ -28,12 +35,10 @@ async function addToWishlist(userId, productId) {
 
 //  Produkt aus Merkliste Entfernen
 async function removeFromWishlist(userId, productId) {
-  return prisma.wishlistItem.delete({
+  return prisma.wishlistItem.deleteMany({
     where: {
-      userId_productId: {
-        userId,
-        productId,
-      },
+      userId,
+      productId,
     },
   });
 }

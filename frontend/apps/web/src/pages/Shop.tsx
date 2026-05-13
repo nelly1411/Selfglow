@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link,useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { Star, ChevronDown, ChevronUp, ShoppingCart, Filter, X, Heart, Check } from 'lucide-react'
 import { Button } from '@workspace/ui/components/button'
 import { Checkbox } from '@workspace/ui/components/checkbox'
@@ -93,7 +93,6 @@ function ProductCard({ product }: { product: Product }) {
   const isInCart = items.some((item) => item.id === product.id)
   const inWishlist = isInWishlist(product.id)
   const { isLoggedIn } = useAuth()
-  const navigate = useNavigate()
   const [showLoginHint, setShowLoginHint] = useState(false)
 
   const handleAddToCart = () => {
