@@ -12,6 +12,7 @@ import Login from './pages/Login'
 import ProductDetail from './pages/ProductDetail'
 import { WishlistProvider } from './context/WishlistContext'
 import { ReviewsProvider } from '@/context/ReviewsContext'
+import Checkout from './pages/Checkout'
 
 function App() {
   return (
@@ -28,6 +29,7 @@ function App() {
               <Route path="login" element={<Login />} />
               <Route path="wishlist" element={<Wishlist />} />
               <Route path="product/:id" element={<ProductDetail />} />
+              <Route path="/checkout" element={<Checkout />} />
             </Route>
           </Routes>
         </ReviewsProvider>

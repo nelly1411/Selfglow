@@ -37,3 +37,14 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+model Order {
+  id          Int      @id @default(autoincrement())
+  totalPrice  Float
+  paymentMethod String
+  address     String
+  city        String
+  postal      String
+  country     String
+  items       String
+  createdAt   DateTime @default(now())
+}

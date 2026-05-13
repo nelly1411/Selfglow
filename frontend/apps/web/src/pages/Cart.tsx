@@ -125,9 +125,11 @@ export default function Cart() {
                 </div>
               </div>
             </div>
-            <Button className="w-full bg-[#D4A574] text-white hover:bg-[#C49464] rounded-full mb-3">
-              Proceed to Checkout
+            <Link to="/checkout">
+          <Button className="w-full bg-[#D4A574] text-white hover:bg-[#C49464] rounded-full mb-3">
+          Proceed to Checkout
             </Button>
+          </Link>
             <Link to="/shop" className="block">
               <Button variant="outline" className="w-full rounded-full border-[#D4A574] text-[#D4A574] hover:bg-[#D4A574]/10">
                 Continue Shopping
