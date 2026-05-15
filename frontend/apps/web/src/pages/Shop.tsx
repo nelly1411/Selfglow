@@ -253,10 +253,46 @@ export default function Shop() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const searchQuery = searchParams.get('search')?.toLowerCase().trim() || ''
   const categoryQuery = searchParams.get('category') || ''
   const skinTypeQuery = searchParams.get('skinType') || ''
+
+  useEffect(() => {
+    setSelectedCategory(categoryQuery || null)
+  }, [categoryQuery])
+
+  useEffect(() => {
+    setSelectedSkinType(skinTypeQuery || null)
+  }, [skinTypeQuery])
+
+  const handleCategoryChange = (categoryName: string) => {
+    const params = new URLSearchParams(searchParams)
+
+    if (selectedCategory === categoryName) {
+      setSelectedCategory(null)
+      params.delete('category')
+    } else {
+      setSelectedCategory(categoryName)
+      params.set('category', categoryName)
+    }
+
+    setSearchParams(params)
+  }
+
+  const handleSkinTypeChange = (skinTypeName: string) => {
+    const params = new URLSearchParams(searchParams)
+
+    if (selectedSkinType === skinTypeName) {
+      setSelectedSkinType(null)
+      params.delete('skinType')
+    } else {
+      setSelectedSkinType(skinTypeName)
+      params.set('skinType', skinTypeName)
+    }
+
+    setSearchParams(params)
+  }
 
   useEffect(() => {
     async function fetchProducts() {
@@ -265,21 +301,18 @@ export default function Shop() {
         setLoading(true)
         setError(null)
 
-        const activeCategory = selectedCategory || categoryQuery
-        const activeSkinType = selectedSkinType || skinTypeQuery
-
         const params = new URLSearchParams()
 
         if (searchQuery) {
           params.set('search', searchQuery)
         }
 
-        if (activeCategory) {
-          params.set('category', activeCategory)
+        if (selectedCategory) {
+          params.set('category', selectedCategory)
         }
 
-        if (activeSkinType) {
-          params.set('skinType', activeSkinType)
+        if (selectedSkinType) {
+          params.set('skinType', selectedSkinType)
         }
 
         if (selectedConcern) {
@@ -312,8 +345,6 @@ export default function Shop() {
     fetchProducts()
   }, [
     searchQuery,
-    categoryQuery,
-    skinTypeQuery,
     selectedCategory,
     selectedSkinType,
     selectedConcern,
@@ -332,7 +363,7 @@ export default function Shop() {
 
   useEffect(() => {
     setVisibleCount(PRODUCTS_PER_PAGE)
-  }, [priceRange, searchQuery, selectedSkinType, selectedConcern, selectedCategory, selectedFeatures, categoryQuery, skinTypeQuery, ])
+  }, [priceRange, searchQuery, selectedSkinType, selectedConcern, selectedCategory, selectedFeatures ])
 
   const FilterContent = () => (
     <>
@@ -342,8 +373,8 @@ export default function Shop() {
            <Checkbox
               checked={selectedSkinType === type.name}
               onCheckedChange={() =>
-                setSelectedSkinType(
-                  selectedSkinType === type.name ? null : type.name
+                handleSkinTypeChange(
+                 type.name
                 )
               }
             />
@@ -391,7 +422,7 @@ export default function Shop() {
             <Checkbox
             checked={selectedCategory === type.name}
             onCheckedChange={() =>
-              setSelectedCategory(selectedCategory === type.name ? null : type.name)
+              handleCategoryChange(type.name)
               }
             />
             <span className="text-sm text-foreground">{type.name}</span>
