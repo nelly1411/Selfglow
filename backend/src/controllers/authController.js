@@ -21,6 +21,11 @@ function toAuthUser(user) {
     id: user.id,
     email: user.email,
     name: user.name,
+    savedAddress: user.savedAddress ?? null,
+    savedPostal: user.savedPostal ?? null,
+    savedCity: user.savedCity ?? null,
+    savedCountry: user.savedCountry ?? null,
+    savedPhone: user.savedPhone ?? null,
   };
 }
 
@@ -172,8 +177,40 @@ async function login(req, res) {
     return res.status(500).json({ message: "Server error" });
   }
 }
+async function updateAddress(req, res) {
+  try {
+       const userId = req.user.userId; 
 
+    const {
+      savedAddress,
+      savedPostal,
+      savedCity,
+      savedCountry,
+      savedPhone,
+    } = req.body;
+
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        savedAddress,
+        savedPostal,
+        savedCity,
+        savedCountry,
+        savedPhone,
+      },
+    });
+
+    return res.json({
+      message: "Address updated",
+      user: toAuthUser(updatedUser),
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Server error" });
+  }
+}
 module.exports = {
   register,
   login,
+  updateAddress,
 };

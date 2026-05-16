@@ -1,10 +1,19 @@
 import { createContext, useCallback, useContext, useState, type ReactNode } from 'react'
 
+
 export type User = {
-  id: number
+  id:    number
   email: string
   name?: string | null
+  token?: string
+
+  savedAddress?: string | null
+  savedPostal?:  string | null
+  savedCity?:    string | null
+  savedCountry?: string | null
+  savedPhone?:   string | null
 }
+// ─────────────────────────────────────────────────────────────────────────────
 
 type AuthContextType = {
   token: string | null
@@ -12,6 +21,7 @@ type AuthContextType = {
   isLoggedIn: boolean
   login: (token: string, user: User, remember?: boolean) => void
   logout: () => void
+  updateUser: (user: User) => void
 }
 
 type AuthState = {
@@ -30,11 +40,7 @@ function isTokenExpired(token: string) {
       '='
     )
     const decodedPayload = JSON.parse(atob(paddedPayload))
-
-    if (typeof decodedPayload.exp !== 'number') {
-      return false
-    }
-
+    if (typeof decodedPayload.exp !== 'number') return false
     return decodedPayload.exp * 1000 <= Date.now()
   } catch {
     return true
@@ -98,19 +104,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isLoggedIn: Boolean(auth.token),
         login,
         logout,
+        updateUser,
       }}
     >
       {children}
     </AuthContext.Provider>
   )
 }
-
 export function useAuth() {
   const context = useContext(AuthContext)
-
-  if (!context) {
-    throw new Error('useAuth must be used inside AuthProvider')
-  }
-
+  if (!context) throw new Error('useAuth must be used inside AuthProvider')
   return context
 }

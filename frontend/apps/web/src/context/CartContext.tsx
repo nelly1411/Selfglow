@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react'
-
+import { useAuth } from '@/context/AuthContext'
 
 export interface CartItem {
   id: number
@@ -24,23 +24,52 @@ interface CartContextType {
 const CartContext = createContext<CartContextType | undefined>(undefined)
 
 export function CartProvider({ children }: { children: ReactNode }) {
-  const [items, setItems] = useState<CartItem[]>(() => {
-  const stored = localStorage.getItem('cart')
+  const { user } = useAuth()
+
+const getCartKey = (user: any): string | undefined =>
+  user?.id ? `cart_user_${user.id}` : undefined
+
+ const [items, setItems] = useState<CartItem[]>(() => {
+  const key = getCartKey(user)
+  if (!key) return []
+
+  const stored = localStorage.getItem(key)
   return stored ? JSON.parse(stored) : []
 })
 
-useEffect(() => {
-  localStorage.setItem('cart', JSON.stringify(items))
-}, [items])
+  // Load cart when user changes
+  useEffect(() => {
+  if (!user?.id) {
+    setItems([]) // GAST = IMMER LEER
+    return
+  }
+
+  const key = `cart_user_${user.id}`
+  const stored = localStorage.getItem(key)
+
+  setItems(stored ? JSON.parse(stored) : [])
+}, [user])
+
+  // Save cart
+  useEffect(() => {
+  const key = getCartKey(user)
+  if (!key) return
+
+  localStorage.setItem(key, JSON.stringify(items))
+}, [items, user])
 
   const addToCart = (product: Omit<CartItem, 'quantity'>) => {
     setItems((prev) => {
-      const existingItem = prev.find((item) => item.id === product.id)
-      if (existingItem) {
+      const existing = prev.find((item) => item.id === product.id)
+
+      if (existing) {
         return prev.map((item) =>
-          item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
+          item.id === product.id
+            ? { ...item, quantity: item.quantity + 1 }
+            : item
         )
       }
+
       return [...prev, { ...product, quantity: 1 }]
     })
   }
@@ -50,21 +79,29 @@ useEffect(() => {
   }
 
   const updateQuantity = (id: number, quantity: number) => {
-    if (quantity <= 0) {
-      removeFromCart(id)
-      return
-    }
+    if (quantity <= 0) return removeFromCart(id)
+
     setItems((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, quantity } : item))
+      prev.map((item) =>
+        item.id === id ? { ...item, quantity } : item
+      )
     )
   }
 
-  const clearCart = () => {
-    setItems([])
+ const clearCart = () => {
+  setItems([])
+
+  const key = getCartKey(user)
+  if (key) {
+    localStorage.removeItem(key)
   }
+}
 
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0)
-  const totalPrice = items.reduce((sum, item) => sum + item.price * item.quantity, 0)
+  const totalPrice = items.reduce(
+    (sum, item) => sum + item.price * item.quantity,
+    0
+  )
 
   return (
     <CartContext.Provider
@@ -85,7 +122,7 @@ useEffect(() => {
 
 export function useCart() {
   const context = useContext(CartContext)
-  if (context === undefined) {
+  if (!context) {
     throw new Error('useCart must be used within a CartProvider')
   }
   return context

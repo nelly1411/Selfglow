@@ -1,5 +1,4 @@
 // controllers/checkout.controller.js
-
 const checkoutService = require('../services/checkout.service')
 
 exports.createOrder = async (req, res) => {
@@ -14,11 +13,13 @@ exports.createOrder = async (req, res) => {
       order,
     })
   } catch (err) {
-    console.error("CHECKOUT ERROR:", err.message) // 👈 WICHTIG
+    console.error('CHECKOUT ERROR:', err.message)
 
-    return res.status(500).json({
-      message: 'Fehler bei Bestellung',
-      error: err.message,
+    // Spam-Fehler → 429 Too Many Requests
+    const status = err.message.includes('Zu viele Versuche') ? 429 : 500
+
+    return res.status(status).json({
+      message: err.message || 'Fehler bei Bestellung',
     })
   }
 }
