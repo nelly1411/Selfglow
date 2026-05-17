@@ -5,6 +5,13 @@ import { useNavigate, Link } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import { apiUrl } from '@/lib/api'
 
+const BASE_FORM = {
+  firstName: '', lastName: '', email: '', phone: '',
+  address: '', postal: '', city: '', country: '',
+  klarnaPhone: '', klarnaEmail: '',
+  paypalEmail: '', paypalPassword: '', paypalName: '',
+}
+
 export default function Checkout() {
 const [discount, setDiscount] = useState('')
 const [discountValue, setDiscountValue] = useState(0)
@@ -13,62 +20,89 @@ const [discountValue, setDiscountValue] = useState(0)
   const navigate = useNavigate()
   const { items, totalPrice, clearCart } = useCart()
 
-  const [guestMode, setGuestMode]               = useState(false)
-  const [payment, setPayment]                   = useState<'klarna' | 'paypal'>('klarna')
-  const [discount, setDiscount]                 = useState('')
-  const [discountValue, setDiscountValue]       = useState(0)
-  const [discountError, setDiscountError]       = useState('')
-  const [discountApplied, setDiscountApplied]   = useState(false)
-  const [success, setSuccess]                   = useState('')
-  const [errors, setErrors]                     = useState<Record<string, string>>({})
-  const [touched, setTouched]                   = useState<Record<string, boolean>>({})
+  const [guestMode, setGuestMode]             = useState(false)
+  const [payment, setPayment]                 = useState<'klarna' | 'paypal'>('klarna')
+  const [discount, setDiscount]               = useState('')
+  const [discountValue, setDiscountValue]     = useState(0)
+  const [discountError, setDiscountError]     = useState('')
+  const [discountApplied, setDiscountApplied] = useState(false)
+  const [errorMsg, setErrorMsg]               = useState('')
+  const [errors, setErrors]                   = useState<Record<string, string>>({})
+  const [touched, setTouched]                 = useState<Record<string, boolean>>({})
+  const [loadingAddress, setLoadingAddress]   = useState(false)
+  const [addressLoaded, setAddressLoaded]     = useState(false)
+  const [form, setForm]                       = useState(BASE_FORM)
 
-  const [form, setForm] = useState({
-    firstName: '', lastName: '', email: '', phone: '',
-    address: '', postal: '', city: '', country: '',
-    klarnaPhone: '', klarnaEmail: '',
-    paypalEmail: '', paypalPassword: '', paypalName: '',
-  })
-
-  // Load saved form from localStorage
+  // ─── Reset when user changes ────────────────────────────────────────────
   useEffect(() => {
-    const storageKey = getStorageKey(user)
-    const saved = localStorage.getItem(storageKey)
-    const baseForm = {
-      firstName: '', lastName: '', email: '', phone: '',
-      address: '', postal: '', city: '', country: '',
-      klarnaPhone: '', klarnaEmail: '',
-      paypalEmail: '', paypalPassword: '', paypalName: '',
-    }
+    setForm(BASE_FORM)
     setErrors({})
     setTouched({})
-    setForm(saved ? { ...baseForm, ...JSON.parse(saved) } : baseForm)
-  }, [user])
-
-  // Reset payment state on user change
-  useEffect(() => {
     setPayment('klarna')
     setDiscount('')
     setDiscountValue(0)
     setDiscountApplied(false)
     setDiscountError('')
-  }, [user])
+    setAddressLoaded(false)
+  }, [user?.id])
 
-  // Prefill saved address if logged in
+  // ─── Load address from DB on mount ──────────────────────────────────────
+  // Works in incognito because it fetches from DB, not localStorage
   useEffect(() => {
-    if (user?.savedAddress) {
+    if (!user?.token) return
+
+    // Step 1: instant prefill from AuthContext (if login already gave us the data)
+    if (user.savedAddress) {
       setForm((prev) => ({
         ...prev,
-        phone:   user.savedPhone   || '',
         address: user.savedAddress || '',
         postal:  user.savedPostal  || '',
         city:    user.savedCity    || '',
         country: user.savedCountry || '',
+        phone:   user.savedPhone   || '',
       }))
-      setTouched({ phone: true, address: true, postal: true, city: true, country: true })
+      setTouched({ address: true, postal: true, city: true, country: true, phone: true })
+      setAddressLoaded(true)
     }
-  }, [user])
 
+    // Step 2: always fetch fresh from DB (catches updates from other sessions/devices)
+    setLoadingAddress(true)
+    fetch(`${API}/api/auth/address`, {
+      headers: { Authorization: `Bearer ${user.token}` },
+    })
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`)
+        return r.json()
+      })
+      .then((data) => {
+        if (data?.savedAddress) {
+          setForm((prev) => ({
+            ...prev,
+            address: data.savedAddress || '',
+            postal:  data.savedPostal  || '',
+            city:    data.savedCity    || '',
+            country: data.savedCountry || '',
+            phone:   data.savedPhone   || '',
+          }))
+          setTouched({ address: true, postal: true, city: true, country: true, phone: true })
+          setAddressLoaded(true)
+
+          // Sync AuthContext so next visit is instant (no DB needed)
+          updateUser({
+            ...user,
+            savedAddress: data.savedAddress,
+            savedPostal:  data.savedPostal,
+            savedCity:    data.savedCity,
+            savedCountry: data.savedCountry,
+            savedPhone:   data.savedPhone,
+          })
+        }
+      })
+      .catch((err) => console.warn('[Checkout] address fetch failed:', err.message))
+      .finally(() => setLoadingAddress(false))
+  }, [user?.token]) // only re-run when token changes (= user logs in/out)
+
+  // ─── Validation ─────────────────────────────────────────────────────────
   const validateField = (name: string, value: string): string => {
     if (!value) return 'Pflichtfeld'
     const v = validators[name as keyof typeof validators]
@@ -89,24 +123,14 @@ const [discountValue, setDiscountValue] = useState(0)
       const err = validateField(field, form[field as keyof typeof form])
       if (err) newErrors[field] = err
     })
-
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
 
+  // ─── Handle input — no localStorage ─────────────────────────────────────
   const handleChange = (name: string, value: string) => {
-    const updatedForm = { ...form, [name]: value }
-    setForm(updatedForm)
+    setForm((prev) => ({ ...prev, [name]: value }))
     setTouched((prev) => ({ ...prev, [name]: true }))
-
-    // Save only non-payment fields
-    const safeForm = {
-      firstName: updatedForm.firstName, lastName: updatedForm.lastName,
-      email: updatedForm.email,         phone:    updatedForm.phone,
-      address:  updatedForm.address,    postal:   updatedForm.postal,
-      city:     updatedForm.city,       country:  updatedForm.country,
-    }
-    localStorage.setItem(getStorageKey(user), JSON.stringify(safeForm))
     setErrors((prev) => ({ ...prev, [name]: validateField(name, value) }))
   }
 
@@ -133,8 +157,9 @@ const [discountValue, setDiscountValue] = useState(0)
 
   const finalTotal = totalPrice - discountValue
 
+  // ─── Submit ──────────────────────────────────────────────────────────────
   const handleCheckout = async () => {
-    setSuccess('')
+    setErrorMsg('')
     const allFields = [
       'firstName', 'lastName', 'email', 'phone',
       'address', 'postal', 'city', 'country',
@@ -166,48 +191,73 @@ const [discountValue, setDiscountValue] = useState(0)
       const headers: Record<string, string> = { 'Content-Type': 'application/json' }
       if (user?.token) headers['Authorization'] = `Bearer ${user.token}`
 
-      const res  = await fetch('http://localhost:5050/api/checkout', { method: 'POST', headers, body: JSON.stringify(orderData) })
+      const res  = await fetch(`${API}/api/checkout`, {
+        method: 'POST', headers, body: JSON.stringify(orderData),
+      })
       const data = await res.json()
 
-      if (res.status === 429) { setSuccess(data.message); return }
+      if (res.status === 429) { setErrorMsg(data.message); return }
 
-      if (res.ok) {
-        clearCart()
-        if (!user) localStorage.removeItem('guest')
-          localStorage.removeItem('orderId')
-const orderNumber = data.order?.orderNumber || ''
-  localStorage.setItem('lastOrderNumber', orderNumber)
-        if (user) {
-          await fetch('http://localhost:5050/api/user/address', {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${user.token}` },
-            body: JSON.stringify({
-              address: form.address, postal: form.postal,
-              city: form.city,       country: form.country, phone: form.phone,
-            }),
-          })
-        }
-
-        navigate('/thank-you', { state: { email: form.email, orderNumber } })
-      } else {
-        setSuccess(data.message || 'Fehler beim Checkout')
+      if (!res.ok) {
+        setErrorMsg(data.message || 'Fehler beim Checkout')
+        return
       }
+
+      // ── Order succeeded ──────────────────────────────────────────────────
+      clearCart()
+
+      // Save address to DB and update AuthContext
+      // FIX: correct URL /api/auth/address (not /api/user/address)
+      // FIX: correct field names: address/postal/city/country/phone
+      if (user?.token) {
+        const addrRes = await fetch(`${API}/api/auth/address`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${user.token}`,
+          },
+          body: JSON.stringify({
+            address: form.address,   // ← correct field name
+            postal:  form.postal,
+            city:    form.city,
+            country: form.country,
+            phone:   form.phone,
+          }),
+        })
+
+        if (addrRes.ok) {
+          const addrData = await addrRes.json()
+          // Update AuthContext so address is available immediately next time
+          if (addrData.user) {
+            updateUser({ ...user, ...addrData.user, token: user.token })
+          }
+        }
+      }
+
+      const orderNumber = data.order?.orderNumber || ''
+      navigate('/thank-you', { state: { email: form.email, orderNumber } })
+
     } catch {
-      setSuccess('Netzwerkfehler – bitte versuche es erneut.')
+      setErrorMsg('Netzwerkfehler – bitte versuche es erneut.')
     }
   }
 
+  // ─── Gate ────────────────────────────────────────────────────────────────
   if (!user && !guestMode) {
     return (
       <div className="min-h-[70vh] flex items-center justify-center px-4">
         <div className="bg-white border rounded-xl p-8 text-center max-w-md w-full shadow">
           <h2 className="text-xl font-semibold mb-3">Checkout</h2>
-          <p className="text-sm text-gray-600 mb-6">Möchten Sie als Gast bestellen oder ein Konto verwenden?</p>
+          <p className="text-sm text-gray-600 mb-6">
+            Möchten Sie als Gast bestellen oder ein Konto verwenden?
+          </p>
           <div className="flex flex-col gap-3">
-            <button onClick={() => setGuestMode(true)} className="bg-[#D4A574] text-white py-2 rounded-full hover:bg-[#c4945f] transition-colors">
+            <button onClick={() => setGuestMode(true)}
+              className="bg-[#D4A574] text-white py-2 rounded-full hover:bg-[#c4945f] transition-colors">
               Als Gast bestellen
             </button>
-            <button onClick={() => navigate('/login')} className="border py-2 rounded-full hover:bg-gray-50 transition-colors">
+            <button onClick={() => navigate('/login')}
+              className="border py-2 rounded-full hover:bg-gray-50 transition-colors">
               Login / Konto
             </button>
           </div>
@@ -228,9 +278,9 @@ const orderNumber = data.order?.orderNumber || ''
         <h1 className="text-2xl font-bold">Checkout</h1>
       </div>
 
-      {success && (
+      {errorMsg && (
         <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg mb-6 text-center">
-          {success}
+          {errorMsg}
         </div>
       )}
 
@@ -252,24 +302,20 @@ const orderNumber = data.order?.orderNumber || ''
                 <div className="grid grid-cols-2 gap-3 mb-3">
                   <div>
                     <label className="text-xs text-gray-500 mb-1 block">Vorname *</label>
-                    <input
-                      {...inputProps('firstName')} placeholder="Max"
+                    <input {...inputProps('firstName')} placeholder="Max"
                       onChange={(e) => {
                         if (/^[a-zA-ZäöüÄÖÜßàáâãèéêìíîòóôùúû\s'\-]*$/.test(e.target.value))
                           handleChange('firstName', e.target.value)
-                      }}
-                    />
+                      }} />
                     <ErrorMsg field="firstName" />
                   </div>
                   <div>
                     <label className="text-xs text-gray-500 mb-1 block">Nachname *</label>
-                    <input
-                      {...inputProps('lastName')} placeholder="Mustermann"
+                    <input {...inputProps('lastName')} placeholder="Mustermann"
                       onChange={(e) => {
                         if (/^[a-zA-ZäöüÄÖÜßàáâãèéêìíîòóôùúû\s'\-]*$/.test(e.target.value))
                           handleChange('lastName', e.target.value)
-                      }}
-                    />
+                      }} />
                     <ErrorMsg field="lastName" />
                   </div>
                 </div>
@@ -281,12 +327,10 @@ const orderNumber = data.order?.orderNumber || ''
                   </div>
                   <div>
                     <label className="text-xs text-gray-500 mb-1 block">Telefon *</label>
-                    <input
-                      {...inputProps('phone')} placeholder="+49 151 12345678"
+                    <input {...inputProps('phone')} placeholder="+49 151 12345678"
                       onChange={(e) => {
                         if (/^[+0-9\s\-\(\)]*$/.test(e.target.value)) handleChange('phone', e.target.value)
-                      }}
-                    />
+                      }} />
                     <ErrorMsg field="phone" />
                   </div>
                 </div>
@@ -297,12 +341,21 @@ const orderNumber = data.order?.orderNumber || ''
           {/* Shipping */}
           <section>
             <h2 className="font-semibold text-gray-800 mb-4 pb-2 border-b">Lieferadresse</h2>
-            {user?.savedAddress && (
+
+            {loadingAddress && (
+              <div className="flex items-center gap-2 text-xs text-gray-400 mb-3">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                Adresse wird geladen…
+              </div>
+            )}
+
+            {addressLoaded && !loadingAddress && (
               <div className="bg-blue-50 border border-blue-100 rounded-lg px-3 py-2 text-xs text-blue-600 flex items-center gap-2 mb-3">
                 <CheckCircle className="h-3.5 w-3.5 shrink-0" />
                 Deine gespeicherte Adresse wurde automatisch eingetragen.
               </div>
             )}
+
             <div className="mb-3">
               <label className="text-xs text-gray-500 mb-1 block">Straße & Hausnummer *</label>
               <input {...inputProps('address')} placeholder="Musterstraße 42" />
@@ -311,30 +364,24 @@ const orderNumber = data.order?.orderNumber || ''
             <div className="grid grid-cols-3 gap-3">
               <div>
                 <label className="text-xs text-gray-500 mb-1 block">PLZ *</label>
-                <input
-                  {...inputProps('postal')} placeholder="10115" maxLength={5}
-                  onChange={(e) => { if (/^[0-9]*$/.test(e.target.value)) handleChange('postal', e.target.value) }}
-                />
+                <input {...inputProps('postal')} placeholder="10115" maxLength={5}
+                  onChange={(e) => { if (/^[0-9]*$/.test(e.target.value)) handleChange('postal', e.target.value) }} />
                 <ErrorMsg field="postal" />
               </div>
               <div>
                 <label className="text-xs text-gray-500 mb-1 block">Stadt *</label>
-                <input
-                  {...inputProps('city')} placeholder="Berlin"
+                <input {...inputProps('city')} placeholder="Berlin"
                   onChange={(e) => {
                     if (/^[a-zA-ZäöüÄÖÜßàáâ\s\-\.]*$/.test(e.target.value)) handleChange('city', e.target.value)
-                  }}
-                />
+                  }} />
                 <ErrorMsg field="city" />
               </div>
               <div>
                 <label className="text-xs text-gray-500 mb-1 block">Land *</label>
-                <input
-                  {...inputProps('country')} placeholder="Deutschland"
+                <input {...inputProps('country')} placeholder="Deutschland"
                   onChange={(e) => {
                     if (/^[a-zA-ZäöüÄÖÜßàáâ\s\-\.]*$/.test(e.target.value)) handleChange('country', e.target.value)
-                  }}
-                />
+                  }} />
                 <ErrorMsg field="country" />
               </div>
             </div>
@@ -343,40 +390,34 @@ const orderNumber = data.order?.orderNumber || ''
           {/* Payment */}
           <section>
             <h2 className="font-semibold text-gray-800 mb-4 pb-2 border-b">Zahlungsmethode</h2>
-
             <div className="flex gap-3 mb-5">
               {([
                 { id: 'klarna', label: '🅺 Klarna' },
                 { id: 'paypal', label: '🅿️ PayPal' },
               ] as const).map((method) => (
-                <button
-                  key={method.id}
+                <button key={method.id}
                   onClick={() => { setPayment(method.id); setErrors({}); setTouched({}) }}
                   className={`px-5 py-2 rounded-full border text-sm font-medium transition-colors ${
                     payment === method.id
                       ? 'bg-[#D4A574] text-white border-[#D4A574]'
                       : 'bg-[#F5E6D3] border-[#e0c9a8] text-gray-700 hover:bg-[#ecd5b8]'
-                  }`}
-                >
+                  }`}>
                   {method.label}
                 </button>
               ))}
             </div>
 
-            {/* Klarna */}
             {payment === 'klarna' && (
               <div className="space-y-3">
-                <div className="bg-pink-50 border border-pink-100 rounded-lg px-3 py-2 text-xs text-pink-700 flex items-center gap-2">
-                  Klarna jetzt kaufen, später bezahlen
+                <div className="bg-pink-50 border border-pink-100 rounded-lg px-3 py-2 text-xs text-pink-700">
+                  Klarna — jetzt kaufen, später bezahlen
                 </div>
                 <div>
                   <label className="text-xs text-gray-500 mb-1 block">Handynummer *</label>
-                  <input
-                    {...inputProps('klarnaPhone')} placeholder="+49 151 12345678"
+                  <input {...inputProps('klarnaPhone')} placeholder="+49 151 12345678"
                     onChange={(e) => {
                       if (/^[+0-9\s\-\(\)]*$/.test(e.target.value)) handleChange('klarnaPhone', e.target.value)
-                    }}
-                  />
+                    }} />
                   <ErrorMsg field="klarnaPhone" />
                 </div>
                 <div>
@@ -384,26 +425,21 @@ const orderNumber = data.order?.orderNumber || ''
                   <input {...inputProps('klarnaEmail')} type="email" placeholder="max@beispiel.de" />
                   <ErrorMsg field="klarnaEmail" />
                 </div>
-                <p className="text-xs text-gray-400">
-                  Klarna prüft Ihre Bonität. Mit dem Kauf stimmen Sie den Klarna-AGB zu.
-                </p>
+                <p className="text-xs text-gray-400">Klarna prüft Ihre Bonität. Mit dem Kauf stimmen Sie den Klarna-AGB zu.</p>
               </div>
             )}
 
-            {/* PayPal */}
             {payment === 'paypal' && (
               <div className="space-y-3">
-                <div className="bg-yellow-50 border border-yellow-100 rounded-lg px-3 py-2 text-xs text-yellow-700 flex items-center gap-2">
-                  Sie werden nach dem Checkout zu PayPal weitergeleitet, um die Zahlung abzuschließen.
+                <div className="bg-yellow-50 border border-yellow-100 rounded-lg px-3 py-2 text-xs text-yellow-700">
+                  Sie werden nach dem Checkout zu PayPal weitergeleitet.
                 </div>
                 <div>
                   <label className="text-xs text-gray-500 mb-1 block">Vollständiger Name *</label>
-                  <input
-                    {...inputProps('paypalName')} placeholder="Max Mustermann"
+                  <input {...inputProps('paypalName')} placeholder="Max Mustermann"
                     onChange={(e) => {
                       if (/^[a-zA-ZäöüÄÖÜß\s'\-]*$/.test(e.target.value)) handleChange('paypalName', e.target.value)
-                    }}
-                  />
+                    }} />
                   <ErrorMsg field="paypalName" />
                 </div>
                 <div>
@@ -447,13 +483,12 @@ const orderNumber = data.order?.orderNumber || ''
               <Tag className="h-3 w-3" /> Rabattcode
             </label>
             <div className="flex gap-2">
-              <input
-                value={discount}
+              <input value={discount}
                 onChange={(e) => { setDiscount(e.target.value.toUpperCase()); setDiscountError(''); setDiscountApplied(false) }}
                 className="flex-1 p-2 border border-[#e0c9a8] rounded-lg bg-white text-sm outline-none focus:border-[#D4A574]"
-                placeholder="Code eingeben"
-              />
-              <button onClick={applyDiscount} className="bg-[#D4A574] text-white text-xs px-4 rounded-lg hover:bg-[#c4945f] transition-colors">
+                placeholder="Code eingeben" />
+              <button onClick={applyDiscount}
+                className="bg-[#D4A574] text-white text-xs px-4 rounded-lg hover:bg-[#c4945f] transition-colors">
                 Anwenden
               </button>
             </div>
@@ -482,15 +517,12 @@ const orderNumber = data.order?.orderNumber || ''
             </div>
           </div>
 
-          <button
-            onClick={handleCheckout}
-            disabled={hasErrors}
+          <button onClick={handleCheckout} disabled={hasErrors}
             className={`w-full mt-5 py-3 rounded-full text-white font-medium transition-colors ${
               hasErrors
                 ? 'bg-gray-300 cursor-not-allowed text-gray-500'
                 : 'bg-[#D4A574] hover:bg-[#c4945f] active:scale-[0.98]'
-            }`}
-          >
+            }`}>
             Jetzt bestellen
           </button>
 
