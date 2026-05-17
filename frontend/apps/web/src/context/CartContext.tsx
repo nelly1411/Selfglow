@@ -50,8 +50,7 @@ useEffect(() => {
   }
 
   const updateQuantity = (id: number, quantity: number) => {
-    if (quantity <= 0) {
-      removeFromCart(id)
+    if (quantity < 1) {
       return
     }
     setItems((prev) =>
