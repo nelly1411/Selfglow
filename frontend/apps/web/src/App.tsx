@@ -1,4 +1,5 @@
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import type { ReactNode } from 'react'
 import { CartProvider } from './context/CartContext'
 import Layout from './components/Layout'
 import Home from './pages/Home'
@@ -14,6 +15,18 @@ import { WishlistProvider } from './context/WishlistContext'
 import { ReviewsProvider } from '@/context/ReviewsContext'
 import Checkout from './pages/Checkout'
 import Profile from './pages/Profile'
+import { useAuth } from './context/AuthContext'
+
+function ProtectedRoute({ children }: { children: ReactNode }) {
+  const { isLoggedIn } = useAuth()
+  const location = useLocation()
+
+  if (!isLoggedIn) {
+    return <Navigate to="/login" replace state={{ from: location }} />
+  }
+
+  return children
+}
 
 function App() {
   return (
@@ -31,7 +44,14 @@ function App() {
               <Route path="wishlist" element={<Wishlist />} />
               <Route path="product/:id" element={<ProductDetail />} />
               <Route path="/checkout" element={<Checkout />} />
-              <Route path="/profile" element={<Profile />} />
+              <Route
+                path="/profile"
+                element={
+                  <ProtectedRoute>
+                    <Profile />
+                  </ProtectedRoute>
+                }
+              />
             </Route>
           </Routes>
         </ReviewsProvider>

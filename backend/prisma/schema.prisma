@@ -32,18 +32,20 @@ model Product {
 }
 
 model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
-  password  String
-  name      String?
+  id           Int      @id @default(autoincrement())
+  email        String   @unique
+  passwordHash String
+  name         String?
 
   wishlistItems WishlistItem[]
+  orders        Order[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 model Order {
   id          Int      @id @default(autoincrement())
+  userId      Int?
   totalPrice  Float
   paymentMethod String
   address     String
@@ -52,6 +54,8 @@ model Order {
   country     String
   items       String
   createdAt   DateTime @default(now())
+
+  user        User?    @relation(fields: [userId], references: [id])
 }
 
 model WishlistItem {
@@ -65,4 +69,3 @@ model WishlistItem {
 
   @@unique([userId, productId])
 }
-

@@ -4,9 +4,10 @@ const checkoutService = require('../services/checkout.service')
 
 exports.createOrder = async (req, res) => {
   try {
-    console.log("BODY:", req.body) // 👈 WICHTIG
-
-    const order = await checkoutService.createOrder(req.body)
+    const order = await checkoutService.createOrder({
+      ...req.body,
+      userId: req.userId,
+    })
 
     return res.status(200).json({
       message: 'Bestellung erfolgreich',
@@ -17,6 +18,21 @@ exports.createOrder = async (req, res) => {
 
     return res.status(500).json({
       message: 'Fehler bei Bestellung',
+      error: err.message,
+    })
+  }
+}
+
+exports.getMyOrders = async (req, res) => {
+  try {
+    const orders = await checkoutService.getOrdersByUserId(req.userId)
+
+    return res.json({ orders })
+  } catch (err) {
+    console.error('ORDER HISTORY ERROR:', err.message)
+
+    return res.status(500).json({
+      message: 'Fehler beim Laden der Bestellungen',
       error: err.message,
     })
   }

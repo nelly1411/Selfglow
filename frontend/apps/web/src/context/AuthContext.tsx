@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useState, type ReactNode } from 'react'
 
 export type User = {
   id: number
@@ -10,8 +10,13 @@ type AuthContextType = {
   token: string | null
   user: User | null
   isLoggedIn: boolean
-  login: (token: string, user: User) => void
+  login: (token: string, user: User, remember?: boolean) => void
   logout: () => void
+}
+
+type AuthState = {
+  token: string | null
+  user: User | null
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -36,51 +41,61 @@ function isTokenExpired(token: string) {
   }
 }
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [token, setToken] = useState<string | null>(null)
-  const [user, setUser] = useState<User | null>(null)
+function clearStoredAuth() {
+  localStorage.removeItem('token')
+  localStorage.removeItem('user')
+  sessionStorage.removeItem('token')
+  sessionStorage.removeItem('user')
+}
 
-  useEffect(() => {
-    const storedToken = localStorage.getItem('token')
-    const storedUser = localStorage.getItem('user')
+function getStoredAuth(): AuthState {
+  const storedToken = localStorage.getItem('token') || sessionStorage.getItem('token')
+  const storedUser = localStorage.getItem('user') || sessionStorage.getItem('user')
 
-    if (storedToken && storedUser) {
-      try {
-        if (isTokenExpired(storedToken)) {
-          localStorage.removeItem('token')
-          localStorage.removeItem('user')
-          return
-        }
+  if (!storedToken || !storedUser) {
+    return { token: null, user: null }
+  }
 
-        setToken(storedToken)
-        setUser(JSON.parse(storedUser))
-      } catch {
-        localStorage.removeItem('token')
-        localStorage.removeItem('user')
-      }
+  try {
+    if (isTokenExpired(storedToken)) {
+      clearStoredAuth()
+      return { token: null, user: null }
     }
-  }, [])
 
-  const login = useCallback((token: string, user: User) => {
-    localStorage.setItem('token', token)
-    localStorage.setItem('user', JSON.stringify(user))
-    setToken(token)
-    setUser(user)
+    return {
+      token: storedToken,
+      user: JSON.parse(storedUser),
+    }
+  } catch {
+    clearStoredAuth()
+    return { token: null, user: null }
+  }
+}
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [auth, setAuth] = useState<AuthState>(getStoredAuth)
+
+  const login = useCallback((token: string, user: User, remember = true) => {
+    clearStoredAuth()
+
+    const storage = remember ? localStorage : sessionStorage
+    storage.setItem('token', token)
+    storage.setItem('user', JSON.stringify(user))
+
+    setAuth({ token, user })
   }, [])
 
   const logout = useCallback(() => {
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
-    setToken(null)
-    setUser(null)
+    clearStoredAuth()
+    setAuth({ token: null, user: null })
   }, [])
 
   return (
     <AuthContext.Provider
       value={{
-        token,
-        user,
-        isLoggedIn: Boolean(token),
+        token: auth.token,
+        user: auth.user,
+        isLoggedIn: Boolean(auth.token),
         login,
         logout,
       }}

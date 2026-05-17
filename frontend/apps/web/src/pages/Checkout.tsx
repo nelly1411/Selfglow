@@ -3,12 +3,13 @@ import { useCart } from '@/context/CartContext'
 import { useAuth } from '@/context/AuthContext'
 import { useNavigate, Link } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
+import { apiUrl } from '@/lib/api'
 
 export default function Checkout() {
 const [discount, setDiscount] = useState('')
 const [discountValue, setDiscountValue] = useState(0)
-  const { items, totalPrice } = useCart()
-  const { user } = useAuth()
+  const { items, totalPrice, clearCart } = useCart()
+  const { user, token } = useAuth()
   const navigate = useNavigate()
 
   const [guestMode, setGuestMode] = useState(false)
@@ -107,10 +108,11 @@ const orderData = {
   }
 }
 
-  const res = await fetch('http://localhost:5050/api/checkout', {
+  const res = await fetch(apiUrl('/api/checkout'), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
     body: JSON.stringify(orderData),
   })
@@ -119,6 +121,7 @@ const orderData = {
 
   if (res.ok) {
     setSuccess('Deine Bestellung wurde erfolgreich abgeschlossen!')
+    clearCart()
   } else {
     setSuccess(data.message || 'Fehler beim Checkout')
   }
