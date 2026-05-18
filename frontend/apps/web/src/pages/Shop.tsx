@@ -27,12 +27,21 @@ type Product = {
 
 const PRODUCTS_PER_PAGE = 25
 
+type SortOption = 'name-asc' | 'name-desc' | 'price-asc' | 'price-desc'
+
+const sortOptions: { value: SortOption; label: string }[] = [
+  { value: 'name-asc', label: 'Name (A-Z)' },
+  { value: 'name-desc', label: 'Name (Z-A)' },
+  { value: 'price-asc', label: 'Preis (niedrig - hoch)' },
+  { value: 'price-desc', label: 'Preis (hoch - niedrig)' },
+]
+
 const skinTypes = [
-  { name: 'Combination', count: 18 },
-  { name: 'Dry', count: 5 },
-  { name: 'Oily', count: 20 },
-  { name: 'Normal', count: 12 },
-  { name: 'Sensitive', count: 8 },
+  { name: 'Combination' },
+  { name: 'Dry'},
+  { name: 'Oily' },
+  { name: 'Normal' },
+  { name: 'Sensitive'},
 ]
 
 const concerns = [
@@ -253,6 +262,7 @@ export default function Shop() {
   const [selectedFeatures, setSelectedFeatures] = useState<string[]>([])
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
   const [visibleCount, setVisibleCount] = useState(PRODUCTS_PER_PAGE)
+  const [sortBy, setSortBy] = useState<SortOption>('name-asc')
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -305,6 +315,12 @@ export default function Shop() {
     setPriceRange([finalMin, finalMax])
     setMinPriceInput(String(finalMin))
     setMaxPriceInput(String(finalMax))
+  }
+
+  const resetPriceFilter = () => {
+    setPriceRange([0, 200])
+    setMinPriceInput('0')
+    setMaxPriceInput('200')
   }
 
 
@@ -372,12 +388,27 @@ export default function Shop() {
     )
   })
 
+  const sortedProducts = [...filteredProducts].sort((a, b) => {
+    switch (sortBy) {
+      case 'name-asc':
+        return a.name.localeCompare(b.name, 'de')
+      case 'name-desc':
+        return b.name.localeCompare(a.name, 'de')
+      case 'price-asc':
+        return a.price - b.price
+      case 'price-desc':
+        return b.price - a.price
+      default:
+        return 0
+    }
+  })
 
-  const visibleProducts = filteredProducts.slice(0, visibleCount)
+
+  const visibleProducts = sortedProducts.slice(0, visibleCount)
 
   useEffect(() => {
     setVisibleCount(PRODUCTS_PER_PAGE)
-  }, [priceRange, searchQuery, selectedSkinType, selectedConcern, selectedCategory, selectedFeatures ])
+  }, [priceRange, searchQuery, selectedSkinType, selectedConcern, selectedCategory, selectedFeatures, sortBy ])
 
   const renderFilterContent = () => (
     <>
@@ -396,7 +427,6 @@ export default function Shop() {
               }
             />
             <span className="text-sm text-foreground">{type.name}</span>
-            <span className="text-xs text-muted-foreground ml-auto">({type.count})</span>
           </label>
         ))}
       </FilterSection>
@@ -499,13 +529,25 @@ export default function Shop() {
               </div>
             </div>
 
+            <div className="flex gap-2">
             <Button
               type="button"
               onClick={applyPriceFilter}
-              className="w-full rounded-full bg-[#F5E6D3] text-foreground hover:bg-[#E8D5C0]"
+              className="flex-1 rounded-full bg-[#F5E6D3] text-foreground hover:bg-[#E8D5C0]"
             >
-              Preis anwenden
+              Anwenden
             </Button>
+
+            <Button
+              type="button"
+              variant="outline"
+              onClick={resetPriceFilter}
+              className="flex-1 rounded-full"
+            >
+              Zurücksetzen
+            </Button>
+          </div>
+
           </div>
         </FilterSection>
     </>
@@ -561,12 +603,39 @@ export default function Shop() {
             </p>
           )}
 
-          {!loading && !error && filteredProducts.length === 0 && (
+      
+          {!loading && !error && sortedProducts.length === 0 && (
             <p className="text-muted-foreground">Keine Produkte gefunden.</p>
           )}
 
-          {!loading && !error && filteredProducts.length > 0 && (
+
+          {!loading && !error && sortedProducts.length > 0 && (
             <>
+              
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
+                <p className="text-sm text-muted-foreground">
+                  {sortedProducts.length} Produkte
+                </p>
+
+                <div className="flex items-center gap-2">
+                  <label htmlFor="sort" className="text-sm text-muted-foreground">
+                    Sortieren:
+                  </label>
+
+                  <select
+                    id="sort"
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value as SortOption)}
+                    className="rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-[#D4A574]"
+                  >
+                    {sortOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 {visibleProducts.map((product) => (
                   <ProductCard key={product.id} product={product} />
@@ -575,11 +644,11 @@ export default function Shop() {
 
               <div className="mt-10 flex flex-col items-center gap-3">
                 <p className="text-sm text-muted-foreground">
-                  Zeige 1 - {Math.min(visibleCount, filteredProducts.length)} von{' '}
-                  {filteredProducts.length} Produkten
+                  Zeige 1 - {Math.min(visibleCount, sortedProducts.length)} von{' '}
+                  {sortedProducts.length} Produkten
                 </p>
 
-                {visibleCount < filteredProducts.length && (
+                {visibleCount < sortedProducts.length && (
                   <Button
                     onClick={() => setVisibleCount((prev) => prev + PRODUCTS_PER_PAGE)}
                     className="bg-[#F5E6D3] text-foreground hover:bg-[#E8D5C0] rounded-full px-8"
