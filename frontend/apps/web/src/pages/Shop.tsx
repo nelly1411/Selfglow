@@ -243,9 +243,9 @@ function ProductCard({ product }: { product: Product }) {
 export default function Shop() {
   const [products, setProducts] = useState<Product[]>([])
   const [priceRange, setPriceRange] = useState([0, 200])
-  const [selectedSkinType, setSelectedSkinType] = useState<string | null>(null)
-  const [selectedConcern, setSelectedConcern] = useState<string | null>(null)
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+  const [selectedSkinType, setSelectedSkinType] = useState<string[]>([])
+  const [selectedConcern, setSelectedConcern] = useState<string[]>([])
+  const [selectedCategory, setSelectedCategory] = useState<string[]>([])
   const [selectedFeatures, setSelectedFeatures] = useState<string[]>([])
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
   const [visibleCount, setVisibleCount] = useState(PRODUCTS_PER_PAGE)
@@ -255,42 +255,34 @@ export default function Shop() {
 
   const [searchParams, setSearchParams] = useSearchParams()
   const searchQuery = searchParams.get('search')?.toLowerCase().trim() || ''
-  const categoryQuery = searchParams.get('category') || ''
-  const skinTypeQuery = searchParams.get('skinType') || ''
+  const categoryQuery = searchParams.getAll('category')
+  const skinTypeQuery = searchParams.getAll('skinType')
+  const concernQuery = searchParams.getAll('concern')
 
   useEffect(() => {
-    setSelectedCategory(categoryQuery || null)
-  }, [categoryQuery])
+    setSelectedCategory(categoryQuery)
+    setSelectedSkinType(skinTypeQuery)
+    setSelectedConcern(concernQuery)
+  }, [searchParams])
 
-  useEffect(() => {
-    setSelectedSkinType(skinTypeQuery || null)
-  }, [skinTypeQuery])
-
-  const handleCategoryChange = (categoryName: string) => {
+  const toggleQueryValue = (
+    key: string,
+    value: string,
+    selectedValues: string[],
+    setSelectedValues: React.Dispatch<React.SetStateAction<string[]>>
+  ) => {
     const params = new URLSearchParams(searchParams)
-
-    if (selectedCategory === categoryName) {
-      setSelectedCategory(null)
-      params.delete('category')
-    } else {
-      setSelectedCategory(categoryName)
-      params.set('category', categoryName)
-    }
-
-    setSearchParams(params)
-  }
-
-  const handleSkinTypeChange = (skinTypeName: string) => {
-    const params = new URLSearchParams(searchParams)
-
-    if (selectedSkinType === skinTypeName) {
-      setSelectedSkinType(null)
-      params.delete('skinType')
-    } else {
-      setSelectedSkinType(skinTypeName)
-      params.set('skinType', skinTypeName)
-    }
-
+    params.delete(key)
+  
+    const nextValues = selectedValues.includes(value)
+      ? selectedValues.filter((item) => item !== value)
+      : [...selectedValues, value]
+  
+    nextValues.forEach((item) => {
+      params.append(key, item)
+    })
+  
+    setSelectedValues(nextValues)
     setSearchParams(params)
   }
 
@@ -307,17 +299,17 @@ export default function Shop() {
           params.set('search', searchQuery)
         }
 
-        if (selectedCategory) {
-          params.set('category', selectedCategory)
-        }
-
-        if (selectedSkinType) {
-          params.set('skinType', selectedSkinType)
-        }
-
-        if (selectedConcern) {
-          params.set('concern', selectedConcern)
-        }
+        selectedCategory.forEach((category) => {
+          params.append('category', category)
+        })
+        
+        selectedSkinType.forEach((skinType) => {
+          params.append('skinType', skinType)
+        })
+        
+        selectedConcern.forEach((concern) => {
+          params.append('concern', concern)
+        })
 
         selectedFeatures.forEach((feature) => {
           params.set(feature, 'true')
@@ -371,10 +363,13 @@ export default function Shop() {
         {skinTypes.map((type) => (
           <label key={type.name} className="flex items-center gap-2 cursor-pointer">
            <Checkbox
-              checked={selectedSkinType === type.name}
+              checked={selectedSkinType.includes(type.name)}
               onCheckedChange={() =>
-                handleSkinTypeChange(
-                 type.name
+                toggleQueryValue(
+                  'skinType',
+                  type.name,
+                  selectedSkinType,
+                  setSelectedSkinType
                 )
               }
             />
@@ -388,9 +383,14 @@ export default function Shop() {
         {concerns.map((concern) => (
           <label key={concern.name} className="flex items-center gap-2 cursor-pointer">
             <Checkbox
-            checked={selectedConcern === concern.name}
-            onCheckedChange={() =>
-              setSelectedConcern(selectedConcern === concern.name ? null : concern.name)
+              checked={selectedConcern.includes(concern.name)}
+              onCheckedChange={() =>
+                toggleQueryValue(
+                  'concern',
+                  concern.name,
+                  selectedConcern,
+                  setSelectedConcern
+                )
               }
             />
             <span className="text-sm text-foreground">{concern.name}</span>
@@ -419,10 +419,15 @@ export default function Shop() {
       <FilterSection title="Product Type">
         {productTypes.map((type) => (
           <label key={type.name} className="flex items-center gap-2 cursor-pointer">
-            <Checkbox
-            checked={selectedCategory === type.name}
-            onCheckedChange={() =>
-              handleCategoryChange(type.name)
+           <Checkbox
+              checked={selectedCategory.includes(type.name)}
+              onCheckedChange={() =>
+                toggleQueryValue(
+                  'category',
+                  type.name,
+                  selectedCategory,
+                  setSelectedCategory
+                )
               }
             />
             <span className="text-sm text-foreground">{type.name}</span>
