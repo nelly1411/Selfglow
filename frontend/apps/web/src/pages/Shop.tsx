@@ -3,7 +3,6 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { Star, ChevronDown, ChevronUp, ShoppingCart, Filter, X, Heart, Check } from 'lucide-react'
 import { Button } from '@workspace/ui/components/button'
 import { Checkbox } from '@workspace/ui/components/checkbox'
-import { Slider } from '@workspace/ui/components/slider'
 import { cn } from '@workspace/ui/lib/utils'
 import { useCart } from '@/context/CartContext'
 import { useWishlist } from '@/context/WishlistContext'
@@ -205,7 +204,10 @@ function ProductCard({ product }: { product: Product }) {
 
           <div className="flex items-center gap-2">
             <span className="font-bold text-foreground">
-              €{product.price.toFixed(2)}
+              {product.price.toLocaleString('de-DE', {
+                style: 'currency',
+                currency: 'EUR',
+              })}
             </span>
           </div>
         </div>
@@ -242,7 +244,9 @@ function ProductCard({ product }: { product: Product }) {
 
 export default function Shop() {
   const [products, setProducts] = useState<Product[]>([])
-  const [priceRange, setPriceRange] = useState([0, 200])
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, 200])
+  const [minPriceInput, setMinPriceInput] = useState('0')
+  const [maxPriceInput, setMaxPriceInput] = useState('200')
   const [selectedSkinType, setSelectedSkinType] = useState<string[]>([])
   const [selectedConcern, setSelectedConcern] = useState<string[]>([])
   const [selectedCategory, setSelectedCategory] = useState<string[]>([])
@@ -285,6 +289,24 @@ export default function Shop() {
     setSelectedValues(nextValues)
     setSearchParams(params)
   }
+
+  const applyPriceFilter = () => {
+    const minValue = Number(minPriceInput)
+    const maxValue = Number(maxPriceInput)
+  
+    if (Number.isNaN(minValue) || Number.isNaN(maxValue)) return
+  
+    const clampedMin = Math.max(0, Math.min(minValue, 200))
+    const clampedMax = Math.max(0, Math.min(maxValue, 200))
+  
+    const finalMin = Math.min(clampedMin, clampedMax)
+    const finalMax = Math.max(clampedMin, clampedMax)
+  
+    setPriceRange([finalMin, finalMax])
+    setMinPriceInput(String(finalMin))
+    setMaxPriceInput(String(finalMax))
+  }
+
 
   useEffect(() => {
     async function fetchProducts() {
@@ -357,7 +379,7 @@ export default function Shop() {
     setVisibleCount(PRODUCTS_PER_PAGE)
   }, [priceRange, searchQuery, selectedSkinType, selectedConcern, selectedCategory, selectedFeatures ])
 
-  const FilterContent = () => (
+  const renderFilterContent = () => (
     <>
       <FilterSection title="Skin Type">
         {skinTypes.map((type) => (
@@ -436,21 +458,56 @@ export default function Shop() {
       </FilterSection>
 
       <FilterSection title="Price">
-        <div className="px-2">
-          <Slider
-            value={priceRange}
-            onValueChange={setPriceRange}
-            min={0}
-            max={200}
-            step={1}
-            className="mb-4"
-          />
-          <div className="flex justify-between text-sm text-muted-foreground">
-            <span>€{priceRange[0]}</span>
-            <span>€{priceRange[1]}</span>
+          <div className="px-2 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="flex-1">
+                <label className="block text-xs text-muted-foreground mb-1">
+                  Min. Preis
+                </label>
+                <input
+                  type="number"
+                  min={0}
+                  max={200}
+                  value={minPriceInput}
+                  onChange={(e) => setMinPriceInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      applyPriceFilter()
+                    }
+                  }}
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-[#D4A574]"
+                />
+              </div>
+
+              <div className="flex-1">
+                <label className="block text-xs text-muted-foreground mb-1">
+                  Max. Preis
+                </label>
+                <input
+                  type="number"
+                  min={0}
+                  max={200}
+                  value={maxPriceInput}
+                  onChange={(e) => setMaxPriceInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      applyPriceFilter()
+                    }
+                  }}
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-[#D4A574]"
+                />
+              </div>
+            </div>
+
+            <Button
+              type="button"
+              onClick={applyPriceFilter}
+              className="w-full rounded-full bg-[#F5E6D3] text-foreground hover:bg-[#E8D5C0]"
+            >
+              Preis anwenden
+            </Button>
           </div>
-        </div>
-      </FilterSection>
+        </FilterSection>
     </>
   )
 
@@ -481,7 +538,7 @@ export default function Shop() {
               </button>
             </div>
 
-            <FilterContent />
+            {renderFilterContent()}
           </div>
         </div>
       )}
@@ -489,7 +546,7 @@ export default function Shop() {
       <div className="flex gap-8">
         <aside className="hidden lg:block w-64 flex-shrink-0">
           <div className="sticky top-24 border border-border rounded-xl p-6">
-            <FilterContent />
+          {renderFilterContent()}
           </div>
         </aside>
 
