@@ -545,8 +545,8 @@ export default function Shop() {
 
       <div className="flex gap-8">
         <aside className="hidden lg:block w-64 flex-shrink-0">
-          <div className="sticky top-24 border border-border rounded-xl p-6">
-          {renderFilterContent()}
+          <div className="sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto overscroll-contain border border-border rounded-xl p-6">
+            {renderFilterContent()}
           </div>
         </aside>
 
