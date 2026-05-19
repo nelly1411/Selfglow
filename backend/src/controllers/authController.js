@@ -1,4 +1,6 @@
+
 // controllers/authController.js
+const { sendEmail } = require("../services/mail.service")
 const bcrypt = require("bcrypt");
 const jwt    = require("jsonwebtoken");
 const prisma = require("../config/prisma");
@@ -112,7 +114,15 @@ async function register(req, res) {
         name: trimmedName || null,
       },
     });
-
+const verifyToken = jwt.sign(
+  { userId: user.id },
+  process.env.JWT_SECRET,
+  { expiresIn: "1d" }
+)
+await sendEmail({
+  to: user.email,
+  token: verifyToken
+})
     return res.status(201).json({
       message: "User created successfully",
       user: toAuthUser(user),
@@ -238,9 +248,22 @@ async function updateAddress(req, res) {
   }
 }
 
+async function confirmEmail(req, res) {
+  const { token } = req.params
+
+  const decoded = jwt.verify(token, process.env.JWT_SECRET)
+
+  await prisma.user.update({
+    where: { id: decoded.userId },
+    data: { emailVerified: true }
+  })
+
+  res.redirect("http://localhost:5173/login")
+}
 module.exports = {
   register,
   login,
   getAddress,
   updateAddress,
+  confirmEmail
 };
