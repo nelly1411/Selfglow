@@ -182,7 +182,7 @@ export default function Login() {
         return
       }
 
-      login(data.token, data.user, rememberMe)
+      login(data.token, { ...data.user, token: data.token }, rememberMe)
       navigate(
         `${locationState?.from?.pathname || '/'}${locationState?.from?.search || ''}${
           locationState?.from?.hash || ''

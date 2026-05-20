@@ -2,8 +2,21 @@ import { useState, useEffect } from 'react'
 import { useCart } from '@/context/CartContext'
 import { useAuth } from '@/context/AuthContext'
 import { useNavigate, Link } from 'react-router-dom'
-import { ArrowLeft } from 'lucide-react'
-import { apiUrl } from '@/lib/api'
+import { ArrowLeft, Tag, CheckCircle, Loader2 } from 'lucide-react'
+
+const API = 'http://localhost:5050'
+
+// ─── Validators ────────────────────────────────────────────────────────────────
+const validators = {
+  firstName: { regex: /^[a-zA-ZäöüÄÖÜßàáâãèéêìíîòóôùúû\s'\-]{2,50}$/, msg: 'Min. 2 Buchstaben, keine Zahlen' },
+  lastName:  { regex: /^[a-zA-ZäöüÄÖÜßàáâãèéêìíîòóôùúû\s'\-]{2,50}$/, msg: 'Min. 2 Buchstaben, keine Zahlen' },
+  email:     { regex: /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/,                  msg: 'Ungültige E-Mail' },
+  phone:     { regex: /^\+[1-9][0-9]{1,3}\s?[0-9\s\-]{6,15}$/,         msg: 'Bitte mit Vorwahl (z.B. +49 151 12345678)' },
+  address:   { regex: /^[a-zA-ZäöüÄÖÜß\s\.\-]+ \d+[a-zA-Z]?$/,        msg: 'Format: Straße + Hausnummer (z.B. Musterstraße 12)' },
+  postal:    { regex: /^[0-9]{4,5}$/,                                    msg: '4–5-stellige Postleitzahl' },
+  city:      { regex: /^[a-zA-ZäöüÄÖÜßàáâ\s\-\.]{2,85}$/,              msg: 'Nur Buchstaben erlaubt' },
+  country:   { regex: /^[a-zA-ZäöüÄÖÜßàáâ\s\-\.]{2,85}$/,              msg: 'Nur Buchstaben erlaubt' },
+}
 
 const BASE_FORM = {
   firstName: '', lastName: '', email: '', phone: '',
@@ -43,11 +56,9 @@ const PAYMENT_METHODS = [
 type PaymentId = 'klarna' | 'paypal'
 
 export default function Checkout() {
-const [discount, setDiscount] = useState('')
-const [discountValue, setDiscountValue] = useState(0)
-  const { items, totalPrice, clearCart } = useCart()
-  const { user, token } = useAuth()
-  const navigate = useNavigate()
+const { user, updateUser } = useAuth()
+const token = user?.token
+  const navigate             = useNavigate()
   const { items, totalPrice, clearCart } = useCart()
 
   const [guestMode, setGuestMode]             = useState(false)
@@ -149,13 +160,18 @@ const [discountValue, setDiscountValue] = useState(0)
     setErrors(prev => ({ ...prev, [name]: validateField(name, value) }))
   }
 
-  const res = await fetch(apiUrl('/api/checkout'), {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: JSON.stringify(orderData),
+  const inputProps = (name: string) => ({
+    name,
+    value: form[name as keyof typeof form] || '',
+    onChange: (e: React.ChangeEvent<HTMLInputElement>) => handleChange(name, e.target.value),
+    onBlur: () => setTouched(prev => ({ ...prev, [name]: true })),
+    className: `w-full px-3 py-2.5 rounded-lg border text-sm transition-colors outline-none ${
+      touched[name] && errors[name]
+        ? 'border-red-400 bg-red-50 focus:border-red-500'
+        : touched[name] && !errors[name]
+        ? 'border-green-400 bg-green-50 focus:border-green-500'
+        : 'border-gray-200 bg-white focus:border-[#D4A574]'
+    }`,
   })
 
   const ErrorMsg = ({ field }: { field: string }) =>
@@ -163,11 +179,20 @@ const [discountValue, setDiscountValue] = useState(0)
       ? <p className="text-red-500 text-xs mt-1">{errors[field]}</p>
       : null
 
-  if (res.ok) {
-    setSuccess('Deine Bestellung wurde erfolgreich abgeschlossen!')
-    clearCart()
-  } else {
-    setSuccess(data.message || 'Fehler beim Checkout')
+  // ─── Discount ─────────────────────────────────────────────────────────
+  const VALID_CODES: Record<string, number> = { SAVE10: 0.10, WELCOME5: 0.05 }
+
+  const applyDiscount = () => {
+    setDiscountApplied(false)
+    const code = discount.trim().toUpperCase()
+    if (VALID_CODES[code]) {
+      setDiscountValue(totalPrice * VALID_CODES[code])
+      setDiscountError('')
+      setDiscountApplied(true)
+    } else {
+      setDiscountValue(0)
+      setDiscountError('Ungültiger Rabattcode')
+    }
   }
 
   const finalTotal = totalPrice - discountValue
@@ -192,8 +217,17 @@ const [discountValue, setDiscountValue] = useState(0)
     }
 
     try {
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-      if (user?.token) headers['Authorization'] = `Bearer ${user.token}`
+  
+const headers: Record<string, string> = {
+  'Content-Type': 'application/json',
+}
+
+if (token) {
+  headers['Authorization'] = `Bearer ${token}`
+}
+
+console.log("TOKEN:", token)
+console.log("HEADERS:", headers)
 
       const res  = await fetch(`${API}/api/checkout`, { method: 'POST', headers, body: JSON.stringify(orderData) })
       const data = await res.json()
@@ -463,7 +497,6 @@ const formatPrice = (value: number) =>
 
 </div>
 
-
 </section>
         </div>
 
@@ -553,5 +586,4 @@ const formatPrice = (value: number) =>
       </div>
     </div>
   )
-
 }

@@ -1,6 +1,5 @@
 
 // controllers/authController.js
-const { sendEmail } = require("../services/mail.service")
 const bcrypt = require("bcrypt");
 const jwt    = require("jsonwebtoken");
 const prisma = require("../config/prisma");
@@ -108,21 +107,13 @@ async function register(req, res) {
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const user = await prisma.user.create({
-      data: {
-        email: normalizedEmail,
-        passwordHash: hashedPassword,
-        name: trimmedName || null,
-      },
-    });
-const verifyToken = jwt.sign(
-  { userId: user.id },
-  process.env.JWT_SECRET,
-  { expiresIn: "1d" }
-)
-await sendEmail({
-  to: user.email,
-  token: verifyToken
-})
+  data: {
+    email: normalizedEmail,
+    password: hashedPassword,  
+    name: trimmedName || null,
+  },
+});
+
     return res.status(201).json({
       message: "User created successfully",
       user: toAuthUser(user),
@@ -166,7 +157,7 @@ async function login(req, res) {
       return res.status(401).json({ message: "Invalid email or password" });
     }
 
-    const passwordIsValid = await bcrypt.compare(password, user.passwordHash);
+const passwordIsValid = await bcrypt.compare(password, user.password)
 
     if (!passwordIsValid) {
       return res.status(401).json({ message: "Invalid email or password" });

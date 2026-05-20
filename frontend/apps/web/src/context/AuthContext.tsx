@@ -1,32 +1,29 @@
 import { createContext, useCallback, useContext, useState, type ReactNode } from 'react'
 
-
 export type User = {
-  id:    number
-  email: string
-  name?: string | null
-  token?: string
-
+  id:           number
+  email:        string
+  name?:        string | null
+  token?:       string
   savedAddress?: string | null
   savedPostal?:  string | null
   savedCity?:    string | null
   savedCountry?: string | null
   savedPhone?:   string | null
 }
-// ─────────────────────────────────────────────────────────────────────────────
 
 type AuthContextType = {
-  token: string | null
-  user: User | null
+  token:      string | null
+  user:       User | null
   isLoggedIn: boolean
-  login: (token: string, user: User, remember?: boolean) => void
-  logout: () => void
+  login:      (token: string, user: User, remember?: boolean) => void
+  logout:     () => void
   updateUser: (user: User) => void
 }
 
 type AuthState = {
   token: string | null
-  user: User | null
+  user:  User | null
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -56,11 +53,9 @@ function clearStoredAuth() {
 
 function getStoredAuth(): AuthState {
   const storedToken = localStorage.getItem('token') || sessionStorage.getItem('token')
-  const storedUser = localStorage.getItem('user') || sessionStorage.getItem('user')
+  const storedUser  = localStorage.getItem('user')  || sessionStorage.getItem('user')
 
-  if (!storedToken || !storedUser) {
-    return { token: null, user: null }
-  }
+  if (!storedToken || !storedUser) return { token: null, user: null }
 
   try {
     if (isTokenExpired(storedToken)) {
@@ -68,10 +63,20 @@ function getStoredAuth(): AuthState {
       return { token: null, user: null }
     }
 
-    return {
-      token: storedToken,
-      user: JSON.parse(storedUser),
+    const parsed: User = JSON.parse(storedUser)
+
+    // ── FIX: immer token ins user-Objekt setzen ──────────────────────────
+    // Damit user.token überall verfügbar ist (Checkout, etc.)
+    // Auch wenn alter user ohne token-Feld gespeichert war → sofort gefixt
+    if (!parsed.token) {
+      parsed.token = storedToken
+      // Zurückschreiben damit nächster Reload auch funktioniert
+      const storage = localStorage.getItem('token') ? localStorage : sessionStorage
+      storage.setItem('user', JSON.stringify(parsed))
     }
+    // ────────────────────────────────────────────────────────────────────
+
+    return { token: storedToken, user: parsed }
   } catch {
     clearStoredAuth()
     return { token: null, user: null }
@@ -83,12 +88,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback((token: string, user: User, remember = true) => {
     clearStoredAuth()
-
+    // Sicherstellen dass token auch im user-Objekt ist
+    const userWithToken: User = { ...user, token }
     const storage = remember ? localStorage : sessionStorage
     storage.setItem('token', token)
-    storage.setItem('user', JSON.stringify(user))
-
-    setAuth({ token, user })
+    storage.setItem('user', JSON.stringify(userWithToken))
+    setAuth({ token, user: userWithToken })
   }, [])
 
   const logout = useCallback(() => {
@@ -96,11 +101,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setAuth({ token: null, user: null })
   }, [])
 
+  const updateUser = useCallback((updatedUser: User) => {
+    setAuth(prev => {
+      // token aus prev erhalten falls updatedUser kein token hat
+      const userWithToken: User = {
+        ...updatedUser,
+        token: updatedUser.token || prev.user?.token,
+      }
+      const storage = localStorage.getItem('token') ? localStorage : sessionStorage
+      storage.setItem('user', JSON.stringify(userWithToken))
+      return { ...prev, user: userWithToken }
+    })
+  }, [])
+
   return (
     <AuthContext.Provider
       value={{
-        token: auth.token,
-        user: auth.user,
+        token:      auth.token,
+        user:       auth.user,
         isLoggedIn: Boolean(auth.token),
         login,
         logout,
@@ -111,6 +129,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     </AuthContext.Provider>
   )
 }
+
 export function useAuth() {
   const context = useContext(AuthContext)
   if (!context) throw new Error('useAuth must be used inside AuthProvider')

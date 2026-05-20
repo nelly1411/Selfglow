@@ -16,6 +16,7 @@ import { ReviewsProvider } from '@/context/ReviewsContext'
 import Checkout from './pages/Checkout'
 import Profile from './pages/Profile'
 import { useAuth } from './context/AuthContext'
+import ThankYou from './pages/ThankYou'
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
   const { isLoggedIn } = useAuth()
@@ -44,6 +45,7 @@ function App() {
               <Route path="wishlist" element={<Wishlist />} />
               <Route path="product/:id" element={<ProductDetail />} />
               <Route path="/checkout" element={<Checkout />} />
+              <Route path="/thank-you" element={<ThankYou />} />
               <Route
                 path="/profile"
                 element={
