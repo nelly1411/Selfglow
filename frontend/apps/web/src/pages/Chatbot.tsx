@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { Bot, MessageCircle, Plus, Send, Sparkles, User } from 'lucide-react'
+import { Bot, MessageCircle, Plus, Send, Sparkles, Trash2, User } from 'lucide-react'
 import { Button } from '@workspace/ui/components/button'
 import { apiUrl } from '@/lib/api'
 import { cn } from '@workspace/ui/lib/utils'
@@ -215,6 +215,37 @@ export default function Chatbot() {
     setError(null)
   }
 
+  function deleteConversation(conversationId: string) {
+    if (isLoading) return
+
+    setChatState((currentState) => {
+      const remainingConversations = currentState.conversations.filter(
+        (conversation) => conversation.id !== conversationId
+      )
+
+      if (remainingConversations.length === 0) {
+        const conversation = createConversation()
+
+        return {
+          conversations: [conversation],
+          activeConversationId: conversation.id,
+        }
+      }
+
+      const activeConversationId =
+        currentState.activeConversationId === conversationId
+          ? remainingConversations[0].id
+          : currentState.activeConversationId
+
+      return {
+        conversations: remainingConversations,
+        activeConversationId,
+      }
+    })
+    setInput('')
+    setError(null)
+  }
+
   // Send one customer message to the backend. The backend performs retrieval
   // over the Product table and optionally asks OpenAI to generate the answer.
   async function sendMessage(messageText: string) {
@@ -281,8 +312,8 @@ export default function Chatbot() {
 
   return (
     <div className="min-h-[calc(100vh-160px)] bg-[#FBFAF7]">
-      <div className="container mx-auto max-w-6xl px-4 py-5 lg:py-6">
-        <div className="mb-4 flex items-center gap-3">
+      <div className="container mx-auto max-w-6xl px-4 pb-5 lg:pb-6">
+        <div className="sticky top-0 z-20 mb-4 flex items-center gap-3 bg-[#FBFAF7] py-4 lg:py-5">
           <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#F5E6D3]">
             <Sparkles className="h-4 w-4 text-[#A97745]" />
           </div>
@@ -296,7 +327,7 @@ export default function Chatbot() {
         </div>
 
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-[240px_minmax(0,1fr)]">
-          <aside className="rounded-lg border border-border bg-background p-3">
+          <aside className="self-start rounded-lg border border-border bg-background p-3 lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:overflow-hidden">
             <Button
               type="button"
               onClick={startNewConversation}
@@ -309,35 +340,49 @@ export default function Chatbot() {
 
             <h2 className="mb-3 text-sm font-semibold text-foreground">Chatverlauf</h2>
 
-            <div className="space-y-2">
+            <div className="max-h-[420px] space-y-2 overflow-y-auto pr-1 lg:max-h-[calc(100vh-14rem)]">
               {chatState.conversations.map((conversation) => {
                 const isActive = conversation.id === chatState.activeConversationId
 
                 return (
-                  <button
+                  <div
                     key={conversation.id}
-                    type="button"
-                    onClick={() => selectConversation(conversation.id)}
-                    disabled={isLoading}
                     className={cn(
-                      'w-full rounded-lg border px-2.5 py-2 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-60',
+                      'group flex w-full items-start gap-1 rounded-lg border p-1.5 transition-colors',
                       isActive
                         ? 'border-[#D4A574] bg-[#FBFAF7]'
                         : 'border-border hover:border-[#D4A574] hover:bg-[#FBFAF7]'
                     )}
                   >
-                    <div className="flex items-start gap-2">
-                      <MessageCircle className="mt-0.5 h-4 w-4 shrink-0 text-[#A97745]" />
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-medium text-foreground">
-                          {conversation.title}
-                        </p>
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          {formatConversationDate(conversation.updatedAt)}
-                        </p>
+                    <button
+                      type="button"
+                      onClick={() => selectConversation(conversation.id)}
+                      disabled={isLoading}
+                      className="min-w-0 flex-1 rounded-md px-1 py-1 text-left disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <div className="flex items-start gap-2">
+                        <MessageCircle className="mt-0.5 h-4 w-4 shrink-0 text-[#A97745]" />
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium text-foreground">
+                            {conversation.title}
+                          </p>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {formatConversationDate(conversation.updatedAt)}
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                  </button>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => deleteConversation(conversation.id)}
+                      disabled={isLoading}
+                      className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground opacity-70 transition-colors hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40 lg:opacity-0 lg:group-hover:opacity-100"
+                      aria-label="Chat löschen"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
                 )
               })}
             </div>
