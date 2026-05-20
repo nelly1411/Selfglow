@@ -4,12 +4,8 @@ import {
   CheckCircle2,
   Eye,
   EyeOff,
-  Heart,
   Loader2,
-  LockKeyhole,
   LogIn,
-  ShoppingBag,
-  Sparkles,
   UserPlus,
   X,
 } from 'lucide-react'
@@ -215,7 +211,7 @@ export default function Login() {
     <div className="px-4 py-10 sm:px-6 lg:px-8">
       <form
         onSubmit={handleSubmit}
-        className="relative mx-auto grid w-full max-w-5xl overflow-hidden rounded-lg border border-border bg-background shadow-sm lg:grid-cols-[1.05fr_0.95fr]"
+        className="relative mx-auto w-full max-w-md overflow-hidden rounded-lg border border-border bg-background shadow-sm"
         noValidate
       >
         <button
@@ -226,40 +222,6 @@ export default function Login() {
         >
           <X className="h-5 w-5 text-muted-foreground" />
         </button>
-
-        <section className="flex flex-col justify-between bg-[#F8F1EA] px-6 py-8 sm:px-8 lg:px-10">
-          <div className="space-y-6 pr-10 lg:pr-0">
-            <div className="inline-flex items-center gap-2 rounded-full border border-[#E5C7A4] bg-white px-3 py-1 text-sm font-medium text-[#7A5730]">
-              <LockKeyhole className="h-4 w-4" />
-              Secure customer account
-            </div>
-
-            <div className="space-y-3">
-              <h1 className="max-w-md text-3xl font-bold leading-tight text-foreground sm:text-4xl">
-                Your SelfGlow account keeps skincare shopping simple.
-              </h1>
-              <p className="max-w-md text-base leading-7 text-muted-foreground">
-                Sign in once to save favorites, speed through checkout, and keep your beauty routine close.
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-8 grid gap-3 text-sm text-foreground">
-            {[
-              { icon: Heart, text: 'Keep your wishlist ready across devices' },
-              { icon: ShoppingBag, text: 'Return to checkout with fewer steps' },
-              { icon: Sparkles, text: 'Keep your skincare profile in one place' },
-            ].map(({ icon: Icon, text }) => (
-              <div
-                key={text}
-                className="flex items-center gap-3 rounded-md border border-[#E9D5BE] bg-white/70 px-4 py-3"
-              >
-                <Icon className="h-5 w-5 shrink-0 text-[#A9733F]" />
-                <span>{text}</span>
-              </div>
-            ))}
-          </div>
-        </section>
 
         <section className="flex flex-col gap-5 px-6 py-8 sm:px-8 lg:px-10">
           <div className="space-y-2 pr-10">
