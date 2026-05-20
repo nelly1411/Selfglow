@@ -10,6 +10,7 @@ const authRoutes = require("./routes/auth");
 const checkoutRoutes = require("./routes/checkout.routes");
 const chatRoutes = require("./routes/chat.routes");
 const wishlistRoutes = require("./routes/wishlist.routes");
+const cartRoutes = require("./routes/cart.routes");
 const app = express();
 
 app.use(cors());
@@ -18,6 +19,7 @@ app.use(express.json());
 app.use("/api/auth", authRoutes);
 app.use("/api/checkout", checkoutRoutes);
 app.use("/api/chat", chatRoutes);
+
 
 app.get("/", (req, res) => {
   res.send("SelfGlow backend is running");
@@ -30,6 +32,7 @@ app.get("/api/test", (req, res) => {
 app.use("/api/products", productRoutes);
 
 app.use("/api/wishlist", wishlistRoutes);
+app.use("/api/cart", cartRoutes);
 
 const PORT = process.env.PORT || 5050;
 
