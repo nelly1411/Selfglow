@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
 import {
   Star,
   ShoppingCart,
@@ -50,6 +50,7 @@ const mockReviews = [
 
 export default function ProductDetail() {
   const { id } = useParams()
+  const [searchParams] = useSearchParams()
   const { addToCart } = useCart()
   const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist()
   const { isLoggedIn } = useAuth()
@@ -156,6 +157,7 @@ export default function ProductDetail() {
 
   const rating = product.rating ?? 0
   const inWishlist = isInWishlist(product.id)
+  const fromChatbot = searchParams.get('from') === 'chatbot'
 
   const detailSections = [
     {
@@ -179,13 +181,25 @@ export default function ProductDetail() {
 
   return (
     <div className="container mx-auto px-4 py-10">
-      <Link
-        to="/shop"
-        className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-8"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Zurück zum Shop
-      </Link>
+      <div className="mb-8 flex flex-wrap items-center gap-4">
+        <Link
+          to="/shop"
+          className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Zurück zum Shop
+        </Link>
+
+        {fromChatbot && (
+          <Link
+            to="/chatbot"
+            className="inline-flex items-center gap-2 rounded-full border border-[#E8D5C0] px-4 py-2 text-sm text-[#A97745] transition-colors hover:bg-[#FDF7F0]"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Zurück zur KI-Beratung
+          </Link>
+        )}
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
         <div className="rounded-2xl overflow-hidden flex items-start justify-center">

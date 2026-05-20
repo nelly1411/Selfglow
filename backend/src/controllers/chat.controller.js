@@ -2,7 +2,7 @@ const chatService = require("../services/chat.service");
 
 async function createChatResponse(req, res) {
   try {
-    const { message } = req.body;
+    const { message, history, contextProductIds } = req.body;
 
     // The chatbot only needs one required input: the customer's free-text question.
     // Keeping validation here protects the service from empty prompts and gives the
@@ -13,7 +13,29 @@ async function createChatResponse(req, res) {
 
     // The service owns the full keyword RAG flow: keyword extraction, product
     // retrieval, optional model generation, and fallback answer creation.
-    const response = await chatService.createChatResponse(message);
+    const safeHistory = Array.isArray(history)
+      ? history
+          .filter(
+            (item) =>
+              item &&
+              (item.role === "user" || item.role === "assistant") &&
+              typeof item.content === "string"
+          )
+          .slice(-4)
+      : [];
+
+    const safeContextProductIds = Array.isArray(contextProductIds)
+      ? contextProductIds
+          .map((productId) => Number(productId))
+          .filter((productId) => Number.isInteger(productId))
+          .slice(-3)
+      : [];
+
+    const response = await chatService.createChatResponse(
+      message,
+      safeHistory,
+      safeContextProductIds
+    );
     res.status(200).json(response);
   } catch (error) {
     console.error("Failed to create chat response:", error);
@@ -21,6 +43,31 @@ async function createChatResponse(req, res) {
   }
 }
 
+async function explainProducts(req, res) {
+  try {
+    const { productIds, message } = req.body;
+
+    if (
+      !Array.isArray(productIds) ||
+      productIds.length === 0 ||
+      productIds.some((productId) => !Number.isInteger(Number(productId)))
+    ) {
+      return res.status(400).json({ message: "Product IDs are required" });
+    }
+
+    const response = await chatService.createProductExplanation(
+      productIds.map((productId) => Number(productId)),
+      typeof message === "string" ? message : ""
+    );
+
+    res.status(200).json(response);
+  } catch (error) {
+    console.error("Failed to explain products:", error);
+    res.status(500).json({ message: "Failed to explain products" });
+  }
+}
+
 module.exports = {
   createChatResponse,
+  explainProducts,
 };
