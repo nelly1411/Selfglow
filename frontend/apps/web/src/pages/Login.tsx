@@ -33,23 +33,23 @@ const userNamePattern = /^[A-Za-z0-9 _-]+$/
 
 function getPasswordValidationMessage(password: string) {
   if (password.length < 8) {
-    return 'Password must be at least 8 characters.'
+    return 'Das Passwort muss mindestens 8 Zeichen lang sein.'
   }
 
   if (!/[A-Z]/.test(password)) {
-    return 'Password must contain at least one uppercase letter.'
+    return 'Das Passwort muss mindestens einen Großbuchstaben enthalten.'
   }
 
   if (!/[a-z]/.test(password)) {
-    return 'Password must contain at least one lowercase letter.'
+    return 'Das Passwort muss mindestens einen Kleinbuchstaben enthalten.'
   }
 
   if (!/[0-9]/.test(password)) {
-    return 'Password must contain at least one number.'
+    return 'Das Passwort muss mindestens eine Zahl enthalten.'
   }
 
   if (!specialCharacterPattern.test(password)) {
-    return 'Password must contain at least one special character.'
+    return 'Das Passwort muss mindestens ein Sonderzeichen enthalten.'
   }
 
   return ''
@@ -61,11 +61,11 @@ function getUserNameValidationMessage(userName: string) {
   }
 
   if (userName.length < 2 || userName.length > 30) {
-    return 'User name must be between 2 and 30 characters.'
+    return 'Der Benutzername muss zwischen 2 und 30 Zeichen lang sein.'
   }
 
   if (!userNamePattern.test(userName)) {
-    return 'User name can only contain letters, numbers, spaces, underscores, and hyphens.'
+    return 'Der Benutzername darf nur Buchstaben, Zahlen, Leerzeichen, Unterstriche und Bindestriche enthalten.'
   }
 
   return ''
@@ -100,13 +100,13 @@ export default function Login() {
     const normalizedName = name.trim()
 
     if (!normalizedEmail) {
-      errors.email = 'Enter your email address.'
+      errors.email = 'Gib deine E-Mail-Adresse ein.'
     } else if (!emailPattern.test(normalizedEmail)) {
-      errors.email = 'Enter a valid email address.'
+      errors.email = 'Gib eine gültige E-Mail-Adresse ein.'
     }
 
     if (!password) {
-      errors.password = 'Enter your password.'
+      errors.password = 'Gib dein Passwort ein.'
     } else if (mode === 'register') {
       const passwordValidationMessage = getPasswordValidationMessage(password)
 
@@ -123,9 +123,9 @@ export default function Login() {
       }
 
       if (!confirmPassword) {
-        errors.confirmPassword = 'Confirm your password.'
+        errors.confirmPassword = 'Bestätige dein Passwort.'
       } else if (confirmPassword !== password) {
-        errors.confirmPassword = 'Passwords do not match.'
+        errors.confirmPassword = 'Die Passwörter stimmen nicht überein.'
       }
     }
 
@@ -161,12 +161,12 @@ export default function Login() {
       const data: AuthResponse = await response.json()
 
       if (!response.ok) {
-        setError(data.message || 'Something went wrong. Please try again.')
+        setError(data.message || 'Etwas ist schiefgelaufen. Bitte versuche es erneut.')
         return
       }
 
       if (mode === 'register') {
-        setSuccess('Account created. You can log in now.')
+        setSuccess('Konto erstellt. Du kannst dich jetzt anmelden.')
         setMode('login')
         setPassword('')
         setConfirmPassword('')
@@ -174,7 +174,7 @@ export default function Login() {
       }
 
       if (!data.token || !data.user) {
-        setError('Login response is missing user data.')
+        setError('In der Login-Antwort fehlen Benutzerdaten.')
         return
       }
 
@@ -186,7 +186,7 @@ export default function Login() {
         { replace: true }
       )
     } catch {
-      setError('Could not reach the backend. Please check that it is running on port 5050.')
+      setError('Das Backend ist nicht erreichbar. Bitte prüfe, ob es auf Port 5050 läuft.')
     } finally {
       setIsSubmitting(false)
     }
@@ -202,10 +202,10 @@ export default function Login() {
   }
 
   const isLoginMode = mode === 'login'
-  const title = isLoginMode ? 'Welcome back' : 'Create your account'
+  const title = isLoginMode ? 'Willkommen zurück' : 'Konto erstellen'
   const subtitle = isLoginMode
-    ? 'Sign in to continue shopping with SelfGlow.'
-    : 'Save favorites, checkout faster, and keep your skincare profile in one place.'
+    ? 'Melde dich an, um weiter bei SelfGlow einzukaufen.'
+    : 'Speichere Favoriten, bezahle schneller und verwalte dein Hautpflegeprofil an einem Ort.'
 
   return (
     <div className="px-4 py-10 sm:px-6 lg:px-8">
@@ -218,7 +218,7 @@ export default function Login() {
           type="button"
           onClick={handleClose}
           className="absolute right-4 top-4 z-10 rounded-full p-2 transition-colors hover:bg-accent"
-          aria-label="Close"
+          aria-label="Schließen"
         >
           <X className="h-5 w-5 text-muted-foreground" />
         </button>
@@ -232,13 +232,13 @@ export default function Login() {
           {mode === 'register' && (
             <label className="flex flex-col gap-2 text-sm font-medium text-foreground">
               <span>
-                User name <span className="font-normal text-muted-foreground">(optional)</span>
+                Benutzername <span className="font-normal text-muted-foreground">(optional)</span>
               </span>
               <input
                 className="rounded-md border border-input bg-background px-3 py-2.5 text-base font-normal outline-none transition focus:ring-2 focus:ring-[#D4A574]"
                 type="text"
                 autoComplete="name"
-                placeholder="Your user name"
+                placeholder="Dein Benutzername"
                 value={name}
                 onChange={(event) => setName(event.target.value)}
                 aria-invalid={Boolean(fieldErrors.name)}
@@ -248,7 +248,7 @@ export default function Login() {
           )}
 
           <label className="flex flex-col gap-2 text-sm font-medium text-foreground">
-            Email
+            E-Mail
             <input
               className="rounded-md border border-input bg-background px-3 py-2.5 text-base font-normal outline-none transition focus:ring-2 focus:ring-[#D4A574]"
               type="email"
@@ -262,13 +262,13 @@ export default function Login() {
           </label>
 
           <label className="flex flex-col gap-2 text-sm font-medium text-foreground">
-            Password
+            Passwort
             <div className="relative">
               <input
                 className="w-full rounded-md border border-input bg-background px-3 py-2.5 pr-11 text-base font-normal outline-none transition focus:ring-2 focus:ring-[#D4A574]"
                 type={showPassword ? 'text' : 'password'}
                 autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-                placeholder="Password"
+                placeholder="Passwort"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
                 aria-invalid={Boolean(fieldErrors.password)}
@@ -277,7 +277,7 @@ export default function Login() {
                 type="button"
                 className="absolute right-2 top-1/2 rounded-full p-2 text-muted-foreground transition hover:bg-accent hover:text-foreground"
                 onClick={() => setShowPassword((current) => !current)}
-                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                aria-label={showPassword ? 'Passwort ausblenden' : 'Passwort anzeigen'}
               >
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
@@ -287,27 +287,28 @@ export default function Login() {
             )}
             {mode === 'register' && (
               <span className="text-xs font-normal leading-5 text-muted-foreground">
-                Password must be at least 8 characters,
+                Das Passwort muss mindestens 8 Zeichen lang sein,
                 <br />
-                include an uppercase letter,
+                einen Großbuchstaben,
                 <br />
-                a lowercase letter,
+                einen Kleinbuchstaben,
                 <br />
-                a number,
-                <br />a special character such as !, @, #, $, or %.
+                eine Zahl
+                <br />
+                und ein Sonderzeichen wie !, @, #, $ oder % enthalten.
               </span>
             )}
           </label>
 
           {mode === 'register' && (
             <label className="flex flex-col gap-2 text-sm font-medium text-foreground">
-              Confirm password
+              Passwort bestätigen
               <div className="relative">
                 <input
                   className="w-full rounded-md border border-input bg-background px-3 py-2.5 pr-11 text-base font-normal outline-none transition focus:ring-2 focus:ring-[#D4A574]"
                   type={showConfirmPassword ? 'text' : 'password'}
                   autoComplete="new-password"
-                  placeholder="Confirm password"
+                  placeholder="Passwort bestätigen"
                   value={confirmPassword}
                   onChange={(event) => setConfirmPassword(event.target.value)}
                   aria-invalid={Boolean(fieldErrors.confirmPassword)}
@@ -316,7 +317,7 @@ export default function Login() {
                   type="button"
                   className="absolute right-2 top-1/2 rounded-full p-2 text-muted-foreground transition hover:bg-accent hover:text-foreground"
                   onClick={() => setShowConfirmPassword((current) => !current)}
-                  aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
+                  aria-label={showConfirmPassword ? 'Passwortbestätigung ausblenden' : 'Passwortbestätigung anzeigen'}
                 >
                   {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
@@ -335,7 +336,7 @@ export default function Login() {
                 checked={rememberMe}
                 onChange={(event) => setRememberMe(event.target.checked)}
               />
-              Remember me on this device
+              Auf diesem Gerät angemeldet bleiben
             </label>
           )}
 
@@ -360,7 +361,7 @@ export default function Login() {
             ) : (
               <UserPlus className="h-4 w-4" />
             )}
-            {mode === 'login' ? 'Sign in' : 'Create account'}
+            {mode === 'login' ? 'Anmelden' : 'Konto erstellen'}
           </button>
 
           <button
@@ -369,8 +370,8 @@ export default function Login() {
             onClick={switchMode}
           >
             {mode === 'login'
-              ? 'New to SelfGlow? Create an account'
-              : 'Already have an account? Sign in'}
+              ? 'Neu bei SelfGlow? Konto erstellen'
+              : 'Du hast bereits ein Konto? Anmelden'}
           </button>
         </section>
       </form>

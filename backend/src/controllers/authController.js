@@ -10,7 +10,7 @@ const USER_NAME_PATTERN = /^[A-Za-z0-9 _-]+$/;
 function getJwtSecret(res) {
   if (!process.env.JWT_SECRET) {
     console.error("JWT_SECRET is not configured");
-    res.status(500).json({ message: "Server configuration error" });
+    res.status(500).json({ message: "Server-Konfigurationsfehler" });
     return null;
   }
   return process.env.JWT_SECRET;
@@ -39,23 +39,23 @@ function isValidEmail(email) {
 
 function getPasswordValidationMessage(password) {
   if (typeof password !== "string" || password.length < 8) {
-    return "Password must be at least 8 characters";
+    return "Das Passwort muss mindestens 8 Zeichen lang sein";
   }
 
   if (!/[A-Z]/.test(password)) {
-    return "Password must contain at least one uppercase letter";
+    return "Das Passwort muss mindestens einen Großbuchstaben enthalten";
   }
 
   if (!/[a-z]/.test(password)) {
-    return "Password must contain at least one lowercase letter";
+    return "Das Passwort muss mindestens einen Kleinbuchstaben enthalten";
   }
 
   if (!/[0-9]/.test(password)) {
-    return "Password must contain at least one number";
+    return "Das Passwort muss mindestens eine Zahl enthalten";
   }
 
   if (!SPECIAL_CHARACTER_PATTERN.test(password)) {
-    return "Password must contain at least one special character";
+    return "Das Passwort muss mindestens ein Sonderzeichen enthalten";
   }
 
   return null;
@@ -67,11 +67,11 @@ function getUserNameValidationMessage(name) {
   }
 
   if (name.length < 2 || name.length > 30) {
-    return "User name must be between 2 and 30 characters";
+    return "Der Benutzername muss zwischen 2 und 30 Zeichen lang sein";
   }
 
   if (!USER_NAME_PATTERN.test(name)) {
-    return "User name can only contain letters, numbers, spaces, underscores, and hyphens";
+    return "Der Benutzername darf nur Buchstaben, Zahlen, Leerzeichen, Unterstriche und Bindestriche enthalten";
   }
 
   return null;
@@ -86,7 +86,7 @@ async function register(req, res) {
     const userNameValidationMessage = getUserNameValidationMessage(trimmedName);
 
     if (!normalizedEmail || !isValidEmail(normalizedEmail)) {
-      return res.status(400).json({ message: "Enter a valid email address" });
+      return res.status(400).json({ message: "Gib eine gültige E-Mail-Adresse ein" });
     }
 
     if (passwordValidationMessage) {
@@ -101,7 +101,7 @@ async function register(req, res) {
       where: { email: normalizedEmail },
     });
     if (existingUser) {
-      return res.status(409).json({ message: "User already exists" });
+      return res.status(409).json({ message: "Dieser Benutzer existiert bereits" });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -114,12 +114,12 @@ async function register(req, res) {
     });
 
     return res.status(201).json({
-      message: "User created successfully",
+      message: "Benutzer erfolgreich erstellt",
       user: toAuthUser(user),
     });
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ message: "Server error" });
+    return res.status(500).json({ message: "Serverfehler" });
   }
 }
 
@@ -131,7 +131,7 @@ async function login(req, res) {
     if (!normalizedEmail || !isValidEmail(normalizedEmail) || !password) {
       return res
         .status(400)
-        .json({ message: "Email and password are required" });
+        .json({ message: "E-Mail und Passwort sind erforderlich" });
     }
 
     const user = await prisma.user.findUnique({
@@ -150,13 +150,13 @@ async function login(req, res) {
     });
 
     if (!user) {
-      return res.status(401).json({ message: "Invalid email or password" });
+      return res.status(401).json({ message: "Ungültige E-Mail-Adresse oder ungültiges Passwort" });
     }
 
     const passwordIsValid = await bcrypt.compare(password, user.passwordHash);
 
     if (!passwordIsValid) {
-      return res.status(401).json({ message: "Invalid email or password" });
+      return res.status(401).json({ message: "Ungültige E-Mail-Adresse oder ungültiges Passwort" });
     }
 
     const jwtSecret = getJwtSecret(res);
@@ -171,13 +171,13 @@ async function login(req, res) {
     );
 
     return res.json({
-      message: "Login successful",
+      message: "Anmeldung erfolgreich",
       token,
       user: toAuthUser(user),
     });
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ message: "Server error" });
+    return res.status(500).json({ message: "Serverfehler" });
   }
 }
 
@@ -195,13 +195,13 @@ async function getAddress(req, res) {
     });
 
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      return res.status(404).json({ message: "Benutzer nicht gefunden" });
     }
 
     return res.json(user);
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ message: "Server error" });
+    return res.status(500).json({ message: "Serverfehler" });
   }
 }
 
@@ -222,12 +222,12 @@ async function updateAddress(req, res) {
     });
 
     return res.json({
-      message: "Address updated",
+      message: "Adresse aktualisiert",
       user: toAuthUser(updatedUser),
     });
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ message: "Server error" });
+    return res.status(500).json({ message: "Serverfehler" });
   }
 }
 
@@ -248,7 +248,7 @@ async function confirmEmail(req, res) {
     return res.redirect("http://localhost:5173/login");
   } catch (error) {
     console.error(error);
-    return res.status(400).json({ message: "Invalid or expired confirmation link" });
+    return res.status(400).json({ message: "Ungültiger oder abgelaufener Bestätigungslink" });
   }
 }
 
