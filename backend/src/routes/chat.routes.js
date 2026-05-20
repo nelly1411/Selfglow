@@ -4,5 +4,6 @@ const chatController = require("../controllers/chat.controller");
 const router = express.Router();
 
 router.post("/", chatController.createChatResponse);
+router.post("/explain", chatController.explainProducts);
 
 module.exports = router;

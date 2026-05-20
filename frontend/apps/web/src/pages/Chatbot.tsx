@@ -27,6 +27,7 @@ type Message = {
   // Assistant messages can include retrieved products from the backend. The UI
   // renders these as clickable cards below the assistant answer.
   products?: ChatProduct[]
+  canExplainProducts?: boolean
 }
 
 type Conversation = {
@@ -139,18 +140,68 @@ function loadStoredChatState(): ChatState {
 
 function renderMessageContent(message: Message) {
   if (message.role !== 'assistant' || !message.content.includes(medicalDisclaimer)) {
-    return message.content
+    return renderStructuredText(message.content)
   }
 
   const mainContent = message.content.replace(medicalDisclaimer, '').trim()
 
   return (
     <>
-      {mainContent && <p>{mainContent}</p>}
+      {mainContent && renderStructuredText(mainContent)}
       <p className="mt-2 text-xs leading-snug text-muted-foreground">
         <span className="font-medium">Note:</span> {medicalDisclaimer}
       </p>
     </>
+  )
+}
+
+function renderInlineText(text: string) {
+  const match = text.match(/^\*\*(.+)\*\*$/)
+
+  if (match) {
+    return <span className="font-semibold">{match[1]}</span>
+  }
+
+  return text
+}
+
+function renderStructuredText(content: string) {
+  const lines = content
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+
+  if (lines.length <= 1) {
+    return content
+  }
+
+  return (
+    <div className="space-y-2">
+      {lines.map((line, index) => {
+        if (line === '---') {
+          return <hr key={`${line}-${index}`} className="border-border" />
+        }
+
+        if (line.startsWith('- ')) {
+          return (
+            <div key={`${line}-${index}`} className="flex gap-2">
+              <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[#D4A574]" />
+              <span>{renderInlineText(line.slice(2))}</span>
+            </div>
+          )
+        }
+
+        if (line.startsWith('**') && line.endsWith('**')) {
+          return (
+            <p key={`${line}-${index}`} className="pt-1 font-semibold">
+              {renderInlineText(line)}
+            </p>
+          )
+        }
+
+        return <p key={`${line}-${index}`}>{renderInlineText(line)}</p>
+      })}
+    </div>
   )
 }
 
@@ -160,6 +211,7 @@ export default function Chatbot() {
   const [chatState, setChatState] = useState<ChatState>(loadStoredChatState)
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [explainingMessageId, setExplainingMessageId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const activeConversation =
     chatState.conversations.find(
@@ -176,6 +228,29 @@ export default function Chatbot() {
       ...currentState,
       conversations: currentState.conversations.map((conversation) => {
         if (conversation.id !== currentState.activeConversationId) {
+          return conversation
+        }
+
+        const nextMessages = updater(conversation.messages)
+
+        return {
+          ...conversation,
+          title: getConversationTitle(nextMessages),
+          updatedAt: new Date().toISOString(),
+          messages: nextMessages,
+        }
+      }),
+    }))
+  }
+
+  function updateConversation(
+    conversationId: string,
+    updater: (messages: Message[]) => Message[]
+  ) {
+    setChatState((currentState) => ({
+      ...currentState,
+      conversations: currentState.conversations.map((conversation) => {
+        if (conversation.id !== conversationId) {
           return conversation
         }
 
@@ -259,6 +334,17 @@ export default function Chatbot() {
       role: 'user',
       content: trimmedMessage,
     }
+    const chatHistory = [...messages, userMessage].slice(-4).map((message) => ({
+      role: message.role,
+      content: message.content,
+    }))
+    const contextProductIds = Array.from(
+      new Set(
+        messages
+          .flatMap((message) => message.products || [])
+          .map((product) => product.id)
+      )
+    ).slice(-3)
 
     updateActiveConversation((currentMessages) => [...currentMessages, userMessage])
     setInput('')
@@ -273,14 +359,22 @@ export default function Chatbot() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ message: trimmedMessage }),
+        body: JSON.stringify({
+          message: trimmedMessage,
+          history: chatHistory,
+          contextProductIds,
+        }),
       })
 
       if (!response.ok) {
         throw new Error('Die KI-Beratung konnte gerade nicht antworten.')
       }
 
-      const data: { answer: string; products?: ChatProduct[] } = await response.json()
+      const data: {
+        answer: string
+        products?: ChatProduct[]
+        canExplainProducts?: boolean
+      } = await response.json()
 
       // Store the assistant answer together with the retrieved products. This is
       // why the user can read the explanation and jump directly to product pages.
@@ -291,6 +385,7 @@ export default function Chatbot() {
           role: 'assistant',
           content: data.answer,
           products: data.products || [],
+          canExplainProducts: data.canExplainProducts,
         },
       ])
     } catch (err) {
@@ -308,6 +403,53 @@ export default function Chatbot() {
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     sendMessage(input)
+  }
+
+  async function explainProduct(message: Message, product: ChatProduct) {
+    if (explainingMessageId || isLoading || !activeConversation) return
+
+    const conversationId = activeConversation.id
+    const explanationId = `${message.id}-${product.id}`
+    const lastUserMessage = messages
+      .slice(0, messages.findIndex((currentMessage) => currentMessage.id === message.id))
+      .reverse()
+      .find((currentMessage) => currentMessage.role === 'user')
+
+    setExplainingMessageId(explanationId)
+    setError(null)
+
+    try {
+      const response = await fetch(apiUrl('/api/chat/explain'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          productIds: [product.id],
+          message: lastUserMessage?.content || message.content,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Die AI-Erklärung konnte gerade nicht erstellt werden.')
+      }
+
+      const data: { answer: string } = await response.json()
+
+      updateConversation(conversationId, (currentMessages) => [
+        ...currentMessages,
+        {
+          id: crypto.randomUUID(),
+          role: 'assistant',
+          content: data.answer,
+        },
+      ])
+    } catch (err) {
+      console.error(err)
+      setError('Die AI-Erklärung ist gerade nicht erreichbar. Bitte versuche es gleich nochmal.')
+    } finally {
+      setExplainingMessageId(null)
+    }
   }
 
   return (
@@ -428,34 +570,55 @@ export default function Chatbot() {
                     {message.products && message.products.length > 0 && (
                       <div className="ml-9 grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-3">
                         {message.products.slice(0, 3).map((product) => (
-                          <Link
+                          <div
                             key={product.id}
-                            to={`/product/${product.id}?from=chatbot`}
-                            className="group overflow-hidden rounded-lg border border-border bg-background transition-shadow hover:shadow-md"
+                            className="overflow-hidden rounded-lg border border-border bg-background transition-shadow hover:shadow-md"
                           >
-                            <div className="flex gap-2 p-2">
-                              <img
-                                src={
-                                  product.imageUrl || 'https://placehold.co/120x120?text=No+Image'
-                                }
-                                alt={product.name}
-                                className="h-16 w-16 shrink-0 rounded-md bg-[#F5F5F5] object-cover"
-                              />
+                            <Link to={`/product/${product.id}?from=chatbot`} className="group block">
+                              <div className="flex gap-2 p-2">
+                                <img
+                                  src={
+                                    product.imageUrl ||
+                                    'https://placehold.co/120x120?text=No+Image'
+                                  }
+                                  alt={product.name}
+                                  className="h-16 w-16 shrink-0 rounded-md bg-[#F5F5F5] object-cover"
+                                />
 
-                              <div className="min-w-0">
-                                <p className="text-xs text-muted-foreground">{product.category}</p>
-                                <h3 className="line-clamp-2 text-sm font-medium group-hover:text-[#D4A574]">
-                                  {product.name}
-                                </h3>
-                                <p className="mt-0.5 text-xs text-muted-foreground">
-                                  {product.brand}
-                                </p>
-                                <p className="mt-1 text-sm font-semibold">
-                                  €{product.price.toFixed(2)}
-                                </p>
+                                <div className="min-w-0">
+                                  <p className="text-xs text-muted-foreground">
+                                    {product.category}
+                                  </p>
+                                  <h3 className="line-clamp-2 text-sm font-medium group-hover:text-[#D4A574]">
+                                    {product.name}
+                                  </h3>
+                                  <p className="mt-0.5 text-xs text-muted-foreground">
+                                    {product.brand}
+                                  </p>
+                                  <p className="mt-1 text-sm font-semibold">
+                                    €{product.price.toFixed(2)}
+                                  </p>
+                                </div>
                               </div>
-                            </div>
-                          </Link>
+                            </Link>
+
+                            {message.canExplainProducts && (
+                              <div className="border-t border-border px-2 py-2">
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  onClick={() => explainProduct(message, product)}
+                                  disabled={Boolean(explainingMessageId) || isLoading}
+                                  className="h-8 w-full rounded-full border-[#E8D5C0] px-3 text-xs text-[#A97745] hover:bg-[#FDF7F0]"
+                                >
+                                  <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+                                  {explainingMessageId === `${message.id}-${product.id}`
+                                    ? 'AI erklärt...'
+                                    : 'AI erklären'}
+                                </Button>
+                              </div>
+                            )}
+                          </div>
                         ))}
                       </div>
                     )}
@@ -469,7 +632,18 @@ export default function Chatbot() {
                       <Bot className="h-3.5 w-3.5 text-[#A97745]" />
                     </div>
                     <div className="rounded-lg bg-[#F5F5F5] px-3 py-2 text-sm text-muted-foreground">
-                      Ich suche passende Produkte...
+                      Thinking...
+                    </div>
+                  </div>
+                )}
+
+                {explainingMessageId && !isLoading && (
+                  <div className="flex gap-2">
+                    <div className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#F5E6D3]">
+                      <Bot className="h-3.5 w-3.5 text-[#A97745]" />
+                    </div>
+                    <div className="rounded-lg bg-[#F5F5F5] px-3 py-2 text-sm text-muted-foreground">
+                      AI erklärt das Produkt...
                     </div>
                   </div>
                 )}
