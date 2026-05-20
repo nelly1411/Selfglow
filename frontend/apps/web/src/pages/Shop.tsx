@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { Star, ChevronDown, ChevronUp, ShoppingCart, Filter, X, Heart, Check } from 'lucide-react'
 import { Button } from '@workspace/ui/components/button'
 import { Checkbox } from '@workspace/ui/components/checkbox'
+import { Slider } from '@workspace/ui/components/slider'
 import { cn } from '@workspace/ui/lib/utils'
 import { useCart } from '@/context/CartContext'
 import { useWishlist } from '@/context/WishlistContext'
@@ -52,7 +53,7 @@ const concerns = [
 ]
 
 const productTypes = [
-  { name: 'Gesischtsreinigung' },
+  { name: 'Gesichtsreinigung' },
   { name: 'Serum' },
   { name: 'Toner' },
   { name: 'Feuchtigkeitspflege' },
@@ -300,23 +301,6 @@ export default function Shop() {
     setSearchParams(params)
   }
 
-  const applyPriceFilter = () => {
-    const minValue = Number(minPriceInput)
-    const maxValue = Number(maxPriceInput)
-  
-    if (Number.isNaN(minValue) || Number.isNaN(maxValue)) return
-  
-    const clampedMin = Math.max(0, Math.min(minValue, 200))
-    const clampedMax = Math.max(0, Math.min(maxValue, 200))
-  
-    const finalMin = Math.min(clampedMin, clampedMax)
-    const finalMax = Math.max(clampedMin, clampedMax)
-  
-    setPriceRange([finalMin, finalMax])
-    setMinPriceInput(String(finalMin))
-    setMaxPriceInput(String(finalMax))
-  }
-
   const resetPriceFilter = () => {
     setPriceRange([0, 200])
     setMinPriceInput('0')
@@ -489,6 +473,19 @@ export default function Shop() {
 
       <FilterSection title="Price">
           <div className="px-2 space-y-4">
+            <Slider
+              value={priceRange}
+              onValueChange={(values) => {
+                setPriceRange(values as [number, number])
+                setMinPriceInput(String(values[0]))
+                setMaxPriceInput(String(values[1]))
+              }}
+              min={0}
+              max={200}
+              step={1}
+              className="[&_[data-slot=slider-track]]:bg-[#FFFFFF] [&_[data-slot=slider-range]]:bg-[#FFFFFF] [&_[data-slot=slider-thumb]]:border-[#FFFFFF]"
+            />
+            
             <div className="flex items-center gap-3">
               <div className="flex-1">
                 <label className="block text-xs text-muted-foreground mb-1">
@@ -499,10 +496,22 @@ export default function Shop() {
                   min={0}
                   max={200}
                   value={minPriceInput}
-                  onChange={(e) => setMinPriceInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      applyPriceFilter()
+                  onChange={(e) => {
+                    const val = e.target.value
+                    setMinPriceInput(val)
+                    const num = Number(val)
+                    if (!Number.isNaN(num) && num >= 0 && num <= 200) {
+                      setPriceRange([Math.min(num, priceRange[1]), priceRange[1]])
+                    }
+                  }}
+                  onBlur={() => {
+                    const num = Number(minPriceInput)
+                    if (Number.isNaN(num) || num < 0) {
+                      setMinPriceInput(String(priceRange[0]))
+                    } else {
+                      const clamped = Math.min(Math.max(0, num), priceRange[1])
+                      setMinPriceInput(String(clamped))
+                      setPriceRange([clamped, priceRange[1]])
                     }
                   }}
                   className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-[#D4A574]"
@@ -518,10 +527,22 @@ export default function Shop() {
                   min={0}
                   max={200}
                   value={maxPriceInput}
-                  onChange={(e) => setMaxPriceInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      applyPriceFilter()
+                  onChange={(e) => {
+                    const val = e.target.value
+                    setMaxPriceInput(val)
+                    const num = Number(val)
+                    if (!Number.isNaN(num) && num >= 0 && num <= 200) {
+                      setPriceRange([priceRange[0], Math.max(num, priceRange[0])])
+                    }
+                  }}
+                  onBlur={() => {
+                    const num = Number(maxPriceInput)
+                    if (Number.isNaN(num) || num > 200) {
+                      setMaxPriceInput(String(priceRange[1]))
+                    } else {
+                      const clamped = Math.max(Math.min(200, num), priceRange[0])
+                      setMaxPriceInput(String(clamped))
+                      setPriceRange([priceRange[0], clamped])
                     }
                   }}
                   className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-[#D4A574]"
@@ -529,25 +550,14 @@ export default function Shop() {
               </div>
             </div>
 
-            <div className="flex gap-2">
-            <Button
-              type="button"
-              onClick={applyPriceFilter}
-              className="flex-1 rounded-full bg-[#F5E6D3] text-foreground hover:bg-[#E8D5C0]"
-            >
-              Anwenden
-            </Button>
-
             <Button
               type="button"
               variant="outline"
               onClick={resetPriceFilter}
-              className="flex-1 rounded-full"
+              className="w-full rounded-full"
             >
               Zurücksetzen
             </Button>
-          </div>
-
           </div>
         </FilterSection>
     </>

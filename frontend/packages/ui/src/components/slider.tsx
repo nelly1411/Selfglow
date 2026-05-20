@@ -32,7 +32,7 @@ function Slider({
       )}
       {...props}
     >
-      <SliderPrimitive.Track className="relative h-2 w-full grow rounded-full bg-[#E8D5C0]">
+      <SliderPrimitive.Track className="relative h-2 w-full grow rounded-full bg-[#FFFFFF]">
         <SliderPrimitive.Range className="absolute h-full rounded-full bg-[#D4A574]" />
       </SliderPrimitive.Track>
 
