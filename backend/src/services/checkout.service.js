@@ -28,8 +28,13 @@ function checkSpam(key) {
 // ─── Hauptfunktion ────────────────────────────────────────────────────────────
 // userId  = null  → Gastkauf
 // userIp  = IP-Adresse des Clients (aus Controller)
+
 exports.createOrder = async (data, userId = null, userIp = 'unknown') => {
   const { items, totalPrice, payment, shipping, customer } = data
+  if (userId) {
+  userId = Number(userId)
+  if (Number.isNaN(userId)) userId = null
+}
 
   // 1. Spam-Check (eingeloggte User per ID, Gäste per IP)
   const spamKey = userId ? `user_${userId}` : `ip_${userIp}`

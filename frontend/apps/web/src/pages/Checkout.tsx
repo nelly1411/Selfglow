@@ -8,9 +8,39 @@ import { apiUrl } from '@/lib/api'
 const BASE_FORM = {
   firstName: '', lastName: '', email: '', phone: '',
   address: '', postal: '', city: '', country: '',
-  klarnaPhone: '', klarnaEmail: '',
-  paypalEmail: '', paypalPassword: '', paypalName: '',
 }
+
+// ─── Payment config ────────────────────────────────────────────────────────────
+const PAYMENT_METHODS = [
+  {
+    id: 'klarna',
+    label: 'Klarna',
+    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/40/Klarna_Payment_Badge.svg/200px-Klarna_Payment_Badge.svg.png',
+    color: '#FFB3C7',
+    textColor: '#1a1a1a',
+    tagline: 'Jetzt kaufen, später bezahlen',
+    description: 'Du wirst zu Klarna weitergeleitet, um sicher zu bezahlen. Klarna prüft deine Bonität und sendet dir eine Zahlungsaufforderung.',
+    redirectUrl: 'https://www.klarna.com',
+    buttonLabel: 'Weiter zu Klarna',
+    buttonColor: '#FFB3C7',
+    buttonTextColor: '#1a1a1a',
+  },
+  {
+    id: 'paypal',
+    label: 'PayPal',
+    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b5/PayPal.svg/200px-PayPal.svg.png',
+    color: '#003087',
+    textColor: '#fff',
+    tagline: 'Schnell & sicher bezahlen',
+    description: 'Du wirst zu PayPal weitergeleitet, um die Zahlung abzuschließen. Du kannst mit deinem PayPal-Konto oder als Gast bezahlen.',
+    redirectUrl: 'https://www.paypal.com',
+    buttonLabel: 'Weiter zu PayPal',
+    buttonColor: '#0070ba',
+    buttonTextColor: '#fff',
+  },
+] as const
+
+type PaymentId = 'klarna' | 'paypal'
 
 export default function Checkout() {
 const [discount, setDiscount] = useState('')
@@ -21,7 +51,7 @@ const [discountValue, setDiscountValue] = useState(0)
   const { items, totalPrice, clearCart } = useCart()
 
   const [guestMode, setGuestMode]             = useState(false)
-  const [payment, setPayment]                 = useState<'klarna' | 'paypal'>('klarna')
+  const [payment, setPayment]                 = useState<PaymentId>('klarna')
   const [discount, setDiscount]               = useState('')
   const [discountValue, setDiscountValue]     = useState(0)
   const [discountError, setDiscountError]     = useState('')
@@ -31,9 +61,12 @@ const [discountValue, setDiscountValue] = useState(0)
   const [touched, setTouched]                 = useState<Record<string, boolean>>({})
   const [loadingAddress, setLoadingAddress]   = useState(false)
   const [addressLoaded, setAddressLoaded]     = useState(false)
+  const [redirecting, setRedirecting]         = useState(false)
   const [form, setForm]                       = useState(BASE_FORM)
 
-  // ─── Reset when user changes ────────────────────────────────────────────
+  const selectedMethod = PAYMENT_METHODS.find(m => m.id === payment)!
+
+  // ─── Reset when user changes ──────────────────────────────────────────
   useEffect(() => {
     setForm(BASE_FORM)
     setErrors({})
@@ -46,12 +79,10 @@ const [discountValue, setDiscountValue] = useState(0)
     setAddressLoaded(false)
   }, [user?.id])
 
-  // ─── Load address from DB on mount ──────────────────────────────────────
-  // Works in incognito because it fetches from DB, not localStorage
+  // ─── Load address from DB ────────────────────────────────────────────
   useEffect(() => {
     if (!user?.token) return
 
-    // Step 1: instant prefill from AuthContext (if login already gave us the data)
     if (user.savedAddress) {
       setForm((prev) => ({
         ...prev,
@@ -65,18 +96,14 @@ const [discountValue, setDiscountValue] = useState(0)
       setAddressLoaded(true)
     }
 
-    // Step 2: always fetch fresh from DB (catches updates from other sessions/devices)
     setLoadingAddress(true)
     fetch(`${API}/api/auth/address`, {
       headers: { Authorization: `Bearer ${user.token}` },
     })
-      .then((r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`)
-        return r.json()
-      })
-      .then((data) => {
+      .then(r => { if (!r.ok) throw new Error(`${r.status}`); return r.json() })
+      .then(data => {
         if (data?.savedAddress) {
-          setForm((prev) => ({
+          setForm(prev => ({
             ...prev,
             address: data.savedAddress || '',
             postal:  data.savedPostal  || '',
@@ -86,23 +113,14 @@ const [discountValue, setDiscountValue] = useState(0)
           }))
           setTouched({ address: true, postal: true, city: true, country: true, phone: true })
           setAddressLoaded(true)
-
-          // Sync AuthContext so next visit is instant (no DB needed)
-          updateUser({
-            ...user,
-            savedAddress: data.savedAddress,
-            savedPostal:  data.savedPostal,
-            savedCity:    data.savedCity,
-            savedCountry: data.savedCountry,
-            savedPhone:   data.savedPhone,
-          })
+          updateUser({ ...user, savedAddress: data.savedAddress, savedPostal: data.savedPostal, savedCity: data.savedCity, savedCountry: data.savedCountry, savedPhone: data.savedPhone })
         }
       })
-      .catch((err) => console.warn('[Checkout] address fetch failed:', err.message))
+      .catch(err => console.warn('[Checkout] address fetch failed:', err.message))
       .finally(() => setLoadingAddress(false))
-  }, [user?.token]) // only re-run when token changes (= user logs in/out)
+  }, [user?.token])
 
-  // ─── Validation ─────────────────────────────────────────────────────────
+  // ─── Validation ──────────────────────────────────────────────────────
   const validateField = (name: string, value: string): string => {
     if (!value) return 'Pflichtfeld'
     const v = validators[name as keyof typeof validators]
@@ -115,23 +133,20 @@ const [discountValue, setDiscountValue] = useState(0)
     const newErrors: Record<string, string> = {}
     const guestFields    = !user ? ['firstName', 'lastName', 'email', 'phone'] : []
     const shippingFields = ['address', 'postal', 'city', 'country']
-    const klarnaFields   = payment === 'klarna' ? ['klarnaPhone', 'klarnaEmail'] : []
-    const paypalFields   = payment === 'paypal'  ? ['paypalName', 'paypalEmail', 'paypalPassword'] : []
-    const allFields      = [...guestFields, ...shippingFields, ...klarnaFields, ...paypalFields]
+    const allFields      = [...guestFields, ...shippingFields]
 
-    allFields.forEach((field) => {
-      const err = validateField(field, form[field as keyof typeof form])
+    allFields.forEach(field => {
+      const err = validateField(field, form[field as keyof typeof form] || '')
       if (err) newErrors[field] = err
     })
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
 
-  // ─── Handle input — no localStorage ─────────────────────────────────────
   const handleChange = (name: string, value: string) => {
-    setForm((prev) => ({ ...prev, [name]: value }))
-    setTouched((prev) => ({ ...prev, [name]: true }))
-    setErrors((prev) => ({ ...prev, [name]: validateField(name, value) }))
+    setForm(prev => ({ ...prev, [name]: value }))
+    setTouched(prev => ({ ...prev, [name]: true }))
+    setErrors(prev => ({ ...prev, [name]: validateField(name, value) }))
   }
 
   const res = await fetch(apiUrl('/api/checkout'), {
@@ -157,110 +172,107 @@ const [discountValue, setDiscountValue] = useState(0)
 
   const finalTotal = totalPrice - discountValue
 
-  // ─── Submit ──────────────────────────────────────────────────────────────
+  // ─── Submit + redirect ─────────────────────────────────────────────────
   const handleCheckout = async () => {
     setErrorMsg('')
     const allFields = [
-      'firstName', 'lastName', 'email', 'phone',
+      ...(!user ? ['firstName', 'lastName', 'email', 'phone'] : []),
       'address', 'postal', 'city', 'country',
-      'klarnaPhone', 'klarnaEmail',
-      'paypalName', 'paypalEmail', 'paypalPassword',
     ]
-    setTouched(Object.fromEntries(allFields.map((f) => [f, true])))
+    setTouched(Object.fromEntries(allFields.map(f => [f, true])))
     if (!validateAll()) return
 
     const orderData = {
       items,
       totalPrice: finalTotal,
       payment,
-      customer: {
-        firstName: form.firstName, lastName: form.lastName,
-        email: form.email,         phone: form.phone,
-      },
-      shipping: {
-        address: form.address, postal: form.postal,
-        city: form.city,       country: form.country,
-      },
-      paymentData:
-        payment === 'klarna'
-          ? { phone: form.klarnaPhone, email: form.klarnaEmail }
-          : { paypalName: form.paypalName, paypalEmail: form.paypalEmail },
+      customer: { firstName: form.firstName, lastName: form.lastName, email: form.email, phone: form.phone },
+      shipping:  { address: form.address, postal: form.postal, city: form.city, country: form.country },
+      paymentData: { method: payment },
     }
 
     try {
       const headers: Record<string, string> = { 'Content-Type': 'application/json' }
       if (user?.token) headers['Authorization'] = `Bearer ${user.token}`
 
-      const res  = await fetch(`${API}/api/checkout`, {
-        method: 'POST', headers, body: JSON.stringify(orderData),
-      })
+      const res  = await fetch(`${API}/api/checkout`, { method: 'POST', headers, body: JSON.stringify(orderData) })
       const data = await res.json()
 
       if (res.status === 429) { setErrorMsg(data.message); return }
+      if (!res.ok) { setErrorMsg(data.message || 'Fehler beim Checkout'); return }
 
-      if (!res.ok) {
-        setErrorMsg(data.message || 'Fehler beim Checkout')
-        return
-      }
-
-      // ── Order succeeded ──────────────────────────────────────────────────
       clearCart()
 
-      // Save address to DB and update AuthContext
-      // FIX: correct URL /api/auth/address (not /api/user/address)
-      // FIX: correct field names: address/postal/city/country/phone
+      // Save address to DB
       if (user?.token) {
         const addrRes = await fetch(`${API}/api/auth/address`, {
           method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${user.token}`,
-          },
-          body: JSON.stringify({
-            address: form.address,   // ← correct field name
-            postal:  form.postal,
-            city:    form.city,
-            country: form.country,
-            phone:   form.phone,
-          }),
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${user.token}` },
+          body: JSON.stringify({ address: form.address, postal: form.postal, city: form.city, country: form.country, phone: form.phone }),
         })
-
         if (addrRes.ok) {
           const addrData = await addrRes.json()
-          // Update AuthContext so address is available immediately next time
-          if (addrData.user) {
-            updateUser({ ...user, ...addrData.user, token: user.token })
-          }
+          if (addrData.user) updateUser({ ...user, ...addrData.user, token: user.token })
         }
       }
 
       const orderNumber = data.order?.orderNumber || ''
-      navigate('/thank-you', { state: { email: form.email, orderNumber } })
+
+      // ── Simulated redirect to payment provider ────────────────────────
+      setRedirecting(true)
+
+      // Store order info so ThankYou page can read it after "coming back"
+      sessionStorage.setItem('pendingOrder', JSON.stringify({
+        email: form.email || user?.email,
+        orderNumber,
+      }))
+
+      // Simulate redirect: open payment site, then after 2s navigate to thank-you
+      window.open(selectedMethod.redirectUrl, '_blank')
+
+      setTimeout(() => {
+        navigate('/thank-you', { state: { email: form.email || user?.email, orderNumber } })
+      }, 2000)
 
     } catch {
       setErrorMsg('Netzwerkfehler – bitte versuche es erneut.')
     }
   }
 
-  // ─── Gate ────────────────────────────────────────────────────────────────
+  // ─── Gate ─────────────────────────────────────────────────────────────
   if (!user && !guestMode) {
     return (
       <div className="min-h-[70vh] flex items-center justify-center px-4">
         <div className="bg-white border rounded-xl p-8 text-center max-w-md w-full shadow">
           <h2 className="text-xl font-semibold mb-3">Checkout</h2>
-          <p className="text-sm text-gray-600 mb-6">
-            Möchten Sie als Gast bestellen oder ein Konto verwenden?
-          </p>
+          <p className="text-sm text-gray-600 mb-6">Möchten Sie als Gast bestellen oder ein Konto verwenden?</p>
           <div className="flex flex-col gap-3">
-            <button onClick={() => setGuestMode(true)}
-              className="bg-[#D4A574] text-white py-2 rounded-full hover:bg-[#c4945f] transition-colors">
+            <button onClick={() => setGuestMode(true)} className="bg-[#D4A574] text-white py-2 rounded-full hover:bg-[#c4945f] transition-colors">
               Als Gast bestellen
             </button>
-            <button onClick={() => navigate('/login')}
-              className="border py-2 rounded-full hover:bg-gray-50 transition-colors">
+            <button onClick={() => navigate('/login')} className="border py-2 rounded-full hover:bg-gray-50 transition-colors">
               Login / Konto
             </button>
           </div>
+        </div>
+      </div>
+    )
+  }
+const formatPrice = (value: number) =>
+  new Intl.NumberFormat('de-DE', {
+    style: 'currency',
+    currency: 'EUR',
+  }).format(value)
+  // ─── Redirect overlay ─────────────────────────────────────────────────
+  if (redirecting) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#FDFAF6]">
+        <div className="text-center space-y-4">
+          <Loader2 className="h-10 w-10 animate-spin text-[#D4A574] mx-auto" />
+          <p className="text-lg font-medium text-gray-700">
+            Du wirst zu {selectedMethod.label} weitergeleitet…
+          </p>
+          <p className="text-sm text-gray-400">Bitte warte einen Moment.</p>
         </div>
       </div>
     )
@@ -303,19 +315,13 @@ const [discountValue, setDiscountValue] = useState(0)
                   <div>
                     <label className="text-xs text-gray-500 mb-1 block">Vorname *</label>
                     <input {...inputProps('firstName')} placeholder="Max"
-                      onChange={(e) => {
-                        if (/^[a-zA-ZäöüÄÖÜßàáâãèéêìíîòóôùúû\s'\-]*$/.test(e.target.value))
-                          handleChange('firstName', e.target.value)
-                      }} />
+                      onChange={e => { if (/^[a-zA-ZäöüÄÖÜßàáâãèéêìíîòóôùúû\s'\-]*$/.test(e.target.value)) handleChange('firstName', e.target.value) }} />
                     <ErrorMsg field="firstName" />
                   </div>
                   <div>
                     <label className="text-xs text-gray-500 mb-1 block">Nachname *</label>
                     <input {...inputProps('lastName')} placeholder="Mustermann"
-                      onChange={(e) => {
-                        if (/^[a-zA-ZäöüÄÖÜßàáâãèéêìíîòóôùúû\s'\-]*$/.test(e.target.value))
-                          handleChange('lastName', e.target.value)
-                      }} />
+                      onChange={e => { if (/^[a-zA-ZäöüÄÖÜßàáâãèéêìíîòóôùúû\s'\-]*$/.test(e.target.value)) handleChange('lastName', e.target.value) }} />
                     <ErrorMsg field="lastName" />
                   </div>
                 </div>
@@ -328,9 +334,7 @@ const [discountValue, setDiscountValue] = useState(0)
                   <div>
                     <label className="text-xs text-gray-500 mb-1 block">Telefon *</label>
                     <input {...inputProps('phone')} placeholder="+49 151 12345678"
-                      onChange={(e) => {
-                        if (/^[+0-9\s\-\(\)]*$/.test(e.target.value)) handleChange('phone', e.target.value)
-                      }} />
+                      onChange={e => { if (/^[+0-9\s\-\(\)]*$/.test(e.target.value)) handleChange('phone', e.target.value) }} />
                     <ErrorMsg field="phone" />
                   </div>
                 </div>
@@ -348,7 +352,6 @@ const [discountValue, setDiscountValue] = useState(0)
                 Adresse wird geladen…
               </div>
             )}
-
             {addressLoaded && !loadingAddress && (
               <div className="bg-blue-50 border border-blue-100 rounded-lg px-3 py-2 text-xs text-blue-600 flex items-center gap-2 mb-3">
                 <CheckCircle className="h-3.5 w-3.5 shrink-0" />
@@ -365,98 +368,103 @@ const [discountValue, setDiscountValue] = useState(0)
               <div>
                 <label className="text-xs text-gray-500 mb-1 block">PLZ *</label>
                 <input {...inputProps('postal')} placeholder="10115" maxLength={5}
-                  onChange={(e) => { if (/^[0-9]*$/.test(e.target.value)) handleChange('postal', e.target.value) }} />
+                  onChange={e => { if (/^[0-9]*$/.test(e.target.value)) handleChange('postal', e.target.value) }} />
                 <ErrorMsg field="postal" />
               </div>
               <div>
                 <label className="text-xs text-gray-500 mb-1 block">Stadt *</label>
                 <input {...inputProps('city')} placeholder="Berlin"
-                  onChange={(e) => {
-                    if (/^[a-zA-ZäöüÄÖÜßàáâ\s\-\.]*$/.test(e.target.value)) handleChange('city', e.target.value)
-                  }} />
+                  onChange={e => { if (/^[a-zA-ZäöüÄÖÜßàáâ\s\-\.]*$/.test(e.target.value)) handleChange('city', e.target.value) }} />
                 <ErrorMsg field="city" />
               </div>
               <div>
                 <label className="text-xs text-gray-500 mb-1 block">Land *</label>
                 <input {...inputProps('country')} placeholder="Deutschland"
-                  onChange={(e) => {
-                    if (/^[a-zA-ZäöüÄÖÜßàáâ\s\-\.]*$/.test(e.target.value)) handleChange('country', e.target.value)
-                  }} />
+                  onChange={e => { if (/^[a-zA-ZäöüÄÖÜßàáâ\s\-\.]*$/.test(e.target.value)) handleChange('country', e.target.value) }} />
                 <ErrorMsg field="country" />
               </div>
             </div>
           </section>
 
-          {/* Payment */}
-          <section>
-            <h2 className="font-semibold text-gray-800 mb-4 pb-2 border-b">Zahlungsmethode</h2>
-            <div className="flex gap-3 mb-5">
-              {([
-                { id: 'klarna', label: '🅺 Klarna' },
-                { id: 'paypal', label: '🅿️ PayPal' },
-              ] as const).map((method) => (
-                <button key={method.id}
-                  onClick={() => { setPayment(method.id); setErrors({}); setTouched({}) }}
-                  className={`px-5 py-2 rounded-full border text-sm font-medium transition-colors ${
-                    payment === method.id
-                      ? 'bg-[#D4A574] text-white border-[#D4A574]'
-                      : 'bg-[#F5E6D3] border-[#e0c9a8] text-gray-700 hover:bg-[#ecd5b8]'
-                  }`}>
-                  {method.label}
-                </button>
-              ))}
-            </div>
+         {/* ── Payment Method ── */}
+<section>
+  <h2 className="font-semibold text-gray-800 mb-4 pb-2 border-b">
+    Zahlungsmethode
+  </h2>
+<div className="flex gap-3">
 
-            {payment === 'klarna' && (
-              <div className="space-y-3">
-                <div className="bg-pink-50 border border-pink-100 rounded-lg px-3 py-2 text-xs text-pink-700">
-                  Klarna — jetzt kaufen, später bezahlen
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500 mb-1 block">Handynummer *</label>
-                  <input {...inputProps('klarnaPhone')} placeholder="+49 151 12345678"
-                    onChange={(e) => {
-                      if (/^[+0-9\s\-\(\)]*$/.test(e.target.value)) handleChange('klarnaPhone', e.target.value)
-                    }} />
-                  <ErrorMsg field="klarnaPhone" />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500 mb-1 block">E-Mail *</label>
-                  <input {...inputProps('klarnaEmail')} type="email" placeholder="max@beispiel.de" />
-                  <ErrorMsg field="klarnaEmail" />
-                </div>
-                <p className="text-xs text-gray-400">Klarna prüft Ihre Bonität. Mit dem Kauf stimmen Sie den Klarna-AGB zu.</p>
-              </div>
-            )}
+  {/* Klarna */}
+  <button
+    type="button"
+    onClick={() => setPayment('klarna')}
+    className={`
+      flex-1 h-[74px] rounded-2xl border transition-all duration-200
+      flex items-center justify-between px-5 bg-white
+      ${payment === 'klarna'
+        ? 'border-gray-400'
+        : 'border-gray-200 hover:bg-gray-50'
+      }
+    `}
+  >
+    <img
+      src="https://upload.wikimedia.org/wikipedia/commons/4/40/Klarna_Payment_Badge.svg"
+      alt="Klarna"
+      className="h-7 object-contain"
+    />
 
-            {payment === 'paypal' && (
-              <div className="space-y-3">
-                <div className="bg-yellow-50 border border-yellow-100 rounded-lg px-3 py-2 text-xs text-yellow-700">
-                  Sie werden nach dem Checkout zu PayPal weitergeleitet.
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500 mb-1 block">Vollständiger Name *</label>
-                  <input {...inputProps('paypalName')} placeholder="Max Mustermann"
-                    onChange={(e) => {
-                      if (/^[a-zA-ZäöüÄÖÜß\s'\-]*$/.test(e.target.value)) handleChange('paypalName', e.target.value)
-                    }} />
-                  <ErrorMsg field="paypalName" />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500 mb-1 block">PayPal E-Mail *</label>
-                  <input {...inputProps('paypalEmail')} type="email" placeholder="max@paypal.de" />
-                  <ErrorMsg field="paypalEmail" />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500 mb-1 block">
-                    Passwort * <span className="text-gray-400">(min. 8 Zeichen)</span>
-                  </label>
-                  <input {...inputProps('paypalPassword')} type="password" placeholder="••••••••" />
-                  <ErrorMsg field="paypalPassword" />
-                </div>
-              </div>
-            )}
-          </section>
+    <div
+      className={`
+        w-5 h-5 rounded-full border-2 flex items-center justify-center
+        ${payment === 'klarna'
+          ? 'border-pink-500'
+          : 'border-gray-300'
+        }
+      `}
+    >
+      {payment === 'klarna' && (
+        <div className="w-2.5 h-2.5 rounded-full bg-pink-500" />
+      )}
+    </div>
+  </button>
+
+  {/* PayPal */}
+  <button
+    type="button"
+    onClick={() => setPayment('paypal')}
+    className={`
+      flex-1 h-[74px] rounded-2xl border transition-all duration-200
+      flex items-center justify-between px-5 bg-white
+      ${payment === 'paypal'
+        ? 'border-gray-400'
+       : 'border-gray-200 hover:bg-gray-50'
+      }
+    `}
+  >
+    <img
+      src="https://upload.wikimedia.org/wikipedia/commons/b/b5/PayPal.svg"
+      alt="PayPal"
+      className="h-6 object-contain"
+    />
+
+    <div
+      className={`
+        w-5 h-5 rounded-full border-2 flex items-center justify-center
+        ${payment === 'paypal'
+          ? 'border-blue-500'
+          : 'border-gray-300'
+        }
+      `}
+    >
+      {payment === 'paypal' && (
+        <div className="w-2.5 h-2.5 rounded-full bg-blue-500" />
+      )}
+    </div>
+  </button>
+
+</div>
+
+
+</section>
         </div>
 
         {/* ── RIGHT – Order Summary ── */}
@@ -464,12 +472,16 @@ const [discountValue, setDiscountValue] = useState(0)
           <h2 className="font-semibold mb-5 text-gray-800">Bestellübersicht</h2>
 
           <div className="space-y-4 max-h-60 overflow-y-auto pr-1">
-            {items.map((item) => (
+            {items.map(item => (
               <div key={item.id} className="flex gap-3 items-center">
                 <img src={item.image} className="w-12 h-12 rounded-lg object-cover shrink-0" alt={item.name} />
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium truncate">{item.name}</p>
-                  <p className="text-sm text-gray-600">€{item.price.toFixed(2)}</p>
+                  <p className="text-sm text-gray-600">
+
+  {formatPrice(item.price)}
+
+</p>
                 </div>
                 <span className="text-xs bg-white rounded-full px-2 py-0.5 text-gray-500 shrink-0">×{item.quantity}</span>
               </div>
@@ -478,53 +490,63 @@ const [discountValue, setDiscountValue] = useState(0)
 
           <hr className="my-5 border-[#e0c9a8]" />
 
+          {/* Discount */}
           <div className="mb-5">
             <label className="text-xs text-gray-600 mb-2 flex items-center gap-1">
               <Tag className="h-3 w-3" /> Rabattcode
             </label>
             <div className="flex gap-2">
               <input value={discount}
-                onChange={(e) => { setDiscount(e.target.value.toUpperCase()); setDiscountError(''); setDiscountApplied(false) }}
+                onChange={e => { setDiscount(e.target.value.toUpperCase()); setDiscountError(''); setDiscountApplied(false) }}
                 className="flex-1 p-2 border border-[#e0c9a8] rounded-lg bg-white text-sm outline-none focus:border-[#D4A574]"
                 placeholder="Code eingeben" />
-              <button onClick={applyDiscount}
-                className="bg-[#D4A574] text-white text-xs px-4 rounded-lg hover:bg-[#c4945f] transition-colors">
+              <button onClick={applyDiscount} className="bg-[#D4A574] text-white text-xs px-4 rounded-lg hover:bg-[#c4945f] transition-colors">
                 Anwenden
               </button>
             </div>
             {discountError   && <p className="text-red-500 text-xs mt-1">{discountError}</p>}
-            {discountApplied && (
-              <p className="text-green-600 text-xs mt-1 flex items-center gap-1">
-                <CheckCircle className="h-3 w-3" /> Rabatt angewendet!
-              </p>
-            )}
+            {discountApplied && <p className="text-green-600 text-xs mt-1 flex items-center gap-1"><CheckCircle className="h-3 w-3" /> Rabatt angewendet!</p>}
           </div>
 
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between text-gray-600">
-              <span>Zwischensumme</span><span>€{totalPrice.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between text-gray-600">
-              <span>Versand</span><span>kostenlos</span>
-            </div>
-            {discountValue > 0 && (
-              <div className="flex justify-between text-green-700 font-medium">
-                <span>Rabatt</span><span>−€{discountValue.toFixed(2)}</span>
-              </div>
-            )}
-            <div className="flex justify-between font-bold text-base border-t border-[#e0c9a8] pt-3 mt-2">
-              <span>Gesamt</span><span>€{finalTotal.toFixed(2)}</span>
-            </div>
-          </div>
+         {/* Totals */}
+<div className="space-y-2 text-sm">
 
-          <button onClick={handleCheckout} disabled={hasErrors}
-            className={`w-full mt-5 py-3 rounded-full text-white font-medium transition-colors ${
-              hasErrors
-                ? 'bg-gray-300 cursor-not-allowed text-gray-500'
-                : 'bg-[#D4A574] hover:bg-[#c4945f] active:scale-[0.98]'
-            }`}>
-            Jetzt bestellen
-          </button>
+ 
+
+  {/* Shipping */}
+  <div className="flex justify-between text-gray-600">
+    <span>Versand</span>
+    <span>kostenlos</span>
+  </div>
+
+  {/* Discount */}
+  {discountValue > 0 && (
+    <div className="flex justify-between text-green-700 font-medium">
+      <span>Rabatt</span>
+      <span>−{formatPrice(discountValue)}</span>
+    </div>
+  )}
+
+  {/* Final total */}
+  <div className="flex justify-between font-bold text-base border-t border-[#e0c9a8] pt-3 mt-2">
+    <span>Gesamt</span>
+    <span>{formatPrice(finalTotal)}</span>
+  </div>
+
+</div>
+
+          {/* Checkout button — shows payment method */}
+        <button
+  onClick={handleCheckout}
+  disabled={hasErrors}
+  className={`w-full mt-5 py-3 rounded-full text-white font-medium transition-colors ${
+    hasErrors
+      ? 'bg-gray-300 cursor-not-allowed text-gray-500'
+      : 'bg-[#D4A574] hover:bg-[#c4945f] active:scale-[0.98]'
+  }`}
+>
+  Jetzt bestellen
+</button>
 
           <p className="text-xs text-center text-gray-400 mt-3">Sichere, verschlüsselte Übertragung</p>
         </div>
