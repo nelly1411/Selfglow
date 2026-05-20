@@ -37,6 +37,26 @@ const starterQuestions = [
   'I need a simple vegan skincare routine.',
 ]
 
+const medicalDisclaimer =
+  'Das ist keine medizinische Diagnose, sondern eine Produktempfehlung auf Basis deiner Anfrage.'
+
+function renderMessageContent(message: Message) {
+  if (message.role !== 'assistant' || !message.content.includes(medicalDisclaimer)) {
+    return message.content
+  }
+
+  const mainContent = message.content.replace(medicalDisclaimer, '').trim()
+
+  return (
+    <>
+      {mainContent && <p>{mainContent}</p>}
+      <p className="mt-2 text-xs leading-snug text-muted-foreground">
+        <span className="font-medium">Note:</span> {medicalDisclaimer}
+      </p>
+    </>
+  )
+}
+
 export default function Chatbot() {
   // The chat is kept as local component state for Phase 1. There is no persisted
   // chat history yet, so refreshing the page starts a fresh conversation.
@@ -158,7 +178,7 @@ export default function Chatbot() {
                           : 'bg-[#F5F5F5] text-foreground'
                       )}
                     >
-                      {message.content}
+                      {renderMessageContent(message)}
                     </div>
 
                     {message.role === 'user' && (

@@ -3,6 +3,8 @@ const prisma = require("../config/prisma");
 const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
 const DEFAULT_MODEL = "gpt-5-mini";
 const MAX_CONTEXT_PRODUCTS = 6;
+const PRODUCT_RECOMMENDATION_ANSWER =
+  "Ich habe folgende passende Produkte aus unserem Sortiment gefunden. Das ist keine medizinische Diagnose, sondern eine Produktempfehlung auf Basis deiner Anfrage.";
 
 // Common English and German words that do not help retrieval. Removing them
 // keeps the Prisma query focused on useful skincare/product terms instead of
@@ -321,12 +323,7 @@ function buildFallbackAnswer(products) {
     return "Ich habe in unserem aktuellen Sortiment leider keine gut passenden Produkte gefunden. Versuche es mit einer konkreteren Frage, zum Beispiel Hauttyp, Hautproblem oder gewünschter Eigenschaft wie vegan, alkoholfrei oder parfumfrei.";
   }
 
-  const names = products
-    .slice(0, 3)
-    .map((product) => `${product.name} von ${product.brand}`)
-    .join(", ");
-
-  return `Ich habe passende Produkte aus unserem Sortiment gefunden: ${names}. Schau dir besonders Hauttyp, Inhaltsstoffe und Produktbeschreibung an. Das ist keine medizinische Diagnose, sondern eine Produktempfehlung auf Basis deiner Anfrage.`;
+  return PRODUCT_RECOMMENDATION_ANSWER;
 }
 
 // Convert retrieved products into a compact prompt context. The instructions ask
@@ -370,6 +367,10 @@ ${context}
 // Generate the final assistant text. The OpenAI API key stays on the backend, so
 // the browser never receives or stores it.
 async function createOpenAIAnswer(message, products) {
+  if (products.length > 0) {
+    return PRODUCT_RECOMMENDATION_ANSWER;
+  }
+
   // This keeps local development possible even before an API key is configured.
   if (!process.env.OPENAI_API_KEY || products.length === 0) {
     return buildFallbackAnswer(products);
