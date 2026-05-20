@@ -252,13 +252,35 @@ function ProductCard({ product }: { product: Product }) {
 }
 
 export default function Shop() {
+  const [searchParams, setSearchParams] = useSearchParams()
+  const searchQuery = searchParams.get('search')?.toLowerCase().trim() || ''
+  const categoryQuery = searchParams.getAll('category')
+  const skinTypeQuery = searchParams.getAll('skinType')
+  const concernQuery = searchParams.getAll('concern')
+
+  useEffect(() => {
+    window.scrollTo({
+      top: 0,
+      left: 0,
+      behavior: 'auto',
+    })
+  }, [searchQuery, categoryQuery.join(','), skinTypeQuery.join(','), concernQuery.join(',')])
+
   const [products, setProducts] = useState<Product[]>([])
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 200])
   const [minPriceInput, setMinPriceInput] = useState('0')
   const [maxPriceInput, setMaxPriceInput] = useState('200')
-  const [selectedSkinType, setSelectedSkinType] = useState<string[]>([])
-  const [selectedConcern, setSelectedConcern] = useState<string[]>([])
-  const [selectedCategory, setSelectedCategory] = useState<string[]>([])
+  const [selectedSkinType, setSelectedSkinType] = useState<string[]>(
+   () => skinTypeQuery
+  )
+  const [selectedConcern, setSelectedConcern] = useState<string[]>(
+    () => concernQuery
+  )
+
+  const [selectedCategory, setSelectedCategory] = useState<string[]>(
+    () => categoryQuery
+  )
+
   const [selectedFeatures, setSelectedFeatures] = useState<string[]>([])
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
   const [visibleCount, setVisibleCount] = useState(PRODUCTS_PER_PAGE)
@@ -267,17 +289,14 @@ export default function Shop() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const [searchParams, setSearchParams] = useSearchParams()
-  const searchQuery = searchParams.get('search')?.toLowerCase().trim() || ''
-  const categoryQuery = searchParams.getAll('category')
-  const skinTypeQuery = searchParams.getAll('skinType')
-  const concernQuery = searchParams.getAll('concern')
 
   useEffect(() => {
     setSelectedCategory(categoryQuery)
     setSelectedSkinType(skinTypeQuery)
     setSelectedConcern(concernQuery)
-  }, [searchParams])
+  }, [categoryQuery.join(','),
+    skinTypeQuery.join(','),
+    concernQuery.join(','),])
 
   const toggleQueryValue = (
     key: string,
