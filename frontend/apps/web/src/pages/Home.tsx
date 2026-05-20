@@ -36,8 +36,8 @@ const categories = [
     size: 'small'
   },
   { 
-    name: 'Gesischtsreinigung', 
-    value: 'Gesischtsreinigung',
+    name: 'Gesichtsreinigung', 
+    value: 'Gesichtsreinigung',
     image: 'https://images.unsplash.com/photo-1556228578-0d85b1a4d571?w=400&h=300&fit=crop',
     size: 'small'
   },

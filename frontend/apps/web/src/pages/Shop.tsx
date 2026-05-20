@@ -3,7 +3,6 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { Star, ChevronDown, ChevronUp, ShoppingCart, Filter, X, Heart, Check } from 'lucide-react'
 import { Button } from '@workspace/ui/components/button'
 import { Checkbox } from '@workspace/ui/components/checkbox'
-import { Slider } from '@workspace/ui/components/slider'
 import { cn } from '@workspace/ui/lib/utils'
 import { useCart } from '@/context/CartContext'
 import { useWishlist } from '@/context/WishlistContext'
@@ -301,10 +300,23 @@ export default function Shop() {
     setSearchParams(params)
   }
 
-  const resetPriceFilter = () => {
+  const resetAllFilters = () => {
+    const params = new URLSearchParams(searchParams)
+  
+    params.delete('category')
+    params.delete('skinType')
+    params.delete('concern')
+  
+    setSelectedCategory([])
+    setSelectedSkinType([])
+    setSelectedConcern([])
+    setSelectedFeatures([])
+  
     setPriceRange([0, 200])
     setMinPriceInput('0')
     setMaxPriceInput('200')
+  
+    setSearchParams(params)
   }
 
 
@@ -472,20 +484,7 @@ export default function Shop() {
       </FilterSection>
 
       <FilterSection title="Price">
-          <div className="px-2 space-y-4">
-            <Slider
-              value={priceRange}
-              onValueChange={(values) => {
-                setPriceRange(values as [number, number])
-                setMinPriceInput(String(values[0]))
-                setMaxPriceInput(String(values[1]))
-              }}
-              min={0}
-              max={200}
-              step={1}
-              className="[&_[data-slot=slider-track]]:bg-[#FFFFFF] [&_[data-slot=slider-range]]:bg-[#FFFFFF] [&_[data-slot=slider-thumb]]:border-[#FFFFFF]"
-            />
-            
+          <div className="px-2 space-y-4"> 
             <div className="flex items-center gap-3">
               <div className="flex-1">
                 <label className="block text-xs text-muted-foreground mb-1">
@@ -553,10 +552,10 @@ export default function Shop() {
             <Button
               type="button"
               variant="outline"
-              onClick={resetPriceFilter}
+              onClick={resetAllFilters}
               className="w-full rounded-full"
             >
-              Zurücksetzen
+              Alles Zurücksetzen
             </Button>
           </div>
         </FilterSection>
