@@ -24,7 +24,9 @@ type Product = {
   price: number
   imageUrl?: string | null
   description?: string | null
+  ingredients?: string | null
   rating?: number | null
+  application?: string | null
 }
 
 const mockReviews = [
@@ -168,14 +170,12 @@ export default function ProductDetail() {
     {
       id: 'usage',
       title: 'Anwendung',
-      content:
-        'Nach der Reinigung 2–3 Tropfen auf Gesicht und Hals auftragen. Sanft einklopfen und anschließend eine Feuchtigkeitspflege verwenden. Morgens und abends anwendbar. Am Morgen zusätzlich Sonnenschutz benutzen.',
+      content: product.application || 'Keine Anwendungshinweise vorhanden.',
     },
     {
       id: 'ingredients',
       title: 'Inhaltsstoffe',
-      content:
-        'Niacinamide, Tranexamic Acid, Ceramide, Hyaluronic Acid und weitere pflegende Inhaltsstoffe.',
+      content: product.ingredients || 'Keine Inhaltsstoffe vorhanden.',
     },
   ]
 

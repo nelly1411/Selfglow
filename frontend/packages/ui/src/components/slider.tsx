@@ -1,7 +1,7 @@
 import * as React from 'react'
 import * as SliderPrimitive from '@radix-ui/react-slider'
 
-import { cn } from "../lib/utils"
+import { cn } from '../lib/utils'
 
 function Slider({
   className,
@@ -9,45 +9,38 @@ function Slider({
   value,
   min = 0,
   max = 100,
+  step = 1,
   ...props
 }: React.ComponentProps<typeof SliderPrimitive.Root>) {
-  const _values = React.useMemo(
-    () =>
-      Array.isArray(value)
-        ? value
-        : Array.isArray(defaultValue)
-          ? defaultValue
-          : [min, max],
-    [value, defaultValue, min, max],
-  )
+  const values = Array.isArray(value)
+    ? value
+    : Array.isArray(defaultValue)
+      ? defaultValue
+      : [min, max]
 
   return (
     <SliderPrimitive.Root
       data-slot="slider"
-      defaultValue={defaultValue}
-      value={value}
       min={min}
       max={max}
+      step={step}
+      value={value}
+      defaultValue={defaultValue}
       className={cn(
-        'relative flex w-full touch-none items-center select-none data-[disabled]:opacity-50 data-[orientation=vertical]:h-full data-[orientation=vertical]:min-h-44 data-[orientation=vertical]:w-auto data-[orientation=vertical]:flex-col',
-        className,
+        'relative flex w-full touch-none select-none items-center py-4',
+        className
       )}
       {...props}
     >
-      <SliderPrimitive.Track
-        data-slot="slider-track"
-        className="bg-muted relative grow overflow-hidden rounded-full data-[orientation=horizontal]:h-1.5 data-[orientation=horizontal]:w-full data-[orientation=vertical]:h-full data-[orientation=vertical]:w-1.5"
-      >
-        <SliderPrimitive.Range
-          data-slot="slider-range"
-          className="bg-primary absolute data-[orientation=horizontal]:h-full data-[orientation=vertical]:w-full"
-        />
+      <SliderPrimitive.Track className="relative h-2 w-full grow rounded-full bg-[#FFFFFF]">
+        <SliderPrimitive.Range className="absolute h-full rounded-full bg-[#D4A574]" />
       </SliderPrimitive.Track>
-      {Array.from({ length: _values.length }, (_, index) => (
+
+      {values.map((_, index) => (
         <SliderPrimitive.Thumb
-          data-slot="slider-thumb"
           key={index}
-          className="border-primary ring-ring/50 block size-4 shrink-0 rounded-full border bg-white shadow-sm transition-[color,box-shadow] hover:ring-4 focus-visible:ring-4 focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-50"
+          className="block h-6 w-6 cursor-grab rounded-full border-2 border-white bg-[#D4A574] shadow-md focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#D4A574]/30 active:cursor-grabbing"
+          aria-label={index === 0 ? 'Mindestpreis' : 'Maximalpreis'}
         />
       ))}
     </SliderPrimitive.Root>

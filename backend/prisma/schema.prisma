@@ -16,6 +16,7 @@ model Product {
   imageUrl         String?
   description      String?
   ingredients      String?
+  application      String?
 
   alcoholFree      Boolean  @default(false)
   fragranceFree    Boolean  @default(false)

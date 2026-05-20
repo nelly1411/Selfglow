@@ -28,12 +28,21 @@ type Product = {
 
 const PRODUCTS_PER_PAGE = 25
 
+type SortOption = 'name-asc' | 'name-desc' | 'price-asc' | 'price-desc'
+
+const sortOptions: { value: SortOption; label: string }[] = [
+  { value: 'name-asc', label: 'Name (A-Z)' },
+  { value: 'name-desc', label: 'Name (Z-A)' },
+  { value: 'price-asc', label: 'Preis (niedrig - hoch)' },
+  { value: 'price-desc', label: 'Preis (hoch - niedrig)' },
+]
+
 const skinTypes = [
-  { name: 'Combination', count: 18 },
-  { name: 'Dry', count: 5 },
-  { name: 'Oily', count: 20 },
-  { name: 'Normal', count: 12 },
-  { name: 'Sensitive', count: 8 },
+  { name: 'Combination' },
+  { name: 'Dry'},
+  { name: 'Oily' },
+  { name: 'Normal' },
+  { name: 'Sensitive'},
 ]
 
 const concerns = [
@@ -44,7 +53,7 @@ const concerns = [
 ]
 
 const productTypes = [
-  { name: 'Gesischtsreinigung' },
+  { name: 'Gesichtsreinigung' },
   { name: 'Serum' },
   { name: 'Toner' },
   { name: 'Feuchtigkeitspflege' },
@@ -205,7 +214,10 @@ function ProductCard({ product }: { product: Product }) {
 
           <div className="flex items-center gap-2">
             <span className="font-bold text-foreground">
-              €{product.price.toFixed(2)}
+              {product.price.toLocaleString('de-DE', {
+                style: 'currency',
+                currency: 'EUR',
+              })}
             </span>
           </div>
         </div>
@@ -242,21 +254,59 @@ function ProductCard({ product }: { product: Product }) {
 
 export default function Shop() {
   const [products, setProducts] = useState<Product[]>([])
-  const [priceRange, setPriceRange] = useState([0, 200])
-  const [selectedSkinType, setSelectedSkinType] = useState<string | null>(null)
-  const [selectedConcern, setSelectedConcern] = useState<string | null>(null)
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, 200])
+  const [minPriceInput, setMinPriceInput] = useState('0')
+  const [maxPriceInput, setMaxPriceInput] = useState('200')
+  const [selectedSkinType, setSelectedSkinType] = useState<string[]>([])
+  const [selectedConcern, setSelectedConcern] = useState<string[]>([])
+  const [selectedCategory, setSelectedCategory] = useState<string[]>([])
   const [selectedFeatures, setSelectedFeatures] = useState<string[]>([])
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
   const [visibleCount, setVisibleCount] = useState(PRODUCTS_PER_PAGE)
+  const [sortBy, setSortBy] = useState<SortOption>('name-asc')
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const searchQuery = searchParams.get('search')?.toLowerCase().trim() || ''
-  const categoryQuery = searchParams.get('category') || ''
-  const skinTypeQuery = searchParams.get('skinType') || ''
+  const categoryQuery = searchParams.getAll('category')
+  const skinTypeQuery = searchParams.getAll('skinType')
+  const concernQuery = searchParams.getAll('concern')
+
+  useEffect(() => {
+    setSelectedCategory(categoryQuery)
+    setSelectedSkinType(skinTypeQuery)
+    setSelectedConcern(concernQuery)
+  }, [searchParams])
+
+  const toggleQueryValue = (
+    key: string,
+    value: string,
+    selectedValues: string[],
+    setSelectedValues: React.Dispatch<React.SetStateAction<string[]>>
+  ) => {
+    const params = new URLSearchParams(searchParams)
+    params.delete(key)
+  
+    const nextValues = selectedValues.includes(value)
+      ? selectedValues.filter((item) => item !== value)
+      : [...selectedValues, value]
+  
+    nextValues.forEach((item) => {
+      params.append(key, item)
+    })
+  
+    setSelectedValues(nextValues)
+    setSearchParams(params)
+  }
+
+  const resetPriceFilter = () => {
+    setPriceRange([0, 200])
+    setMinPriceInput('0')
+    setMaxPriceInput('200')
+  }
+
 
   useEffect(() => {
     async function fetchProducts() {
@@ -265,26 +315,23 @@ export default function Shop() {
         setLoading(true)
         setError(null)
 
-        const activeCategory = selectedCategory || categoryQuery
-        const activeSkinType = selectedSkinType || skinTypeQuery
-
         const params = new URLSearchParams()
 
         if (searchQuery) {
           params.set('search', searchQuery)
         }
 
-        if (activeCategory) {
-          params.set('category', activeCategory)
-        }
-
-        if (activeSkinType) {
-          params.set('skinType', activeSkinType)
-        }
-
-        if (selectedConcern) {
-          params.set('concern', selectedConcern)
-        }
+        selectedCategory.forEach((category) => {
+          params.append('category', category)
+        })
+        
+        selectedSkinType.forEach((skinType) => {
+          params.append('skinType', skinType)
+        })
+        
+        selectedConcern.forEach((concern) => {
+          params.append('concern', concern)
+        })
 
         selectedFeatures.forEach((feature) => {
           params.set(feature, 'true')
@@ -312,8 +359,6 @@ export default function Shop() {
     fetchProducts()
   }, [
     searchQuery,
-    categoryQuery,
-    skinTypeQuery,
     selectedCategory,
     selectedSkinType,
     selectedConcern,
@@ -327,28 +372,45 @@ export default function Shop() {
     )
   })
 
+  const sortedProducts = [...filteredProducts].sort((a, b) => {
+    switch (sortBy) {
+      case 'name-asc':
+        return a.name.localeCompare(b.name, 'de')
+      case 'name-desc':
+        return b.name.localeCompare(a.name, 'de')
+      case 'price-asc':
+        return a.price - b.price
+      case 'price-desc':
+        return b.price - a.price
+      default:
+        return 0
+    }
+  })
 
-  const visibleProducts = filteredProducts.slice(0, visibleCount)
+
+  const visibleProducts = sortedProducts.slice(0, visibleCount)
 
   useEffect(() => {
     setVisibleCount(PRODUCTS_PER_PAGE)
-  }, [priceRange, searchQuery, selectedSkinType, selectedConcern, selectedCategory, selectedFeatures, categoryQuery, skinTypeQuery, ])
+  }, [priceRange, searchQuery, selectedSkinType, selectedConcern, selectedCategory, selectedFeatures, sortBy ])
 
-  const FilterContent = () => (
+  const renderFilterContent = () => (
     <>
       <FilterSection title="Skin Type">
         {skinTypes.map((type) => (
           <label key={type.name} className="flex items-center gap-2 cursor-pointer">
            <Checkbox
-              checked={selectedSkinType === type.name}
+              checked={selectedSkinType.includes(type.name)}
               onCheckedChange={() =>
-                setSelectedSkinType(
-                  selectedSkinType === type.name ? null : type.name
+                toggleQueryValue(
+                  'skinType',
+                  type.name,
+                  selectedSkinType,
+                  setSelectedSkinType
                 )
               }
             />
             <span className="text-sm text-foreground">{type.name}</span>
-            <span className="text-xs text-muted-foreground ml-auto">({type.count})</span>
           </label>
         ))}
       </FilterSection>
@@ -357,9 +419,14 @@ export default function Shop() {
         {concerns.map((concern) => (
           <label key={concern.name} className="flex items-center gap-2 cursor-pointer">
             <Checkbox
-            checked={selectedConcern === concern.name}
-            onCheckedChange={() =>
-              setSelectedConcern(selectedConcern === concern.name ? null : concern.name)
+              checked={selectedConcern.includes(concern.name)}
+              onCheckedChange={() =>
+                toggleQueryValue(
+                  'concern',
+                  concern.name,
+                  selectedConcern,
+                  setSelectedConcern
+                )
               }
             />
             <span className="text-sm text-foreground">{concern.name}</span>
@@ -388,10 +455,15 @@ export default function Shop() {
       <FilterSection title="Product Type">
         {productTypes.map((type) => (
           <label key={type.name} className="flex items-center gap-2 cursor-pointer">
-            <Checkbox
-            checked={selectedCategory === type.name}
-            onCheckedChange={() =>
-              setSelectedCategory(selectedCategory === type.name ? null : type.name)
+           <Checkbox
+              checked={selectedCategory.includes(type.name)}
+              onCheckedChange={() =>
+                toggleQueryValue(
+                  'category',
+                  type.name,
+                  selectedCategory,
+                  setSelectedCategory
+                )
               }
             />
             <span className="text-sm text-foreground">{type.name}</span>
@@ -400,21 +472,94 @@ export default function Shop() {
       </FilterSection>
 
       <FilterSection title="Price">
-        <div className="px-2">
-          <Slider
-            value={priceRange}
-            onValueChange={setPriceRange}
-            min={0}
-            max={200}
-            step={1}
-            className="mb-4"
-          />
-          <div className="flex justify-between text-sm text-muted-foreground">
-            <span>€{priceRange[0]}</span>
-            <span>€{priceRange[1]}</span>
+          <div className="px-2 space-y-4">
+            <Slider
+              value={priceRange}
+              onValueChange={(values) => {
+                setPriceRange(values as [number, number])
+                setMinPriceInput(String(values[0]))
+                setMaxPriceInput(String(values[1]))
+              }}
+              min={0}
+              max={200}
+              step={1}
+              className="[&_[data-slot=slider-track]]:bg-[#FFFFFF] [&_[data-slot=slider-range]]:bg-[#FFFFFF] [&_[data-slot=slider-thumb]]:border-[#FFFFFF]"
+            />
+            
+            <div className="flex items-center gap-3">
+              <div className="flex-1">
+                <label className="block text-xs text-muted-foreground mb-1">
+                  Min. Preis
+                </label>
+                <input
+                  type="number"
+                  min={0}
+                  max={200}
+                  value={minPriceInput}
+                  onChange={(e) => {
+                    const val = e.target.value
+                    setMinPriceInput(val)
+                    const num = Number(val)
+                    if (!Number.isNaN(num) && num >= 0 && num <= 200) {
+                      setPriceRange([Math.min(num, priceRange[1]), priceRange[1]])
+                    }
+                  }}
+                  onBlur={() => {
+                    const num = Number(minPriceInput)
+                    if (Number.isNaN(num) || num < 0) {
+                      setMinPriceInput(String(priceRange[0]))
+                    } else {
+                      const clamped = Math.min(Math.max(0, num), priceRange[1])
+                      setMinPriceInput(String(clamped))
+                      setPriceRange([clamped, priceRange[1]])
+                    }
+                  }}
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-[#D4A574]"
+                />
+              </div>
+
+              <div className="flex-1">
+                <label className="block text-xs text-muted-foreground mb-1">
+                  Max. Preis
+                </label>
+                <input
+                  type="number"
+                  min={0}
+                  max={200}
+                  value={maxPriceInput}
+                  onChange={(e) => {
+                    const val = e.target.value
+                    setMaxPriceInput(val)
+                    const num = Number(val)
+                    if (!Number.isNaN(num) && num >= 0 && num <= 200) {
+                      setPriceRange([priceRange[0], Math.max(num, priceRange[0])])
+                    }
+                  }}
+                  onBlur={() => {
+                    const num = Number(maxPriceInput)
+                    if (Number.isNaN(num) || num > 200) {
+                      setMaxPriceInput(String(priceRange[1]))
+                    } else {
+                      const clamped = Math.max(Math.min(200, num), priceRange[0])
+                      setMaxPriceInput(String(clamped))
+                      setPriceRange([priceRange[0], clamped])
+                    }
+                  }}
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-[#D4A574]"
+                />
+              </div>
+            </div>
+
+            <Button
+              type="button"
+              variant="outline"
+              onClick={resetPriceFilter}
+              className="w-full rounded-full"
+            >
+              Zurücksetzen
+            </Button>
           </div>
-        </div>
-      </FilterSection>
+        </FilterSection>
     </>
   )
 
@@ -445,15 +590,15 @@ export default function Shop() {
               </button>
             </div>
 
-            <FilterContent />
+            {renderFilterContent()}
           </div>
         </div>
       )}
 
       <div className="flex gap-8">
         <aside className="hidden lg:block w-64 flex-shrink-0">
-          <div className="sticky top-24 border border-border rounded-xl p-6">
-            <FilterContent />
+          <div className="sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto overscroll-contain border border-border rounded-xl p-6">
+            {renderFilterContent()}
           </div>
         </aside>
 
@@ -468,12 +613,39 @@ export default function Shop() {
             </p>
           )}
 
-          {!loading && !error && filteredProducts.length === 0 && (
+      
+          {!loading && !error && sortedProducts.length === 0 && (
             <p className="text-muted-foreground">Keine Produkte gefunden.</p>
           )}
 
-          {!loading && !error && filteredProducts.length > 0 && (
+
+          {!loading && !error && sortedProducts.length > 0 && (
             <>
+              
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
+                <p className="text-sm text-muted-foreground">
+                  {sortedProducts.length} Produkte
+                </p>
+
+                <div className="flex items-center gap-2">
+                  <label htmlFor="sort" className="text-sm text-muted-foreground">
+                    Sortieren:
+                  </label>
+
+                  <select
+                    id="sort"
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value as SortOption)}
+                    className="rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-[#D4A574]"
+                  >
+                    {sortOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 {visibleProducts.map((product) => (
                   <ProductCard key={product.id} product={product} />
@@ -482,11 +654,11 @@ export default function Shop() {
 
               <div className="mt-10 flex flex-col items-center gap-3">
                 <p className="text-sm text-muted-foreground">
-                  Zeige 1 - {Math.min(visibleCount, filteredProducts.length)} von{' '}
-                  {filteredProducts.length} Produkten
+                  Zeige 1 - {Math.min(visibleCount, sortedProducts.length)} von{' '}
+                  {sortedProducts.length} Produkten
                 </p>
 
-                {visibleCount < filteredProducts.length && (
+                {visibleCount < sortedProducts.length && (
                   <Button
                     onClick={() => setVisibleCount((prev) => prev + PRODUCTS_PER_PAGE)}
                     className="bg-[#F5E6D3] text-foreground hover:bg-[#E8D5C0] rounded-full px-8"

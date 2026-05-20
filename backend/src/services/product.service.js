@@ -4,45 +4,89 @@ function toBool(value) {
   return String(value).trim().toLowerCase() === "true";
 }
 
+function toArray(value) {
+  if (!value) return [];
+  return Array.isArray(value) ? value : [value];
+}
+
 async function getAllProducts(query) {
-  const where = {};
+  const where = {
+    AND: [],
+  };
 
-  if (query.category) {
-    where.category = query.category;
+  const categories = toArray(query.category);
+  const skinTypes = toArray(query.skinType);
+  const concerns = toArray(query.concern);
+
+  if (categories.length > 0) {
+    where.AND.push({
+      category: {
+        in: categories,
+      },
+    });
   }
 
-  if (query.skinType) {
-    where.skinTypes = {
-      contains: query.skinType,
-      mode: "insensitive",
-    };
+  if (skinTypes.length > 0) {
+    where.AND.push({
+      OR: skinTypes.map((skinType) => ({
+        skinTypes: {
+          contains: skinType,
+          mode: "insensitive",
+        },
+      })),
+    });
   }
 
-  if (query.concern) {
-    where.concerns = {
-      contains: query.concern,
-      mode: "insensitive",
-    };
+  if (concerns.length > 0) {
+    where.AND.push({
+      OR: concerns.map((concern) => ({
+        concerns: {
+          contains: concern,
+          mode: "insensitive",
+        },
+      })),
+    });
   }
 
   if (query.vegan !== undefined) {
-    where.vegan = toBool(query.vegan);
+    where.AND.push({
+      vegan: toBool(query.vegan),
+    });
   }
 
   if (query.alcoholFree !== undefined) {
-    where.alcoholFree = toBool(query.alcoholFree);
+    where.AND.push({
+      alcoholFree: toBool(query.alcoholFree),
+    });
   }
 
   if (query.fragranceFree !== undefined) {
-    where.fragranceFree = toBool(query.fragranceFree);
+    where.AND.push({
+      fragranceFree: toBool(query.fragranceFree),
+    });
   }
 
   if (query.search) {
-    where.OR = [
-      { name: { contains: query.search, mode: "insensitive" } },
-      { brand: { contains: query.search, mode: "insensitive" } },
-      { description: { contains: query.search, mode: "insensitive" } },
-    ];
+    where.AND.push({
+      OR: [
+        {
+          name: {
+            contains: query.search,
+            mode: "insensitive",
+          },
+        },
+        {
+          brand: {
+            contains: query.search,
+            mode: "insensitive",
+          },
+        },
+      ],
+    });
+  }
+
+  if (where.AND.length === 0) {
+    delete where.AND;
   }
 
   return prisma.product.findMany({
