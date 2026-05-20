@@ -6,7 +6,7 @@ const { PrismaClient } = require("@prisma/client");
 
 const prisma = new PrismaClient();
 
-const filePath = path.join(__dirname, "../db/data/chosen2-products.csv");
+const filePath = path.join(__dirname, "../db/data/chosen2-products_inWork.csv");
 
 function parsePrice(value) {
   if (!value) return 0;
@@ -131,6 +131,7 @@ async function main() {
         fragranceFree: toBool(row.fragranceFree),
         skinTypes: detectSkinTypes(row),
         concerns: detectConcerns(row),
+        application: row.Anwendung || null,
       });
     })
     .on("end", async () => {
