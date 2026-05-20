@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { Bot, Send, Sparkles, User } from 'lucide-react'
@@ -37,8 +37,26 @@ const starterQuestions = [
   'I need a simple vegan skincare routine.',
 ]
 
+const chatStorageKey = 'selfglow-chatbot-messages'
 const medicalDisclaimer =
   'Das ist keine medizinische Diagnose, sondern eine Produktempfehlung auf Basis deiner Anfrage.'
+const initialMessages: Message[] = [
+  {
+    id: 'welcome',
+    role: 'assistant',
+    content:
+      'Hi, ich bin deine SelfGlow KI-Beratung. Sag mir deinen Hauttyp, dein Anliegen oder welche Eigenschaften dir wichtig sind.',
+  },
+]
+
+function loadStoredMessages() {
+  try {
+    const storedMessages = sessionStorage.getItem(chatStorageKey)
+    return storedMessages ? (JSON.parse(storedMessages) as Message[]) : initialMessages
+  } catch {
+    return initialMessages
+  }
+}
 
 function renderMessageContent(message: Message) {
   if (message.role !== 'assistant' || !message.content.includes(medicalDisclaimer)) {
@@ -58,19 +76,16 @@ function renderMessageContent(message: Message) {
 }
 
 export default function Chatbot() {
-  // The chat is kept as local component state for Phase 1. There is no persisted
-  // chat history yet, so refreshing the page starts a fresh conversation.
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: 'welcome',
-      role: 'assistant',
-      content:
-        'Hi, ich bin deine SelfGlow KI-Beratung. Sag mir deinen Hauttyp, dein Anliegen oder welche Eigenschaften dir wichtig sind.',
-    },
-  ])
+  // Keep the chat in sessionStorage so product detail navigation does not wipe
+  // the current consultation in this browser tab.
+  const [messages, setMessages] = useState<Message[]>(loadStoredMessages)
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    sessionStorage.setItem(chatStorageKey, JSON.stringify(messages))
+  }, [messages])
 
   // Send one customer message to the backend. The backend performs retrieval
   // over the Product table and optionally asks OpenAI to generate the answer.
@@ -194,7 +209,7 @@ export default function Chatbot() {
                       {message.products.slice(0, 3).map((product) => (
                         <Link
                           key={product.id}
-                          to={`/product/${product.id}`}
+                          to={`/product/${product.id}?from=chatbot`}
                           className="group overflow-hidden rounded-lg border border-border bg-background transition-shadow hover:shadow-md"
                         >
                           <div className="flex gap-3 p-3">
