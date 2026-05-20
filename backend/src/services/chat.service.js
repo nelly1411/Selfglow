@@ -3,6 +3,7 @@ const prisma = require("../config/prisma");
 const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
 const DEFAULT_MODEL = "gpt-5-mini";
 const MAX_CONTEXT_PRODUCTS = 6;
+const MIN_RELEVANCE_SCORE = 2;
 const PRODUCT_RECOMMENDATION_ANSWER =
   "Ich habe folgende passende Produkte aus unserem Sortiment gefunden. Das ist keine medizinische Diagnose, sondern eine Produktempfehlung auf Basis deiner Anfrage.";
 
@@ -34,10 +35,15 @@ const stopWords = new Set([
   "the",
   "to",
   "want",
+  "which",
   "with",
   "you",
+  "better",
+  "best",
+  "one",
   "ich",
   "bin",
+  "besser",
   "brauche",
   "das",
   "der",
@@ -61,20 +67,276 @@ const stopWords = new Set([
   "produkte",
   "und",
   "was",
+  "welche",
+  "welcher",
+  "welches",
 ]);
 
 // Phase 1 does not use embeddings, so we manually expand common skincare words.
 // This makes keyword search more forgiving across English/German wording and
 // common synonyms, e.g. "acne", "Akne", "Pickel", and "Unreinheiten".
 const queryAliases = {
-  acne: ["acne", "akne", "blemish", "blemishes", "unreinheiten", "pickel"],
-  aging: ["aging", "anti-aging", "antiaging", "falten", "age"],
-  dry: ["dry", "trocken", "trockene"],
-  oily: ["oily", "ölig", "oelig", "fettig"],
-  pores: ["pores", "poren", "grosse", "große"],
-  redness: ["redness", "rötungen", "roetungen", "sensitive"],
-  sensitive: ["sensitive", "sensibel", "empfindlich"],
-  sunscreen: ["sunscreen", "sonnenschutz", "spf"],
+  acne: [
+    "acne",
+    "akne",
+    "blemish",
+    "blemishes",
+    "unreinheiten",
+    "pickel",
+    "mitesser",
+    "breakout",
+    "breakouts",
+    "hautunreinheiten",
+    "unreine",
+    "unrein",
+  ],
+  aging: [
+    "aging",
+    "anti-aging",
+    "antiaging",
+    "anti age",
+    "anti-age",
+    "falten",
+    "age",
+    "wrinkle",
+    "wrinkles",
+    "fine lines",
+    "linien",
+    "straffend",
+    "firming",
+  ],
+  barrier: [
+    "barrier",
+    "skin barrier",
+    "hautbarriere",
+    "schutzbarriere",
+    "barriere",
+    "repair",
+    "reparierend",
+    "regeneration",
+    "regenerierend",
+  ],
+  blackheads: ["blackhead", "blackheads", "mitesser", "komedonen", "comedones"],
+  brightening: [
+    "brightening",
+    "glow",
+    "glowing",
+    "radiance",
+    "strahlen",
+    "strahlend",
+    "ausstrahlung",
+    "teint",
+    "dull",
+    "dullness",
+    "fahl",
+  ],
+  cleanser: [
+    "cleanser",
+    "cleansing",
+    "clean",
+    "reinigung",
+    "reiniger",
+    "gesichtsreiniger",
+    "gesischtsreinigung",
+    "reinigungsgel",
+    "reinigungsschaum",
+    "schaum",
+    "reinigungsoel",
+    "reinigungsöl",
+    "cleansing oil",
+    "balsam",
+    "balm",
+    "make-up-entferner",
+    "abschminken",
+    "abschmink",
+    "makeup",
+    "make-up",
+  ],
+  combination: ["combination", "combination skin", "mischhaut"],
+  darkSpots: [
+    "dark spot",
+    "dark spots",
+    "pigment",
+    "pigmentflecken",
+    "anti pigment",
+    "hyperpigmentation",
+    "melasma",
+    "flecken",
+    "spots",
+    "uneven tone",
+    "unregelmaessiger teint",
+    "unregelmäßiger teint",
+  ],
+  dry: [
+    "dry",
+    "dry skin",
+    "trocken",
+    "trockene",
+    "trockene haut",
+    "hydrating",
+    "hydration",
+    "hydrate",
+    "feuchtigkeit",
+    "feuchtigkeitsspendend",
+    "moisture",
+    "moisturizing",
+    "dehydrated",
+    "dehydriert",
+  ],
+  exfoliation: [
+    "exfoliant",
+    "exfoliating",
+    "exfoliate",
+    "peeling",
+    "peel",
+    "aha",
+    "bha",
+    "pha",
+    "salicylic",
+    "salicylsaure",
+    "salicylsäure",
+    "glycolic",
+    "glykol",
+    "lactic",
+    "milchsäure",
+    "milchsaure",
+  ],
+  eyeCare: ["eye cream", "augencreme", "augenpflege", "eye", "eyes", "augen"],
+  mask: ["mask", "maske", "sheet mask", "tuchmaske", "overnight mask", "sleeping mask"],
+  moisturizer: [
+    "moisturizer",
+    "moisturiser",
+    "moisturizing",
+    "feuchtigkeitscreme",
+    "feuchtigkeitspflege",
+    "tagescreme",
+    "nachtcreme",
+    "day cream",
+    "night cream",
+    "cream",
+    "creme",
+    "lotion",
+    "gel cream",
+    "gel-creme",
+  ],
+  normal: ["normal", "normal skin", "normale haut"],
+  oily: [
+    "oily",
+    "oily skin",
+    "ölig",
+    "oelige",
+    "oelig",
+    "fettig",
+    "fettige",
+    "oil control",
+    "oil-control",
+    "mattierend",
+    "mattifying",
+    "shine",
+    "glanz",
+    "talg",
+    "sebum",
+  ],
+  pores: [
+    "pores",
+    "poren",
+    "large pores",
+    "enlarged pores",
+    "grosse poren",
+    "große poren",
+    "pore",
+    "pore control",
+    "verfeinert",
+    "verfeinertes hautbild",
+  ],
+  redness: [
+    "redness",
+    "red",
+    "rötungen",
+    "roetungen",
+    "beruhigend",
+    "beruhigen",
+    "calming",
+    "soothing",
+    "irritation",
+    "irritationen",
+  ],
+  sensitive: [
+    "sensitive",
+    "sensitive skin",
+    "sensibel",
+    "empfindlich",
+    "empfindliche haut",
+    "reizungen",
+    "irritationen",
+    "gentle",
+    "mild",
+    "sanft",
+    "verträglich",
+    "vertraeglich",
+  ],
+  serum: ["serum", "ampoule", "ampulle", "essence", "essenz", "booster", "concentrate"],
+  sunscreen: [
+    "sunscreen",
+    "sun screen",
+    "sun protection",
+    "sonnenschutz",
+    "sonnencreme",
+    "uv",
+    "spf",
+    "lsf",
+    "lf",
+    "lichtschutzfaktor",
+  ],
+  texture: [
+    "texture",
+    "textur",
+    "uneven texture",
+    "hautbild",
+    "glatt",
+    "smooth",
+    "smoother",
+    "ebenmaessig",
+    "ebenmäßig",
+  ],
+  toner: ["toner", "tonic", "gesichtswasser", "pads", "toner-pads", "lotion tonique"],
+  vitaminC: ["vitamin c", "vitamin-c", "ascorbic", "ascorbinsäure", "ascorbinsaure"],
+};
+
+const ingredientAliases = {
+  aloe: ["aloe", "aloe vera"],
+  allantoin: ["allantoin"],
+  azelaic: ["azelaic", "azelainsäure", "azelainsaure"],
+  bakuchiol: ["bakuchiol"],
+  ceramide: ["ceramide", "ceramides", "ceramid", "ceramide"],
+  centella: ["centella", "cica", "asiatica"],
+  collagen: ["collagen", "kollagen"],
+  ectoin: ["ectoin", "ectoine"],
+  glycerin: ["glycerin", "glycerine"],
+  ginseng: ["ginseng"],
+  glycolic: ["glycolic", "glycolsäure", "glycolsaure", "glykolsaure", "glykol"],
+  greenTea: ["green tea", "grüner tee", "gruener tee", "tea extract"],
+  heartleaf: ["heartleaf", "houttuynia", "houttuynia cordata"],
+  hyaluronic: [
+    "hyaluronic",
+    "hyaluron",
+    "hyaluronsäure",
+    "hyaluronsaure",
+    "sodium hyaluronate",
+  ],
+  lactic: ["lactic", "lactic acid", "milchsäure", "milchsaure"],
+  niacinamide: ["niacinamide", "niacinamid"],
+  oat: ["oat", "hafer", "avena"],
+  peptide: ["peptide", "peptides", "peptid", "peptide"],
+  panthenol: ["panthenol", "vitamin b5", "b5"],
+  retinol: ["retinol", "retinal", "retinoid"],
+  salicylic: ["salicylic", "salicylsäure", "salicylsaure", "bha"],
+  shea: ["shea", "shea butter", "shea-butter", "sheabutter", "karite"],
+  squalane: ["squalane", "squalan"],
+  teaTree: ["tea tree", "teebaum"],
+  tranexamic: ["tranexamic", "tranexamsäure", "tranexamsaure", "txa"],
+  urea: ["urea"],
+  zinc: ["zinc", "zink", "zinc pca"],
 };
 
 // Normalize text before comparing keywords. This lowercases text, removes
@@ -89,6 +351,22 @@ function normalizeText(value) {
     .trim();
 }
 
+function normalizeSearchTerm(value) {
+  return normalizeText(value).replace(/\s+/g, " ");
+}
+
+function addTermVariants(term, terms) {
+  terms.add(term);
+
+  if (term.length > 4) {
+    terms.add(term.replace(/(en|er|es|e|s)$/i, ""));
+  }
+
+  if (term.includes(" ")) {
+    terms.add(term.replace(/\s+/g, ""));
+  }
+}
+
 // Extract searchable terms from the customer message. The result becomes the
 // keyword part of the RAG retrieval step.
 function extractTerms(message) {
@@ -98,17 +376,21 @@ function extractTerms(message) {
     .map((term) => term.trim())
     .filter((term) => term.length >= 3 && !stopWords.has(term));
 
-  const expandedTerms = new Set(baseTerms);
+  const expandedTerms = new Set();
+
+  baseTerms.forEach((term) => addTermVariants(term, expandedTerms));
 
   // If the message contains one known alias, add the whole alias group. This
   // increases recall without adding pgvector yet.
-  for (const aliases of Object.values(queryAliases)) {
-    if (aliases.some((alias) => normalized.includes(normalizeText(alias)))) {
-      aliases.forEach((alias) => expandedTerms.add(normalizeText(alias)));
+  for (const aliases of [...Object.values(queryAliases), ...Object.values(ingredientAliases)]) {
+    if (aliases.some((alias) => normalized.includes(normalizeSearchTerm(alias)))) {
+      aliases.forEach((alias) => addTermVariants(normalizeSearchTerm(alias), expandedTerms));
     }
   }
 
-  return Array.from(expandedTerms).slice(0, 12);
+  return Array.from(expandedTerms)
+    .filter((term) => term.length >= 3 && !stopWords.has(term))
+    .slice(0, 40);
 }
 
 // Some product preferences are already stored as booleans in the Product table.
@@ -122,22 +404,42 @@ function detectBooleanFilters(message) {
     alcoholFree:
       normalized.includes("alcohol free") ||
       normalized.includes("alcohol-free") ||
-      normalized.includes("alkoholfrei")
+      normalized.includes("alcoholfree") ||
+      normalized.includes("without alcohol") ||
+      normalized.includes("ohne alkohol") ||
+      normalized.includes("alkoholfrei") ||
+      normalized.includes("alkohol frei")
         ? true
         : undefined,
     fragranceFree:
       normalized.includes("fragrance free") ||
       normalized.includes("fragrance-free") ||
+      normalized.includes("fragrancefree") ||
+      normalized.includes("without fragrance") ||
+      normalized.includes("ohne parfum") ||
       normalized.includes("parfumfrei") ||
-      normalized.includes("duftstofffrei")
+      normalized.includes("parfum frei") ||
+      normalized.includes("duftstofffrei") ||
+      normalized.includes("duftfrei")
         ? true
         : undefined,
   };
 }
 
 function detectSpfFilter(message) {
-  const match = String(message || "").match(/\b(?:spf|lsf|lf)\s*(\d{2,3})\+?\b/i);
-  return match ? Number(match[1]) : undefined;
+  const rawMessage = String(message || "");
+  const labeledMatch = rawMessage.match(/\b(?:spf|lsf|lf)\s*(\d{2,3})\+?\b/i);
+
+  if (labeledMatch) {
+    return Number(labeledMatch[1]);
+  }
+
+  // Short queries like "50+" usually mean SPF/LSF in this skincare context.
+  // Keep this intentionally narrow so "50 ml" does not become an SPF search.
+  const compactMessage = rawMessage.trim();
+  const bareSpfMatch = compactMessage.match(/^(?:spf|lsf|lf)?\s*(20|25|30|45|50)\+\s*$/i);
+
+  return bareSpfMatch ? Number(bareSpfMatch[1]) : undefined;
 }
 
 function extractProductSpfValues(product) {
@@ -156,7 +458,94 @@ function extractProductSpfValues(product) {
     values.add(Number(match[1]));
   }
 
+  if (normalizeText(product.category).includes("sonnenschutz")) {
+    const bareMatches = text.matchAll(/\b(20|25|30|45|50)\+\b/gi);
+
+    for (const match of bareMatches) {
+      values.add(Number(match[1]));
+    }
+  }
+
   return values;
+}
+
+function productDerivedTerms(product) {
+  const terms = [];
+  const normalizedCategory = normalizeText(product.category);
+  const normalizedConcerns = normalizeText(product.concerns);
+  const normalizedSkinTypes = normalizeText(product.skinTypes);
+  const spfValues = extractProductSpfValues(product);
+
+  if (normalizedCategory.includes("sonnenschutz")) {
+    terms.push(
+      "sunscreen",
+      "sun protection",
+      "sonnenschutz",
+      "sonnencreme",
+      "uv",
+      "spf",
+      "lsf",
+      "lichtschutzfaktor"
+    );
+  }
+
+  for (const spfValue of spfValues) {
+    terms.push(`spf${spfValue}`, `spf ${spfValue}`, `lsf${spfValue}`, `lsf ${spfValue}`, `${spfValue}+`);
+  }
+
+  if (normalizedCategory.includes("reinigung")) {
+    terms.push("cleanser", "cleansing", "reinigung", "gesichtsreiniger");
+  }
+
+  if (normalizedCategory.includes("serum")) {
+    terms.push("serum", "booster");
+  }
+
+  if (normalizedCategory.includes("toner")) {
+    terms.push("toner", "gesichtswasser");
+  }
+
+  if (normalizedCategory.includes("feuchtigkeit")) {
+    terms.push("moisturizer", "feuchtigkeitscreme", "feuchtigkeitspflege", "hydrating");
+  }
+
+  if (normalizedConcerns.includes("acne")) {
+    terms.push("acne", "akne", "blemish", "unreinheiten", "pickel", "mitesser");
+  }
+
+  if (normalizedConcerns.includes("anti aging")) {
+    terms.push("anti aging", "antiaging", "falten", "wrinkles", "fine lines");
+  }
+
+  if (normalizedConcerns.includes("poren")) {
+    terms.push("pores", "poren", "large pores", "pore control", "verfeinertes hautbild");
+  }
+
+  if (normalizedConcerns.includes("rotungen")) {
+    terms.push("redness", "rötungen", "roetungen", "calming", "beruhigend");
+  }
+
+  if (normalizedSkinTypes.includes("oily")) {
+    terms.push("oily", "ölig", "fettig", "oil control", "mattierend", "talg");
+  }
+
+  if (normalizedSkinTypes.includes("dry")) {
+    terms.push("dry", "trocken", "feuchtigkeit", "hydrating", "moisturizing");
+  }
+
+  if (normalizedSkinTypes.includes("sensitive")) {
+    terms.push("sensitive", "empfindlich", "sensibel", "mild", "sanft");
+  }
+
+  if (normalizedSkinTypes.includes("combination")) {
+    terms.push("combination", "mischhaut");
+  }
+
+  if (normalizedSkinTypes.includes("normal")) {
+    terms.push("normal", "normale haut");
+  }
+
+  return terms;
 }
 
 // Build one searchable text blob per product for local scoring after Prisma
@@ -171,6 +560,7 @@ function productText(product) {
       product.ingredients,
       product.skinTypes,
       product.concerns,
+      ...productDerivedTerms(product),
       product.vegan ? "vegan" : "",
       product.alcoholFree ? "alcohol free alkoholfrei" : "",
       product.fragranceFree ? "fragrance free parfumfrei duftstofffrei" : "",
@@ -240,6 +630,11 @@ async function retrieveProducts(message) {
     ...detectBooleanFilters(message),
     spf: detectSpfFilter(message),
   };
+  const hasFilters = Object.values(filters).some((value) => value !== undefined);
+
+  if (terms.length === 0 && !hasFilters) {
+    return [];
+  }
 
   const where = {};
 
@@ -255,8 +650,10 @@ async function retrieveProducts(message) {
 
   // Search the most useful product text fields. Prisma combines this OR block
   // with any exact boolean filters above.
+  const searchClauses = [];
+
   if (terms.length > 0) {
-    where.OR = terms.flatMap((term) => [
+    searchClauses.push(...terms.flatMap((term) => [
       { name: { contains: term, mode: "insensitive" } },
       { brand: { contains: term, mode: "insensitive" } },
       { category: { contains: term, mode: "insensitive" } },
@@ -264,19 +661,39 @@ async function retrieveProducts(message) {
       { ingredients: { contains: term, mode: "insensitive" } },
       { skinTypes: { contains: term, mode: "insensitive" } },
       { concerns: { contains: term, mode: "insensitive" } },
-    ]);
+    ]));
+  }
+
+  if (filters.spf) {
+    const spfValue = String(filters.spf);
+
+    searchClauses.push(
+      { category: { contains: "Sonnenschutz", mode: "insensitive" } },
+      { name: { contains: `SPF${spfValue}`, mode: "insensitive" } },
+      { name: { contains: `SPF ${spfValue}`, mode: "insensitive" } },
+      { name: { contains: `LSF${spfValue}`, mode: "insensitive" } },
+      { name: { contains: `LSF ${spfValue}`, mode: "insensitive" } },
+      { description: { contains: `SPF${spfValue}`, mode: "insensitive" } },
+      { description: { contains: `SPF ${spfValue}`, mode: "insensitive" } },
+      { description: { contains: `LSF${spfValue}`, mode: "insensitive" } },
+      { description: { contains: `LSF ${spfValue}`, mode: "insensitive" } }
+    );
+  }
+
+  if (searchClauses.length > 0) {
+    where.OR = searchClauses;
   }
 
   let products = await prisma.product.findMany({
     where,
-    take: 40,
+    take: filters.spf ? 120 : 40,
     orderBy: [{ rating: "desc" }, { name: "asc" }],
   });
 
   // Fallback retrieval: SQL contains search can miss terms because of accents,
   // spelling variants, or language differences. If it finds too few rows, fetch
   // a broader filtered set and let the local scoring function rank it.
-  if (products.length < 3 && terms.length > 0) {
+  if (products.length < 3 && (terms.length > 0 || filters.spf)) {
     const broadWhere = {};
 
     for (const [key, value] of Object.entries(filters)) {
@@ -289,7 +706,7 @@ async function retrieveProducts(message) {
 
     products = await prisma.product.findMany({
       where: broadWhere,
-      take: 80,
+      take: 200,
       orderBy: [{ rating: "desc" }, { name: "asc" }],
     });
   }
@@ -311,6 +728,7 @@ async function retrieveProducts(message) {
       product,
       score: scoreProduct(product, terms, filters),
     }))
+    .filter(({ score }) => score >= MIN_RELEVANCE_SCORE)
     .sort((a, b) => b.score - a.score)
     .slice(0, MAX_CONTEXT_PRODUCTS)
     .map(({ product }) => toChatProduct(product));
