@@ -1,7 +1,6 @@
 
-// controllers/authController.js
 const bcrypt = require("bcrypt");
-const jwt    = require("jsonwebtoken");
+const jwt = require("jsonwebtoken");
 const prisma = require("../config/prisma");
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -19,14 +18,14 @@ function getJwtSecret(res) {
 
 function toAuthUser(user) {
   return {
-    id:           user.id,
-    email:        user.email,
-    name:         user.name,
+    id: user.id,
+    email: user.email,
+    name: user.name,
     savedAddress: user.savedAddress ?? null,
-    savedPostal:  user.savedPostal  ?? null,
-    savedCity:    user.savedCity    ?? null,
+    savedPostal: user.savedPostal ?? null,
+    savedCity: user.savedCity ?? null,
     savedCountry: user.savedCountry ?? null,
-    savedPhone:   user.savedPhone   ?? null,
+    savedPhone: user.savedPhone ?? null,
   };
 }
 
@@ -107,12 +106,12 @@ async function register(req, res) {
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const user = await prisma.user.create({
-  data: {
-    email: normalizedEmail,
-    password: hashedPassword,  
-    name: trimmedName || null,
-  },
-});
+      data: {
+        email: normalizedEmail,
+        passwordHash: hashedPassword,
+        name: trimmedName || null,
+      },
+    });
 
     return res.status(201).json({
       message: "User created successfully",
@@ -124,8 +123,6 @@ async function register(req, res) {
   }
 }
 
-// ─── Login ─────────────────────────────────────────────────────────────────────
-// FIX: select hinzugefügt damit savedAddress-Felder aus DB geladen werden
 async function login(req, res) {
   try {
     const { email, password } = req.body;
@@ -137,19 +134,18 @@ async function login(req, res) {
         .json({ message: "Email and password are required" });
     }
 
-    // ← FIX: select statt ohne → holt jetzt auch alle savedAddress-Felder
     const user = await prisma.user.findUnique({
-      where:  { email: normalizedEmail },
+      where: { email: normalizedEmail },
       select: {
-        id:           true,
-        email:        true,
-        name:         true,
-        password:     true,
+        id: true,
+        email: true,
+        name: true,
+        passwordHash: true,
         savedAddress: true,
-        savedPostal:  true,
-        savedCity:    true,
+        savedPostal: true,
+        savedCity: true,
         savedCountry: true,
-        savedPhone:   true,
+        savedPhone: true,
       },
     });
 
@@ -157,7 +153,7 @@ async function login(req, res) {
       return res.status(401).json({ message: "Invalid email or password" });
     }
 
-const passwordIsValid = await bcrypt.compare(password, user.password)
+    const passwordIsValid = await bcrypt.compare(password, user.passwordHash);
 
     if (!passwordIsValid) {
       return res.status(401).json({ message: "Invalid email or password" });
@@ -177,7 +173,7 @@ const passwordIsValid = await bcrypt.compare(password, user.password)
     return res.json({
       message: "Login successful",
       token,
-      user: toAuthUser(user), // ← enthält jetzt savedAddress aus DB
+      user: toAuthUser(user),
     });
   } catch (error) {
     console.error(error);
@@ -185,21 +181,22 @@ const passwordIsValid = await bcrypt.compare(password, user.password)
   }
 }
 
-// ─── GET /api/auth/address ─────────────────────────────────────────────────────
 async function getAddress(req, res) {
   try {
     const user = await prisma.user.findUnique({
-      where:  { id: req.user.userId },
+      where: { id: req.user.userId },
       select: {
         savedAddress: true,
-        savedPostal:  true,
-        savedCity:    true,
+        savedPostal: true,
+        savedCity: true,
         savedCountry: true,
-        savedPhone:   true,
+        savedPhone: true,
       },
     });
 
-    if (!user) return res.status(404).json({ message: "User nicht gefunden" });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
 
     return res.json(user);
   } catch (error) {
@@ -208,24 +205,19 @@ async function getAddress(req, res) {
   }
 }
 
-// ─── PATCH /api/auth/address ───────────────────────────────────────────────────
-// FIX: erwartet jetzt { address, postal, city, country, phone }
-// (Checkout schickt diese Feldnamen, nicht savedAddress usw.)
 async function updateAddress(req, res) {
   try {
     const userId = req.user.userId;
-
-    // ← FIX: Checkout schickt address/postal/city/country/phone
     const { address, postal, city, country, phone } = req.body;
 
     const updatedUser = await prisma.user.update({
       where: { id: userId },
       data: {
         savedAddress: address ?? null,
-        savedPostal:  postal  ?? null,
-        savedCity:    city    ?? null,
+        savedPostal: postal ?? null,
+        savedCity: city ?? null,
         savedCountry: country ?? null,
-        savedPhone:   phone   ?? null,
+        savedPhone: phone ?? null,
       },
     });
 
@@ -240,17 +232,26 @@ async function updateAddress(req, res) {
 }
 
 async function confirmEmail(req, res) {
-  const { token } = req.params
+  try {
+    const { token } = req.params;
+    const jwtSecret = getJwtSecret(res);
 
-  const decoded = jwt.verify(token, process.env.JWT_SECRET)
+    if (!jwtSecret) return;
 
-  await prisma.user.update({
-    where: { id: decoded.userId },
-    data: { emailVerified: true }
-  })
+    const decoded = jwt.verify(token, jwtSecret);
 
-  res.redirect("http://localhost:5173/login")
+    await prisma.user.update({
+      where: { id: decoded.userId },
+      data: { emailVerified: true },
+    });
+
+    return res.redirect("http://localhost:5173/login");
+  } catch (error) {
+    console.error(error);
+    return res.status(400).json({ message: "Invalid or expired confirmation link" });
+  }
 }
+
 module.exports = {
   register,
   login,
