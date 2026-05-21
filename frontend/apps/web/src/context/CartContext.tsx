@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, type ReactNode } from 'react'
+import { createContext, useContext, useState, useEffect, type ReactNode, useRef } from 'react'
 import { useAuth } from '@/context/AuthContext'
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5050'
 
@@ -10,6 +10,7 @@ export interface CartItem {
   originalPrice?: number
   image: string
   quantity: number
+  
 }
 
 interface CartContextType {
@@ -26,6 +27,7 @@ const CartContext = createContext<CartContextType | undefined>(undefined)
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const { token, isLoggedIn } = useAuth()
+  const wasLoggedIn = useRef(isLoggedIn)
 
   const [items, setItems] = useState<CartItem[]>(() => {
   const stored = localStorage.getItem('cart')
@@ -33,8 +35,19 @@ export function CartProvider({ children }: { children: ReactNode }) {
 })
 
 useEffect(() => {
-  localStorage.setItem('cart', JSON.stringify(items))
-}, [items])
+    if (!isLoggedIn  && items.length > 0) {
+      localStorage.setItem('cart', JSON.stringify(items))
+    }
+}, [items, isLoggedIn])
+
+useEffect(() => {
+  if (wasLoggedIn.current && !isLoggedIn) {
+    setItems([])
+    localStorage.removeItem('cart')
+  }
+
+  wasLoggedIn.current = isLoggedIn
+}, [isLoggedIn])
 
   const addToCart =async (product: Omit<CartItem, 'quantity'>) => {
       // Wenn der User eingeloggt ist, wird das Produkt zusätzlich im Backend gespeichert.
@@ -60,9 +73,31 @@ useEffect(() => {
     })
   }
 
-  useEffect(() => {
-  async function loadBackendCart() {
+ useEffect(() => {
+  async function syncAndLoadBackendCart() {
     if (!isLoggedIn || !token) return
+
+    const localCart = localStorage.getItem('cart')
+    const localItems: CartItem[] = localCart ? JSON.parse(localCart) : []
+
+    if (localItems.length > 0) {
+      await fetch(`${API_BASE_URL}/api/cart/sync`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          items: localItems.map((item) => ({
+            productId: item.id,
+            quantity: item.quantity,
+            selected: true,
+          })),
+        }),
+      })
+
+      localStorage.removeItem('cart')
+    }
 
     const response = await fetch(`${API_BASE_URL}/api/cart`, {
       headers: {
@@ -82,13 +117,14 @@ useEffect(() => {
       originalPrice: undefined,
       image: cartItem.product.imageUrl || '',
       quantity: cartItem.quantity,
+     
     }))
 
     setItems(backendItems)
   }
 
-  loadBackendCart()
-}, [isLoggedIn, token]) //Wenn User eingeloggt ist → Cart aus Backend laden
+  syncAndLoadBackendCart()
+}, [isLoggedIn, token])
 
   const removeFromCart = async(id: number) => {
      if (isLoggedIn && token) {
