@@ -72,10 +72,11 @@ const token = user?.token
   const [touched, setTouched]                 = useState<Record<string, boolean>>({})
   const [loadingAddress, setLoadingAddress]   = useState(false)
   const [addressLoaded, setAddressLoaded]     = useState(false)
-  const [redirecting, setRedirecting]         = useState(false)
+  const [showPaymentPopup, setShowPaymentPopup] = useState(false)
+  const [isPaying, setIsPaying]                 = useState(false)
   const [form, setForm]                       = useState(BASE_FORM)
+  
 
-  const selectedMethod = PAYMENT_METHODS.find(m => m.id === payment)!
 
   // ─── Reset when user changes ──────────────────────────────────────────
   useEffect(() => {
@@ -198,79 +199,127 @@ const token = user?.token
   const finalTotal = totalPrice - discountValue
 
   // ─── Submit + redirect ─────────────────────────────────────────────────
-  const handleCheckout = async () => {
-    setErrorMsg('')
-    const allFields = [
-      ...(!user ? ['firstName', 'lastName', 'email', 'phone'] : []),
-      'address', 'postal', 'city', 'country',
-    ]
-    setTouched(Object.fromEntries(allFields.map(f => [f, true])))
-    if (!validateAll()) return
-
-    const orderData = {
-      items,
-      totalPrice: finalTotal,
-      payment,
-      customer: { firstName: form.firstName, lastName: form.lastName, email: form.email, phone: form.phone },
-      shipping:  { address: form.address, postal: form.postal, city: form.city, country: form.country },
-      paymentData: { method: payment },
-    }
-
-    try {
+  const buildOrderData = () => ({
+    items,
+    totalPrice: finalTotal,
+    payment,
+    customer: {
+      firstName: form.firstName,
+      lastName: form.lastName,
+      email: form.email || user?.email || '',
+      phone: form.phone,
+    },
+    shipping: {
+      address: form.address,
+      postal: form.postal,
+      city: form.city,
+      country: form.country,
+    },
+    paymentData: {
+      method: payment,
+    },
+  })
   
-const headers: Record<string, string> = {
-  'Content-Type': 'application/json',
-}
-
-if (token) {
-  headers['Authorization'] = `Bearer ${token}`
-}
-
-console.log("TOKEN:", token)
-console.log("HEADERS:", headers)
-
-      const res  = await fetch(`${API}/api/checkout`, { method: 'POST', headers, body: JSON.stringify(orderData) })
+  const submitOrder = async () => {
+    setErrorMsg('')
+  
+    const orderData = buildOrderData()
+  
+    try {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      }
+  
+      if (token) {
+        headers.Authorization = `Bearer ${token}`
+      }
+  
+      const res = await fetch(`${API}/api/checkout`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(orderData),
+      })
+  
       const data = await res.json()
-
-      if (res.status === 429) { setErrorMsg(data.message); return }
-      if (!res.ok) { setErrorMsg(data.message || 'Fehler beim Checkout'); return }
-
+  
+      if (res.status === 429) {
+        setErrorMsg(data.message)
+        return
+      }
+  
+      if (!res.ok) {
+        setErrorMsg(data.message || 'Fehler beim Checkout')
+        return
+      }
+  
       clearCart()
-
-      // Save address to DB
+  
       if (user?.token) {
         const addrRes = await fetch(`${API}/api/auth/address`, {
           method: 'PATCH',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${user.token}` },
-          body: JSON.stringify({ address: form.address, postal: form.postal, city: form.city, country: form.country, phone: form.phone }),
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${user.token}`,
+          },
+          body: JSON.stringify({
+            address: form.address,
+            postal: form.postal,
+            city: form.city,
+            country: form.country,
+            phone: form.phone,
+          }),
         })
+  
         if (addrRes.ok) {
           const addrData = await addrRes.json()
-          if (addrData.user) updateUser({ ...user, ...addrData.user, token: user.token })
+          if (addrData.user) {
+            updateUser({ ...user, ...addrData.user, token: user.token })
+          }
         }
       }
-
+  
       const orderNumber = data.order?.orderNumber || ''
-
-      // ── Simulated redirect to payment provider ────────────────────────
-      setRedirecting(true)
-
-      // Store order info so ThankYou page can read it after "coming back"
-      sessionStorage.setItem('pendingOrder', JSON.stringify({
-        email: form.email || user?.email,
-        orderNumber,
-      }))
-
-      // Simulate redirect: open payment site, then after 2s navigate to thank-you
-      window.open(selectedMethod.redirectUrl, '_blank')
-
-      setTimeout(() => {
-        navigate('/thank-you', { state: { email: form.email || user?.email, orderNumber } })
-      }, 2000)
-
+  
+      sessionStorage.setItem(
+        'pendingOrder',
+        JSON.stringify({
+          email: form.email || user?.email,
+          orderNumber,
+        })
+      )
+  
+      navigate('/thank-you', {
+        state: {
+          email: form.email || user?.email,
+          orderNumber,
+        },
+      })
     } catch {
       setErrorMsg('Netzwerkfehler – bitte versuche es erneut.')
     }
+  }
+  
+  const handleCheckout = async () => {
+    setErrorMsg('')
+  
+    const allFields = [
+      ...(!user ? ['firstName', 'lastName', 'email', 'phone'] : []),
+      'address',
+      'postal',
+      'city',
+      'country',
+    ]
+  
+    setTouched(Object.fromEntries(allFields.map((field) => [field, true])))
+  
+    if (!validateAll()) return
+  
+    if (items.length === 0) {
+      setErrorMsg('Dein Warenkorb ist leer.')
+      return
+    }
+  
+    setShowPaymentPopup(true)
   }
 
   // ─── Gate ─────────────────────────────────────────────────────────────
@@ -297,20 +346,6 @@ const formatPrice = (value: number) =>
     style: 'currency',
     currency: 'EUR',
   }).format(value)
-  // ─── Redirect overlay ─────────────────────────────────────────────────
-  if (redirecting) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[#FDFAF6]">
-        <div className="text-center space-y-4">
-          <Loader2 className="h-10 w-10 animate-spin text-[#D4A574] mx-auto" />
-          <p className="text-lg font-medium text-gray-700">
-            Du wirst zu {selectedMethod.label} weitergeleitet…
-          </p>
-          <p className="text-sm text-gray-400">Bitte warte einen Moment.</p>
-        </div>
-      </div>
-    )
-  }
 
   const hasErrors = Object.values(errors).some(Boolean)
 
@@ -584,6 +619,90 @@ const formatPrice = (value: number) =>
           <p className="text-xs text-center text-gray-400 mt-3">Sichere, verschlüsselte Übertragung</p>
         </div>
       </div>
+      {showPaymentPopup && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+        <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+          <div className="mb-5 flex items-center justify-between">
+            <h2 className="text-xl font-bold text-gray-900">
+              {payment === 'klarna' ? 'Klarna Zahlung' : 'PayPal Zahlung'}
+            </h2>
+
+            <button
+              type="button"
+              onClick={() => setShowPaymentPopup(false)}
+              disabled={isPaying}
+              className="text-2xl leading-none text-gray-400 hover:text-gray-600 disabled:opacity-50"
+              aria-label="Popup schließen"
+            >
+              ×
+            </button>
+          </div>
+
+          <div
+            className={`mb-5 rounded-xl border p-4 ${
+              payment === 'klarna'
+                ? 'border-pink-100 bg-pink-50'
+                : 'border-blue-100 bg-blue-50'
+            }`}
+          >
+            <p className="text-sm font-medium text-gray-900">
+              Demo-Zahlung mit {payment === 'klarna' ? 'Klarna' : 'PayPal'}
+            </p>
+            <p className="mt-1 text-sm text-gray-600">
+              Dies ist eine simulierte Zahlung für das SelfGlow-Projekt.
+              Es wird keine echte Zahlung durchgeführt.
+            </p>
+          </div>
+
+          <div className="mb-5 space-y-2 text-sm text-gray-700">
+            <div className="flex justify-between">
+              <span>Zahlungsmethode</span>
+              <span className="font-medium">
+                {payment === 'klarna' ? 'Klarna' : 'PayPal'}
+              </span>
+            </div>
+
+            <div className="flex justify-between">
+              <span>Gesamtbetrag</span>
+              <span className="font-medium">{formatPrice(finalTotal)}</span>
+            </div>
+          </div>
+
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={() => setShowPaymentPopup(false)}
+              disabled={isPaying}
+              className="flex-1 rounded-full border border-gray-300 py-2.5 text-sm font-medium hover:bg-gray-50 disabled:opacity-60"
+            >
+              Abbrechen
+            </button>
+
+            <button
+              type="button"
+              disabled={isPaying}
+              onClick={async () => {
+                setIsPaying(true)
+
+                try {
+                  await submitOrder()
+                  setShowPaymentPopup(false)
+                } finally {
+                  setIsPaying(false)
+                }
+              }}
+              className={`flex-1 rounded-full py-2.5 text-sm font-medium text-white disabled:opacity-60 ${
+                payment === 'klarna'
+                  ? 'bg-pink-500 hover:bg-pink-600'
+                  : 'bg-blue-600 hover:bg-blue-700'
+              }`}
+            >
+              {isPaying ? 'Wird verarbeitet...' : 'Jetzt zahlen'}
+            </button>
+          </div>
+        </div>
+      </div>
+)}
     </div>
   )
 }
