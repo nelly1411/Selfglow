@@ -10,6 +10,7 @@ const authRoutes = require("./routes/auth");
 const checkoutRoutes = require("./routes/checkout.routes");
 const chatRoutes = require("./routes/chat.routes");
 const wishlistRoutes = require("./routes/wishlist.routes");
+const reviewRoutes = require("./routes/review.routes");
 const app = express();
 
 app.use(cors());
@@ -30,6 +31,8 @@ app.get("/api/test", (req, res) => {
 app.use("/api/products", productRoutes);
 
 app.use("/api/wishlist", wishlistRoutes);
+
+app.use("/api/reviews", reviewRoutes);
 
 const PORT = process.env.PORT || 5050;
 
