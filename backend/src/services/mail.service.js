@@ -1,19 +1,26 @@
 // services/mail.service.js
-const nodemailer = require('nodemailer')
+/*
+App Password
+Das ist ein extra Passwort nur für Programme
+Node.js / Backend gedacht
+ohne unsicher
+Nodemailer verbindet sich mit Gmail SMTP:Simple Mail Transfer Protocol, Postsystem fürs Internet“, das E-Mails verschickt
+Gmail verschickt die Mail
+    */
+const nodemailer = require('nodemailer') //um email zu senden, verbindet sich im backend mit gemail
 
 function createTransporter() {
-  return nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
+  return nodemailer.createTransport({ //Erstelle mir eine Verbindung zum Mailserver
+    service: 'gmail', // Gmail SMTP
+    auth: { //login daten
       user: process.env.MAIL_USER,
       pass: process.env.MAIL_PASS?.trim(),
     },
   })
 }
 
-// ─── Bestätigungs-E-Mail ──────────────────────────────────────────────────────
-exports.sendOrderConfirmation = async ({ to, orderId, items, total, shipping }) => {
-  const transporter = createTransporter()
+exports.sendOrderConfirmation = async ({ to, orderId, items, total, shipping }) => {//von checkout aufgerufen, bekommt diese daten
+  const transporter = createTransporter() //Gmail-Sender aktiviert
 
   const itemRows = JSON.parse(typeof items === 'string' ? items : JSON.stringify(items))
     .map(

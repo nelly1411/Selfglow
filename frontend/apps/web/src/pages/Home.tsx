@@ -1,154 +1,291 @@
-import { Link } from 'react-router-dom'
-import { Bot, Sparkles, SlidersHorizontal } from 'lucide-react'
-import { Button } from "@workspace/ui/components/button"
+import { Link, useNavigate } from 'react-router-dom'
+import { Bot, Sparkles, SlidersHorizontal, ArrowRight } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { useAuth } from '@/context/AuthContext'
+import serumBild        from '@/images/serum.jpg'
+import feuchtigkeitBild from '@/images/Feuchtigkeit.jpg'
+import tonerBild        from '@/images/toner.jpg'
+import sonnenschutzBild from '@/images/sonnenschutz.jpg'
+import cleanserBild     from '@/images/cleanser.jpg'
+import HomeBild         from '@/images/face.jpg'
+import skin1            from '@/images/1.jpg'
+import skin2            from '@/images/2.jpg'
+import skin3            from '@/images/3.jpg'
+import skin4            from '@/images/4.jpg'
+
+const CSS = `
+  @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
+  * { box-sizing: border-box; }
+  .home-root { font-family: 'Outfit', sans-serif; color: #1c1209; background: #FDFAF6; }
+  .img-hover { transition: transform 0.6s cubic-bezier(0.25,0.46,0.45,0.94); }
+  .img-hover:hover { transform: scale(1.04); }
+  .pill-btn { transition: background 0.2s ease; }
+  .pill-btn:hover { background: #c4925a !important; }
+  .skin-circle { transition: box-shadow 0.25s ease, border-color 0.25s ease; border: 2px solid transparent; }
+  .skin-circle:hover { border-color: #D4A574; box-shadow: 0 0 0 4px rgba(212,165,116,0.18); }
+  .feat-card { transition: box-shadow 0.25s ease, transform 0.25s ease; }
+  .feat-card:hover { transform: translateY(-3px); box-shadow: 0 12px 40px rgba(212,165,116,0.15); }
+  .cat-overlay { transition: opacity 0.3s ease; opacity: 0; }
+  .cat-card:hover .cat-overlay { opacity: 1; }
+  .cat-card img { transition: transform 0.55s cubic-bezier(0.25,0.46,0.45,0.94); }
+  .cat-card:hover img { transform: scale(1.06); }
+  @keyframes fadeSlideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+  .greet-widget { animation: fadeSlideUp 0.5s ease forwards; }
+  .greet-option { transition: all 0.2s ease; cursor: pointer; border: 1.5px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.1); backdrop-filter: blur(8px); }
+  .greet-option:hover { background: rgba(255,255,255,0.2); border-color: #D4A574; transform: translateX(4px); }
+`
+
+const skinLabels: Record<string, string> = {
+  Normal:      'Normale Haut',
+  Oily:        'Fettige Haut',
+  Dry:         'Trockene Haut',
+  Sensitive:   'Sensible Haut',
+  Combination: 'Mischhaut',
+}
 
 const skinTypes = [
-  { name: 'Normale Haut', value: 'Normal', image: 'https://images.unsplash.com/photo-1616394584738-fc6e612e71b9?w=200&h=200&fit=crop' },
-  { name: 'Fettige Haut', value: 'Oily', image: 'https://images.unsplash.com/photo-1594744803329-e58b31de8bf5?w=200&h=200&fit=crop' },
-  { name: 'Mischhaut', value: 'Combination', image: 'https://images.unsplash.com/photo-1609505848912-b7c3b8b4beda?w=200&h=200&fit=crop' },
-  { name: 'Sensible Haut', value: 'Sensitive', image: 'https://images.unsplash.com/photo-1512290923902-8a9f81dc236c?w=200&h=200&fit=crop' },
-  { name: 'Trockene Haut', value: 'Dry', image: 'https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=200&h=200&fit=crop' },
+  { name: 'Normale Haut',  value: 'Normal',      img: skin1 },
+  { name: 'Fettige Haut',  value: 'Oily',        img: skin2 },
+  { name: 'Mischhaut',     value: 'Combination', img: skin3 },
+  { name: 'Sensible Haut', value: 'Sensitive',   img: skin4 },
+  { name: 'Trockene Haut', value: 'Dry',         img: skin1 },
 ]
 
 const categories = [
-  { 
-    name: 'Feuchtigkeitspflege', 
-    value: 'Feuchtigkeitspflege',
-    image: 'https://images.unsplash.com/photo-1608248597279-f99d160bfcbc?w=400&h=600&fit=crop',
-    size: 'large'
-  },
-  { 
-    name: 'Serum', 
-    value: 'Serum', 
-    image: 'https://images.unsplash.com/photo-1617897903246-719242758050?w=400&h=300&fit=crop',
-    size: 'small'
-  },
-  { 
-    name: 'Toner', 
-    value: 'Toner', 
-    image: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=400&h=300&fit=crop',
-    size: 'small'
-  },
-  { 
-    name: 'Sonnenschutz', 
-    value: 'Sonnenschutz', 
-    image: 'https://images.unsplash.com/photo-1596755389378-c31d21fd1273?w=400&h=300&fit=crop',
-    size: 'small'
-  },
-  { 
-    name: 'Gesichtsreinigung', 
-    value: 'Gesichtsreinigung',
-    image: 'https://images.unsplash.com/photo-1556228578-0d85b1a4d571?w=400&h=300&fit=crop',
-    size: 'small'
-  },
+  { name: 'Feuchtigkeitspflege', value: 'Feuchtigkeitspflege', img: feuchtigkeitBild },
+  { name: 'Serum',               value: 'Serum',               img: serumBild },
+  { name: 'Toner',               value: 'Toner',               img: tonerBild },
+  { name: 'Sonnenschutz',        value: 'Sonnenschutz',        img: sonnenschutzBild },
+  { name: 'Reinigung',           value: 'Gesischtsreinigung',  img: cleanserBild },
 ]
 
 const features = [
-  { icon: Bot, title: 'KI-Beratung' },
-  { icon: Sparkles, title: 'Hochwertige Produkte' },
-  { icon: SlidersHorizontal, title: 'Einfache Filter' },
+  { icon: Bot,               title: 'KI-Beratung',     desc: 'Personalisierte Empfehlungen basierend auf deinem Hauttyp.' },
+  { icon: Sparkles,          title: 'Premium Qualität', desc: 'Nur geprüfte Produkte mit hochwertigen Inhaltsstoffen.' },
+  { icon: SlidersHorizontal, title: 'Einfache Filter',  desc: 'Finde dein Produkt – nach Hauttyp, Anliegen oder Kategorie.' },
 ]
 
+function getGreeting() {
+  const h = new Date().getHours()
+  if (h < 12) return 'Guten Morgen'
+  if (h < 17) return 'Guten Tag'
+  return 'Guten Abend'
+}
+
+const optionStyle = {
+  display: 'flex' as const,
+  alignItems: 'center' as const,
+  gap: 14,
+  padding: '14px 18px',
+  borderRadius: 14,
+  textAlign: 'left' as const,
+  fontFamily: "'Outfit', sans-serif",
+  color: '#fff',
+}
+
 export default function Home() {
+  const [email, setEmail]    = useState('')
+  const [subscribed, setSub] = useState(false)
+  const styleRef = useRef<HTMLStyleElement | null>(null)
+  const { user } = useAuth()
+  const navigate = useNavigate()
+
+  const firstName = user?.name?.split(' ')[0] || user?.email?.split('@')[0] || null
+  const skinType  = user?.skinType || null
+  const greeting  = getGreeting()
+
+  useEffect(() => {
+    const el = document.createElement('style')
+    el.textContent = CSS
+    document.head.appendChild(el)
+    styleRef.current = el
+    return () => { if (styleRef.current) document.head.removeChild(styleRef.current) }
+  }, [])
+
   return (
-    <div className="overflow-hidden">
-      {/* Hero Section */}
-      <section className="relative">
-        <div className="container mx-auto px-4 py-12 lg:py-16">
-          <div className="grid lg:grid-cols-2 gap-8 items-center">
-            <div className="space-y-6">
-              <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-foreground leading-tight text-balance">
-                Finde die perfekte Pflege für deine Haut
+    <div className="home-root overflow-x-hidden">
+
+      {/* ── HERO ──────────────────────────────────────────────────────── */}
+      <section style={{ position: 'relative', minHeight: '92vh', overflow: 'hidden', display: 'flex', alignItems: 'center' }}>
+        <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
+          <img src={HomeBild} alt="Skincare" className="img-hover" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(90deg, rgba(20,12,4,0.78) 0%, rgba(20,12,4,0.42) 55%, rgba(20,12,4,0.08) 100%)' }} />
+        </div>
+
+        <div style={{ position: 'relative', zIndex: 1, maxWidth: 1200, margin: '0 auto', padding: '80px 48px', width: '100%' }}>
+
+          {/* ── Willkommenscode Banner ── */}
+          {(!firstName || !user?.usedWelcomeCode) && (
+            <div style={{
+              position: 'absolute', bottom: 32, left: 0, right: 0,
+              zIndex: 2, padding: '0 48px',
+              display: 'flex', alignItems: 'center', gap: 12,
+            }}>
+              <span style={{ fontSize: 14 }}></span>
+              <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', margin: 0, fontWeight: 300 }}>
+                {firstName ? 'Dein Willkommenscode:' : 'Registriere dich und spare 10% —'}
+              </p>
+              <span style={{
+                fontFamily: 'monospace', fontSize: 13, fontWeight: 700,
+                color: '#D4A574', letterSpacing: '0.1em',
+              }}>
+                WELCOME10
+              </span>
+              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)' }}> einmalig</span>
+            </div>
+          )}
+
+          {firstName ? (
+            <div className="greet-widget" style={{ maxWidth: 480 }}>
+              <p style={{ fontSize: 11, letterSpacing: '0.22em', textTransform: 'uppercase', color: '#D4A574', fontWeight: 600, marginBottom: 16 }}>
+                ✦ &nbsp;{greeting}
+              </p>
+              <h1 style={{ fontFamily: "'Outfit', sans-serif", fontSize: 'clamp(32px, 5vw, 58px)', fontWeight: 800, lineHeight: 1.08, letterSpacing: '-0.03em', color: '#fff', margin: '0 0 8px' }}>
+                Hey, {firstName}! 👋
               </h1>
-              <Link to="/shop">
-                <Button className="bg-[#F5E6D3] text-foreground hover:bg-[#E8D5C0] rounded-full px-6 py-2 text-sm font-medium">
-                  Shop Now
-                </Button>
+
+              {/* ── Hauttyp bekannt ── */}
+              {skinType ? (
+                <>
+                  <p style={{ fontSize: 16, color: 'rgba(255,255,255,0.65)', margin: '0 0 6px', fontWeight: 300 }}>
+                    Dein Hauttyp:
+                  </p>
+                  <p style={{ fontSize: 18, color: '#D4A574', fontWeight: 700, margin: '0 0 24px', letterSpacing: '-0.01em' }}>
+                    {skinLabels[skinType] || skinType}
+                  </p>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <button onClick={() => navigate(`/shop?skinType=${skinType}`)} className="greet-option" style={optionStyle}>
+                      <span style={{ fontSize: 22, flexShrink: 0 }}>🛍️</span>
+                      <div>
+                        <p style={{ fontWeight: 700, fontSize: 14, margin: 0, color: '#fff' }}>Produkte für {skinLabels[skinType]}</p>
+                        <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', margin: 0, fontWeight: 300 }}>Passend zu deinem Hauttyp</p>
+                      </div>
+                      <ArrowRight size={16} style={{ marginLeft: 'auto', color: '#D4A574', flexShrink: 0 }} />
+                    </button>
+
+                    <button onClick={() => navigate('/quiz')} className="greet-option" style={optionStyle}>
+                      <span style={{ fontSize: 22, flexShrink: 0 }}>🔄</span>
+                      <div>
+                        <p style={{ fontWeight: 700, fontSize: 14, margin: 0, color: '#fff' }}>Quiz nochmal machen</p>
+                        <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', margin: 0, fontWeight: 300 }}>Hauttyp neu ermitteln</p>
+                      </div>
+                      <ArrowRight size={16} style={{ marginLeft: 'auto', color: '#D4A574', flexShrink: 0 }} />
+                    </button>
+
+                    <button onClick={() => navigate('/chatbot')} className="greet-option" style={optionStyle}>
+                      <span style={{ fontSize: 22, flexShrink: 0 }}>🤖</span>
+                      <div>
+                        <p style={{ fontWeight: 700, fontSize: 14, margin: 0, color: '#fff' }}>SelfGlow AI fragen</p>
+                        <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', margin: 0, fontWeight: 300 }}>Persönliche KI-Beratung</p>
+                      </div>
+                      <ArrowRight size={16} style={{ marginLeft: 'auto', color: '#D4A574', flexShrink: 0 }} />
+                    </button>
+                  </div>
+                </>
+              ) : (
+                /* ── Hauttyp unbekannt ── */
+                <>
+                  <p style={{ fontSize: 16, color: 'rgba(255,255,255,0.65)', margin: '0 0 28px', fontWeight: 300, lineHeight: 1.6 }}>
+                    Ich kenne deine Haut noch nicht.<br />Möchtest du…
+                  </p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <button onClick={() => navigate('/quiz')} className="greet-option" style={optionStyle}>
+                      <span style={{ fontSize: 22, flexShrink: 0 }}></span>
+                      <div>
+                        <p style={{ fontWeight: 700, fontSize: 14, margin: 0, color: '#fff' }}>Schnelles Quiz</p>
+                        <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', margin: 0, fontWeight: 300 }}>30 Sekunden — Hauttyp ermitteln</p>
+                      </div>
+                      <ArrowRight size={16} style={{ marginLeft: 'auto', color: '#D4A574', flexShrink: 0 }} />
+                    </button>
+
+                    <button onClick={() => navigate('/shop')} className="greet-option" style={optionStyle}>
+                      <span style={{ fontSize: 22, flexShrink: 0 }}></span>
+                      <div>
+                        <p style={{ fontWeight: 700, fontSize: 14, margin: 0, color: '#fff' }}>Produkte direkt entdecken</p>
+                        <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', margin: 0, fontWeight: 300 }}>Stöbere in unserer Auswahl</p>
+                      </div>
+                      <ArrowRight size={16} style={{ marginLeft: 'auto', color: '#D4A574', flexShrink: 0 }} />
+                    </button>
+
+                    <button onClick={() => navigate('/chatbot')} className="greet-option" style={optionStyle}>
+                      <span style={{ fontSize: 22, flexShrink: 0 }}></span>
+                      <div>
+                        <p style={{ fontWeight: 700, fontSize: 14, margin: 0, color: '#fff' }}>SelfGlow AI fragen</p>
+                        <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', margin: 0, fontWeight: 300 }}>Persönliche KI-Beratung</p>
+                      </div>
+                      <ArrowRight size={16} style={{ marginLeft: 'auto', color: '#D4A574', flexShrink: 0 }} />
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+
+          ) : (
+            /* ── Nicht eingeloggt ── */
+            <div style={{ maxWidth: 560 }}>
+              <span style={{ display: 'block', fontSize: 11, letterSpacing: '0.22em', textTransform: 'uppercase', color: '#D4A574', fontWeight: 500, marginBottom: 24 }}>
+                <span style={{ display: 'inline-block', width: 24, height: 1, background: '#D4A574', verticalAlign: 'middle', marginRight: 8 }} />
+                Deine Hautpflege-Destination
+              </span>
+              <h1 style={{ fontFamily: "'Outfit', sans-serif", fontSize: 'clamp(42px, 6vw, 78px)', fontWeight: 800, lineHeight: 1.05, letterSpacing: '-0.03em', color: '#fff', margin: '0 0 24px' }}>
+                Pflege,<br />die <span style={{ color: '#D4A574' }}>wirklich</span><br />zu dir passt.
+              </h1>
+              <p style={{ fontSize: 16, color: 'rgba(255,255,255,0.72)', lineHeight: 1.75, margin: '0 0 36px', fontWeight: 300, maxWidth: 400 }}>
+                Entdecke kuratierte Hautpflege — abgestimmt auf deinen Hauttyp und deine Bedürfnisse.
+              </p>
+              <Link to="/shop" className="pill-btn" style={{ display: 'inline-flex', alignItems: 'center', gap: 10, background: '#D4A574', color: '#fff', padding: '15px 32px', borderRadius: 100, fontSize: 13, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', textDecoration: 'none' }}>
+                Shop entdecken <ArrowRight size={15} />
               </Link>
             </div>
-            <div className="relative">
-              <div className="absolute inset-0 bg-[#F5E6D3] rounded-bl-[200px] -z-10 transform translate-x-8"></div>
-              <img
-                src="https://images.unsplash.com/photo-1616394584738-fc6e612e71b9?w=600&h=500&fit=crop"
-                alt="Woman applying skincare"
-                className="w-full h-auto max-h-[500px] object-cover rounded-bl-[150px]"
-              />
-            </div>
-          </div>
+          )}
         </div>
       </section>
 
-      {/* Skin Type Selector */}
-      <section className="py-8 px-4">
-        <div className="container mx-auto">
-          <div className="flex flex-wrap justify-center gap-6 lg:gap-8">
-            {skinTypes.map((type) => (
-              <Link 
-                to={`/shop?skinType=${encodeURIComponent(type.value)}`}
-                key={type.name}
-                className="flex flex-col items-center group cursor-pointer"
-              >
-                <div className="w-20 h-20 md:w-24 md:h-24 rounded-full overflow-hidden bg-[#F5E6D3] border-2 border-transparent group-hover:border-[#D4A574] transition-all">
-                  <img
-                    src={type.image}
-                    alt={type.name}
-                    className="w-full h-full object-cover"
-                  />
+      {/* ── SKIN TYPE STRIP ── */}
+      <section style={{ background: '#fff', padding: '64px 28px' }}>
+        <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+          <div style={{ marginBottom: 40 }}>
+            <p style={{ fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#C4925A', marginBottom: 6, fontWeight: 500 }}>Für dich personalisiert</p>
+            <h2 style={{ fontFamily: "'Outfit', sans-serif", fontSize: 'clamp(22px, 2.8vw, 34px)', fontWeight: 700, margin: 0, letterSpacing: '-0.02em' }}>Welcher Hauttyp bist du?</h2>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
+            {skinTypes.map((t) => (
+              <Link to={`/shop?skinType=${encodeURIComponent(t.value)}`} key={t.value} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, textDecoration: 'none', flex: '1 1 100px' }}>
+                <div className="skin-circle" style={{ width: 100, height: 100, borderRadius: '50%', overflow: 'hidden' }}>
+                  <img src={t.img} alt={t.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 </div>
-                <span className="mt-2 text-xs md:text-sm text-foreground font-medium text-center">
-                  {type.name}
-                </span>
+                <span style={{ fontSize: 12, fontWeight: 500, color: '#7a5c42', letterSpacing: '0.04em', textAlign: 'center' }}>{t.name}</span>
               </Link>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Shop by Category */}
-      <section className="py-12 px-4">
-        <div className="container mx-auto">
-          <div className="flex items-center justify-center gap-4 mb-8">
-            <div className="h-px bg-border flex-1 max-w-24"></div>
-            <h2 className="text-2xl md:text-3xl font-bold text-foreground text-center">
-              Shop by category
-            </h2>
-            <div className="h-px bg-border flex-1 max-w-24"></div>
+      {/* ── CATEGORIES ── */}
+      <section style={{ background: '#FDFAF6', padding: '80px 28px' }}>
+        <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+          <div style={{ textAlign: 'center', marginBottom: 48 }}>
+            <p style={{ fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#C4925A', marginBottom: 8, fontWeight: 500 }}>Stöbere & entdecke</p>
+            <h2 style={{ fontFamily: "'Outfit', sans-serif", fontSize: 'clamp(24px,3vw,38px)', fontWeight: 700, margin: 0, letterSpacing: '-0.02em' }}>Shop by Category</h2>
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-5xl mx-auto">
-            {/* Large card - Feuchtigkeitspflege */}
-            <Link 
-              to={`/shop?category=${encodeURIComponent(categories[0].value)}`}
-              className="row-span-2 relative group overflow-hidden rounded-xl"
-            >
-              <img
-                src={categories[0].image}
-                alt={categories[0].name}
-                className="w-full h-full min-h-[400px] object-cover group-hover:scale-105 transition-transform duration-300"
-              />
-              <div className="absolute bottom-4 left-4">
-                <span className="bg-background/90 backdrop-blur-sm px-4 py-2 rounded-full text-sm font-medium text-foreground">
-                  {categories[0].name}
-                </span>
+          <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gridTemplateRows: '320px 320px', gap: 14 }}>
+            <Link to={`/shop?category=${encodeURIComponent(categories[0].value)}`} className="cat-card" style={{ gridRow: 'span 2', borderRadius: 20, overflow: 'hidden', position: 'relative', display: 'block' }}>
+              <img src={categories[0].img} alt={categories[0].name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+              <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.55) 0%, transparent 50%)' }} />
+              <div className="cat-overlay" style={{ position: 'absolute', inset: 0, background: 'rgba(212,165,116,0.18)' }} />
+              <div style={{ position: 'absolute', bottom: 24, left: 24, right: 24 }}>
+                <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 10, letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: 4 }}>Bestseller</p>
+                <p style={{ fontFamily: "'Outfit', sans-serif", color: '#fff', fontSize: 22, fontWeight: 700, margin: 0 }}>{categories[0].name}</p>
               </div>
             </Link>
-
-            {/* Small cards */}
-            {categories.slice(1).map((category) => (
-              <Link 
-                to={`/shop?category=${encodeURIComponent(category.value)}`}
-                key={category.name}
-                className="relative group overflow-hidden rounded-xl aspect-[4/3]"
-              >
-                <img
-                  src={category.image}
-                  alt={category.name}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                />
-                <div className="absolute bottom-4 left-1/2 -translate-x-1/2">
-                  <span className="bg-background/90 backdrop-blur-sm px-4 py-2 rounded-full text-xs font-medium text-foreground whitespace-nowrap">
-                    {category.name}
-                  </span>
+            {categories.slice(1).map((cat) => (
+              <Link to={`/shop?category=${encodeURIComponent(cat.value)}`} key={cat.value} className="cat-card" style={{ borderRadius: 20, overflow: 'hidden', position: 'relative', display: 'block' }}>
+                <img src={cat.img} alt={cat.name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.5) 0%, transparent 55%)' }} />
+                <div className="cat-overlay" style={{ position: 'absolute', inset: 0, background: 'rgba(212,165,116,0.15)' }} />
+                <div style={{ position: 'absolute', bottom: 18, left: 18 }}>
+                  <p style={{ fontFamily: "'Outfit', sans-serif", color: '#fff', fontSize: 15, fontWeight: 700, margin: 0 }}>{cat.name}</p>
                 </div>
               </Link>
             ))}
@@ -156,55 +293,61 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Why SelfGlow */}
-      <section className="py-12 px-4">
-        <div className="container mx-auto">
-          <h2 className="text-2xl md:text-3xl font-bold text-center mb-8">
-            Warum <span className="font-serif text-[#D4A574] font-normal">SelfGlow</span>?
-          </h2>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
-            {features.map((feature) => (
-              <div
-                key={feature.title}
-                className="bg-[#F5E6D3] rounded-xl p-8 flex flex-col items-center text-center"
-              >
-                <feature.icon className="h-10 w-10 text-foreground mb-4" strokeWidth={1.5} />
-                <span className="font-medium text-foreground">{feature.title}</span>
+      {/* ── WHY SELFGLOW ── */}
+      <section style={{ background: '#fff', padding: '80px 28px' }}>
+        <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+          <div style={{ textAlign: 'center', marginBottom: 52 }}>
+            <p style={{ fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#C4925A', marginBottom: 8, fontWeight: 500 }}>Unser Versprechen</p>
+            <h2 style={{ fontFamily: "'Outfit', sans-serif", fontSize: 'clamp(24px,3vw,38px)', fontWeight: 700, margin: 0, letterSpacing: '-0.02em' }}>Warum <span style={{ color: '#D4A574' }}>SelfGlow</span>?</h2>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20 }}>
+            {features.map((f) => (
+              <div key={f.title} className="feat-card" style={{ background: '#FDF6EE', border: '1px solid #F0DCC8', borderRadius: 20, padding: '36px 28px', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 14 }}>
+                <div style={{ width: 48, height: 48, borderRadius: 14, background: '#fff', border: '1px solid #e8c9a0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <f.icon size={20} color="#D4A574" strokeWidth={1.5} />
+                </div>
+                <div>
+                  <p style={{ fontFamily: "'Outfit', sans-serif", fontWeight: 700, fontSize: 16, margin: '0 0 6px', color: '#1c1209' }}>{f.title}</p>
+                  <p style={{ fontSize: 13, color: '#9a7a5a', margin: 0, lineHeight: 1.65, fontWeight: 300 }}>{f.desc}</p>
+                </div>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Newsletter Section */}
-      <section className="relative py-16 px-4">
-        <div 
-          className="absolute inset-0 bg-cover bg-center"
-          style={{ 
-            backgroundImage: 'url(https://images.unsplash.com/photo-1596755389378-c31d21fd1273?w=1200&h=400&fit=crop)',
-          }}
-        >
-          <div className="absolute inset-0 bg-black/50"></div>
+      {/* ── NEWSLETTER ── */}
+      <section style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', minHeight: 460 }}>
+        <div style={{ position: 'relative', overflow: 'hidden' }}>
+          <img src="https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?w=900&h=700&fit=crop" alt="Newsletter" className="img-hover" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(28,18,9,0.22)' }} />
         </div>
-        <div className="container mx-auto relative z-10">
-          <div className="max-w-md mx-auto text-center">
-            <h3 className="text-xl md:text-2xl font-bold text-white mb-6">
-              Sign up now & get 10% off
-            </h3>
-            <div className="flex flex-col sm:flex-row gap-3">
-              <input
-                type="email"
-                placeholder="Enter Your Email."
-                className="flex-1 px-4 py-3 rounded-full bg-white/90 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[#D4A574]"
-              />
-              <Button className="bg-[#D4A574] text-white hover:bg-[#C19660] rounded-full px-8 py-3">
-                subscribe
-              </Button>
+        <div style={{ background: '#1c1209', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '60px clamp(28px,6vw,80px)', gap: 20 }}>
+          <p style={{ fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#D4A574', fontWeight: 500, margin: 0 }}>Exklusiv für dich</p>
+          <h3 style={{ fontFamily: "'Outfit', sans-serif", fontSize: 'clamp(22px,2.8vw,36px)', fontWeight: 700, color: '#fff', margin: 0, lineHeight: 1.2, letterSpacing: '-0.02em' }}>
+            Jetzt anmelden &<br />10% Rabatt sichern.
+          </h3>
+          <p style={{ fontSize: 14, color: '#b8967a', margin: 0, lineHeight: 1.65, fontWeight: 300, maxWidth: 340 }}>
+            Erhalte exklusive Tipps, neue Produkte und deinen persönlichen Rabatt direkt in dein Postfach.
+          </p>
+          {subscribed ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#D4A574' }}>
+              <Sparkles size={16} />
+              <span style={{ fontSize: 14, fontWeight: 500 }}>Danke! Schau in dein Postfach.</span>
             </div>
-          </div>
+          ) : (
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 4 }}>
+              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="deine@email.de"
+                style={{ flex: '1 1 180px', padding: '13px 18px', borderRadius: 100, background: 'rgba(255,255,255,0.08)', border: '1.5px solid rgba(255,255,255,0.15)', color: '#fff', fontSize: 13, outline: 'none', fontFamily: "'Outfit', sans-serif" }} />
+              <button onClick={() => { if (email) setSub(true) }} className="pill-btn"
+                style={{ padding: '13px 24px', borderRadius: 100, background: '#D4A574', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', fontFamily: "'Outfit', sans-serif", whiteSpace: 'nowrap' }}>
+                Sichern
+              </button>
+            </div>
+          )}
         </div>
       </section>
+
     </div>
   )
 }
