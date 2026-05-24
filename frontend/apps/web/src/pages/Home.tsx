@@ -121,7 +121,7 @@ export default function Home() {
               zIndex: 2, padding: '0 48px',
               display: 'flex', alignItems: 'center', gap: 12,
             }}>
-              <span style={{ fontSize: 14 }}>🎁</span>
+              <span style={{ fontSize: 14 }}></span>
               <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', margin: 0, fontWeight: 300 }}>
                 {firstName ? 'Dein Willkommenscode:' : 'Registriere dich und spare 10% —'}
               </p>
@@ -156,14 +156,18 @@ export default function Home() {
                     </p>
                     <button
                       onClick={async () => {
-                        if (!user?.token) return
+                        const stored = localStorage.getItem('user')
+                        const parsed = stored ? JSON.parse(stored) : null
+                        const t = user?.token || parsed?.token || localStorage.getItem('token')
+                        if (!t) return
                         try {
                           const res = await fetch('http://localhost:5050/api/auth/skin-type', {
                             method: 'DELETE',
-                            headers: { Authorization: `Bearer ${user.token}` },
+                            headers: { Authorization: `Bearer ${t}` },
                           })
                           const data = await res.json()
-                          if (data.user) updateUser({ ...user, ...data.user, token: user.token })
+                          if (data.user) updateUser({ ...user!, ...data.user, token: t })
+                          else updateUser({ ...user!, skinType: null, token: t })
                         } catch (err) { console.error(err) }
                       }}
                       style={{ width: 20, height: 20, borderRadius: '50%', background: 'rgba(255,255,255,0.15)', border: 'none', color: 'rgba(255,255,255,0.7)', fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, lineHeight: 1 }}
@@ -175,7 +179,7 @@ export default function Home() {
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                     <button onClick={() => navigate(`/shop?skinType=${skinType}`)} className="greet-option" style={optionStyle}>
-                      <span style={{ fontSize: 22, flexShrink: 0 }}>🛍️</span>
+                      <span style={{ fontSize: 22, flexShrink: 0 }}></span>
                       <div>
                         <p style={{ fontWeight: 700, fontSize: 14, margin: 0, color: '#fff' }}>Produkte für {skinLabels[skinType]}</p>
                         <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', margin: 0, fontWeight: 300 }}>Passend zu deinem Hauttyp</p>
@@ -184,7 +188,7 @@ export default function Home() {
                     </button>
 
                     <button onClick={() => navigate('/quiz')} className="greet-option" style={optionStyle}>
-                      <span style={{ fontSize: 22, flexShrink: 0 }}>🔄</span>
+                      <span style={{ fontSize: 22, flexShrink: 0 }}></span>
                       <div>
                         <p style={{ fontWeight: 700, fontSize: 14, margin: 0, color: '#fff' }}>Quiz nochmal machen</p>
                         <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', margin: 0, fontWeight: 300 }}>Hauttyp neu ermitteln</p>
@@ -193,7 +197,7 @@ export default function Home() {
                     </button>
 
                     <button onClick={() => navigate('/chatbot')} className="greet-option" style={optionStyle}>
-                      <span style={{ fontSize: 22, flexShrink: 0 }}>🤖</span>
+                      <span style={{ fontSize: 22, flexShrink: 0 }}></span>
                       <div>
                         <p style={{ fontWeight: 700, fontSize: 14, margin: 0, color: '#fff' }}>SelfGlow AI fragen</p>
                         <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', margin: 0, fontWeight: 300 }}>Persönliche KI-Beratung</p>
