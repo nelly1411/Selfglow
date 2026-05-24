@@ -87,7 +87,7 @@ export default function Home() {
   const [email, setEmail]    = useState('')
   const [subscribed, setSub] = useState(false)
   const styleRef = useRef<HTMLStyleElement | null>(null)
-  const { user } = useAuth()
+  const { user, updateUser } = useAuth()
   const navigate = useNavigate()
 
   const firstName = user?.name?.split(' ')[0] || user?.email?.split('@')[0] || null
@@ -121,7 +121,7 @@ export default function Home() {
               zIndex: 2, padding: '0 48px',
               display: 'flex', alignItems: 'center', gap: 12,
             }}>
-              <span style={{ fontSize: 14 }}></span>
+              <span style={{ fontSize: 14 }}>🎁</span>
               <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', margin: 0, fontWeight: 300 }}>
                 {firstName ? 'Dein Willkommenscode:' : 'Registriere dich und spare 10% —'}
               </p>
@@ -131,7 +131,7 @@ export default function Home() {
               }}>
                 WELCOME10
               </span>
-              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)' }}> einmalig</span>
+              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)' }}>· einmalig</span>
             </div>
           )}
 
@@ -150,9 +150,28 @@ export default function Home() {
                   <p style={{ fontSize: 16, color: 'rgba(255,255,255,0.65)', margin: '0 0 6px', fontWeight: 300 }}>
                     Dein Hauttyp:
                   </p>
-                  <p style={{ fontSize: 18, color: '#D4A574', fontWeight: 700, margin: '0 0 24px', letterSpacing: '-0.01em' }}>
-                    {skinLabels[skinType] || skinType}
-                  </p>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '0 0 24px' }}>
+                    <p style={{ fontSize: 18, color: '#D4A574', fontWeight: 700, margin: 0, letterSpacing: '-0.01em' }}>
+                      {skinLabels[skinType] || skinType}
+                    </p>
+                    <button
+                      onClick={async () => {
+                        if (!user?.token) return
+                        try {
+                          const res = await fetch('http://localhost:5050/api/auth/skin-type', {
+                            method: 'DELETE',
+                            headers: { Authorization: `Bearer ${user.token}` },
+                          })
+                          const data = await res.json()
+                          if (data.user) updateUser({ ...user, ...data.user, token: user.token })
+                        } catch (err) { console.error(err) }
+                      }}
+                      style={{ width: 20, height: 20, borderRadius: '50%', background: 'rgba(255,255,255,0.15)', border: 'none', color: 'rgba(255,255,255,0.7)', fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, lineHeight: 1 }}
+                      onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,80,80,0.35)')}
+                      onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.15)')}
+                      title="Hauttyp zurücksetzen"
+                    >×</button>
+                  </div>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                     <button onClick={() => navigate(`/shop?skinType=${skinType}`)} className="greet-option" style={optionStyle}>
