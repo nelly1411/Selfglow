@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Trash2, Plus, Minus, ShoppingBag, ArrowLeft } from 'lucide-react'
 import { Button } from "@workspace/ui/components/button"
@@ -6,27 +5,27 @@ import { useCart } from '@/context/CartContext'
 
 
 export default function Cart() {
-  const { items, removeFromCart, updateQuantity, totalPrice, clearCart } = useCart()
+  const { items, removeFromCart, updateQuantity, updateSelected, clearCart } = useCart()
 
-  const [selectedItems, setSelectedItems] = useState<number[]>(items.map((item) => item.id))
-  const toggleSelectItem = (id: number) => {
-    setSelectedItems((prev) =>
-      prev.includes(id)
-        ? prev.filter((itemId) => itemId !== id)
-        : [...prev, id]
+ // Auswahl eines Produkts ändern
+  const toggleSelectItem = async (id: number) => {
+    const item = items.find((item) => item.id === id)
+
+    if (!item) return
+
+    await updateSelected(id, item.selected === false)
+  }
+  // Alle Produkte auswählen oder abwählen
+  const toggleSelectAll = async () => {
+    const allSelected = items.every((item) => item.selected !== false)
+
+    await Promise.all(
+      items.map((item) => updateSelected(item.id, !allSelected))
     )
   }
-  const toggleSelectAll = () => {
-    if (selectedItems.length === items.length) {
-      setSelectedItems([])
-    } else {
-      setSelectedItems(items.map((item) => item.id))
-    }
-  }
+  
+  const selectedCartItems = items.filter((item) => item.selected !== false)
 
-  const selectedCartItems = items.filter((item) =>
-    selectedItems.includes(item.id)
-  )
   const selectedTotalPrice = selectedCartItems.reduce(
     (sum, item) => sum + item.price * item.quantity,
     0
@@ -92,12 +91,12 @@ export default function Cart() {
           <label className="flex items-center gap-2 text-sm text-muted-foreground">
             <input
               type="checkbox"
-              checked={selectedItems.length === items.length}
+              checked={items.length > 0 && items.every((item) => item.selected !== false)}
               onChange={toggleSelectAll}
               className="h-4 w-4 cursor-pointer appearance-none rounded border border-[#D4A574] bg-white transition-colors checked:bg-[#D4A574] checked:after:content-['✓'] checked:after:flex checked:after:items-center checked:after:justify-center checked:after:text-white checked:after:text-xs checked:after:font-bold"
             />
             <span className="text-sm text-muted-foreground">
-              Alle auswählen ({selectedItems.length} ausgewählt)
+              Alle auswählen ({selectedCartItems.length} ausgewählt)
             </span>
           </label>
           {items.map((item) => (
@@ -107,7 +106,7 @@ export default function Cart() {
             >
               <input
                 type="checkbox"
-                checked={selectedItems.includes(item.id)}
+                checked={item.selected !== false}
                 onChange={() => toggleSelectItem(item.id)}
                 className="h-4 w-4 cursor-pointer appearance-none rounded border border-[#D4A574] bg-white transition-colors checked:bg-[#D4A574] checked:after:content-['✓'] checked:after:flex checked:after:items-center checked:after:justify-center checked:after:text-white checked:after:text-xs checked:after:font-bold"
               />
@@ -191,7 +190,7 @@ export default function Cart() {
                 </div>
               </div>
             </div>
-         {selectedItems.length > 0 ? (
+         {selectedCartItems.length > 0 ? (
             <Link to="/checkout" className="block">
               <Button className="w-full bg-[#D4A574] text-white hover:bg-[#C49464] rounded-full mb-3">
                 Zur Kasse
@@ -216,3 +215,4 @@ export default function Cart() {
     </div>
   )
 }
+

@@ -10,7 +10,7 @@ export interface CartItem {
   originalPrice?: number
   image: string
   quantity: number
-  
+  selected?: boolean
 }
 
 interface CartContextType {
@@ -18,6 +18,7 @@ interface CartContextType {
   addToCart: (product: Omit<CartItem, 'quantity'>) => Promise<void>
   removeFromCart: (id: number) =>Promise<void>
   updateQuantity: (id: number, quantity: number) => Promise<void>
+  updateSelected: (id: number, selected: boolean) => Promise<void>
   clearCart: () => Promise<void>
   totalItems: number
   totalPrice: number
@@ -69,7 +70,7 @@ useEffect(() => {
           item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
         )
       }
-      return [...prev, { ...product, quantity: 1 }]
+      return [...prev, { ...product, quantity: 1, selected: true }]
     })
   }
 
@@ -91,7 +92,7 @@ useEffect(() => {
           items: localItems.map((item) => ({
             productId: item.id,
             quantity: item.quantity,
-            selected: true,
+            selected: item.selected !== false,
           })),
         }),
       })
@@ -117,6 +118,7 @@ useEffect(() => {
       originalPrice: undefined,
       image: cartItem.product.imageUrl || '',
       quantity: cartItem.quantity,
+      selected: cartItem.selected,
      
     }))
 
@@ -160,6 +162,26 @@ useEffect(() => {
     )
   }
 
+  // Auswahl eines Produkts im Warenkorb ändern
+  const updateSelected = async (id: number, selected: boolean) => {
+    if (isLoggedIn && token) {
+      await fetch(`${API_BASE_URL}/api/cart/items/${id}/selected`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ selected }),
+      })
+    }
+
+    setItems((prev) =>
+      prev.map((item) =>
+        item.id === id ? { ...item, selected } : item
+      )
+    )
+  }
+
   const clearCart = async () => {
     if (isLoggedIn && token) {
       await fetch(`${API_BASE_URL}/api/cart`, {
@@ -182,6 +204,7 @@ useEffect(() => {
         addToCart,
         removeFromCart,
         updateQuantity,
+        updateSelected,
         clearCart,
         totalItems,
         totalPrice,
