@@ -50,7 +50,7 @@ const mockReviews = [
 
 export default function ProductDetail() {
   const { id } = useParams()
-  const { addToCart } = useCart()
+  const { items, addToCart, updateQuantity, removeFromCart } = useCart()
   const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist()
   const { isLoggedIn } = useAuth()
   const [showLoginHint, setShowLoginHint] = useState(false)
@@ -59,7 +59,7 @@ export default function ProductDetail() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [openSections, setOpenSections] = useState<string[]>(['description'])
-  const [addedToCart, setAddedToCart] = useState(false)
+
 
   useEffect(() => {
     async function fetchProduct() {
@@ -94,11 +94,6 @@ export default function ProductDetail() {
       image: product.imageUrl || 'https://placehold.co/300x300?text=No+Image',
     })
 
-    setAddedToCart(true)
-
-    setTimeout(() => {
-      setAddedToCart(false)
-    }, 1500)
   }
 
   function handleWishlistToggle() {
@@ -156,6 +151,8 @@ export default function ProductDetail() {
 
   const rating = product.rating ?? 0
   const inWishlist = isInWishlist(product.id)
+  const cartItem = items.find((item) => item.id === product.id)
+  const isInCart = Boolean(cartItem)
 
   const detailSections = [
     {
@@ -266,18 +263,43 @@ export default function ProductDetail() {
           </div>
 
           <div className="relative flex gap-4">
-            <Button
-              onClick={handleAddToCart}
-              className={cn(
-                'flex-1 rounded-full px-8 text-foreground transition-colors',
-                addedToCart
-                  ? 'bg-[#D4A574] text-white hover:bg-[#D4A574]'
-                  : 'bg-[#F5E6D3] hover:bg-[#E8D5C0]'
-              )}
-            >
-              <ShoppingCart className="h-4 w-4 mr-2" />
-              {addedToCart ? 'Hinzugefügt' : 'In den Warenkorb'}
-            </Button>
+           {isInCart && cartItem ? (
+              <div className="flex-1 flex items-center justify-center gap-4 bg-[#D4A574] text-white rounded-full py-2">
+                <span className="text-sm ">Menge</span>
+
+                <button
+                  onClick={() => {
+                  if (cartItem.quantity === 1) {
+                    removeFromCart(product.id)
+                  } else {
+                    updateQuantity(product.id, cartItem.quantity - 1)
+                  }
+                }}
+                  className="px-2 disabled:opacity-40 disabled:cursor-not-allowed"
+                  aria-label="Menge verringern"
+                >
+                  -
+                </button>
+
+                <span>{cartItem.quantity}</span>
+
+                <button
+                  onClick={() => updateQuantity(product.id, cartItem.quantity + 1)}
+                  className="px-2"
+                  aria-label="Menge erhöhen"
+                >
+                  +
+                </button>
+              </div>
+            ) : (
+              <Button
+                onClick={handleAddToCart}
+                className="flex-1 rounded-full px-8 text-foreground transition-colors bg-[#F5E6D3] hover:bg-[#E8D5C0]"
+              >
+                <ShoppingCart className="h-4 w-4 mr-2" />
+                In den Warenkorb
+              </Button>
+            )}
 
             <Button
               onClick={handleWishlistToggle}
