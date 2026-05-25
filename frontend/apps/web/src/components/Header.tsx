@@ -68,15 +68,15 @@ export default function Header() {
 
           <nav className="hidden lg:flex min-w-0 flex-1 items-center justify-center gap-6 xl:gap-8 whitespace-nowrap">
             <NavLink to="/" end className={({ isActive }) => navLinkClass(isActive)}>
-              Home
+              Startseite
             </NavLink>
 
             <NavLink to="/shop" className={({ isActive }) => navLinkClass(isActive)}>
-              Shop
+              Shoppen
             </NavLink>
 
             <NavLink to="/about" className={({ isActive }) => navLinkClass(isActive)}>
-              About us
+              Über uns
             </NavLink>
 
             <NavLink to="/chatbot" className={({ isActive }) => navLinkClass(isActive)}>
@@ -92,7 +92,7 @@ export default function Header() {
                 type="text"
                 value={searchTerm}
                 onChange={(e) => handleSearch(e.target.value)}
-                placeholder="Search products..."
+                placeholder="Suche..."
                 className="bg-transparent text-sm lg:text-base w-full focus:outline-none placeholder:text-muted-foreground"
               />
 

@@ -21,7 +21,7 @@ export default function Cart() {
             <Button className="bg-[#D4A574] text-white hover:bg-[#C49464] rounded-full px-8">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Continue Shopping
-            </Button>
+            </Button>d
           </Link>
         </div>
       </div>

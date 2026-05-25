@@ -10,19 +10,19 @@ export default function Footer() {
             <div className="mb-3">
               <Package className="h-10 w-10 text-[#D4A574]" strokeWidth={1.5} />
             </div>
-            <span className="text-sm font-medium text-foreground">Free Shipping</span>
+            <span className="text-sm font-medium text-foreground">Versandkosten frei</span>
           </div>
           <div className="flex flex-col items-center text-center">
             <div className="mb-3">
               <Headphones className="h-10 w-10 text-[#D4A574]" strokeWidth={1.5} />
             </div>
-            <span className="text-sm font-medium text-foreground">Online Support</span>
+            <span className="text-sm font-medium text-foreground">natürliche Inhaltsstoffe ?*</span>
           </div>
           <div className="flex flex-col items-center text-center">
             <div className="mb-3">
               <CreditCard className="h-10 w-10 text-[#D4A574]" strokeWidth={1.5} />
             </div>
-            <span className="text-sm font-medium text-foreground">Flexible Payments</span>
+            <span className="text-sm font-medium text-foreground">Flexible Zahlungsmethode</span>
           </div>
         </div>
       </div>
