@@ -67,6 +67,8 @@ const token = user?.token
   const [discountValue, setDiscountValue]     = useState(0)
   const [discountError, setDiscountError]     = useState('')
   const [discountApplied, setDiscountApplied] = useState(false)
+  const [discountLabel, setDiscountLabel]   = useState('')
+const [checkingCode, setCheckingCode]     = useState(false)
   const [errorMsg, setErrorMsg]               = useState('')
   const [errors, setErrors]                   = useState<Record<string, string>>({})
   const [touched, setTouched]                 = useState<Record<string, boolean>>({})
@@ -182,18 +184,51 @@ const token = user?.token
   // ─── Discount ─────────────────────────────────────────────────────────
   const VALID_CODES: Record<string, number> = { SAVE10: 0.10, WELCOME5: 0.05 }
 
-  const applyDiscount = () => {
-    setDiscountApplied(false)
-    const code = discount.trim().toUpperCase()
-    if (VALID_CODES[code]) {
-      setDiscountValue(totalPrice * VALID_CODES[code])
-      setDiscountError('')
-      setDiscountApplied(true)
-    } else {
-      setDiscountValue(0)
-      setDiscountError('Ungültiger Rabattcode')
-    }
+  const applyDiscount = async () => {
+  setDiscountApplied(false)
+  setDiscountError('')
+  const code = discount.trim().toUpperCase()
+  if (!code) return
+
+  // SAVE10 — lokal prüfen
+  if (code === 'SAVE10') {
+    setDiscountValue(totalPrice * 0.10)
+    setDiscountLabel('SAVE10')
+    setDiscountApplied(true)
+    return
   }
+
+  // WELCOME10 — Backend prüfen
+  if (code === 'WELCOME10') {
+    const t = user?.token || localStorage.getItem('token')
+    if (!t) {
+      setDiscountError('Bitte einloggen um WELCOME10 zu verwenden.')
+      return
+    }
+    setCheckingCode(true)
+    try {
+      const res  = await fetch(`${API}/api/auth/check-welcome-code`, {
+        headers: { Authorization: `Bearer ${t}` },
+      })
+      const data = await res.json()
+      if (data.used) {
+        setDiscountError('WELCOME10 wurde bereits verwendet.')
+      } else {
+        setDiscountValue(totalPrice * 0.10)
+        setDiscountLabel('WELCOME10')
+        setDiscountApplied(true)
+      }
+    } catch {
+      setDiscountError('Code konnte nicht geprüft werden.')
+    } finally {
+      setCheckingCode(false)
+    }
+    return
+  }
+
+  setDiscountError('Ungültiger Rabattcode')
+  setDiscountValue(0)
+}
 
   const finalTotal = totalPrice - discountValue
 
@@ -211,6 +246,7 @@ const token = user?.token
       items,
       totalPrice: finalTotal,
       payment,
+      discountCode: discountApplied ? discountLabel : null, 
       customer: { firstName: form.firstName, lastName: form.lastName, email: form.email, phone: form.phone },
       shipping:  { address: form.address, postal: form.postal, city: form.city, country: form.country },
       paymentData: { method: payment },
