@@ -10,6 +10,8 @@ export type User = {
   savedCity?:    string | null
   savedCountry?: string | null
   savedPhone?:   string | null
+   skinType?: string | null
+   usedWelcomeCode?: boolean | null 
 }
 
 type AuthContextType = {
