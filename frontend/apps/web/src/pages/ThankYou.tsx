@@ -5,8 +5,8 @@ export default function ThankYou() {
   const { user }     = useAuth()
   const location     = useLocation()
   const guestEmail   = location.state?.email
-  const orderNumber  = location.state?.orderNumber  // ← NEU: aus Backend
-    || localStorage.getItem('lastOrderNumber')       // ← Fallback bei Reload
+  const orderNumber  = location.state?.orderNumber  
+    || localStorage.getItem('lastOrderNumber')       
     || '—'
 
   const userEmail = user?.email || guestEmail || 'deine E-Mail'
@@ -45,7 +45,7 @@ export default function ThankYou() {
         </p>
 
         <div className="flex justify-center gap-4">
-          <Link to="/orders"
+          <Link to="/profile"
             className="px-6 py-2.5 text-[13px] bg-[#D4A574] text-white tracking-wide"
             style={{ fontFamily: 'Helvetica, Arial, sans-serif' }}>
             Zu Bestellungen

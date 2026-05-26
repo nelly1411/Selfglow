@@ -77,6 +77,28 @@ const CSS = `
   .p-delete-btn:hover { color:#c47a5a; background:#fff0f0; }
 `
 
+function ExpandableItems({ items, orderId }: { items: OrderItem[], orderId: number }) {
+  const [expanded, setExpanded] = useState(false)
+  const visible = expanded ? items : items.slice(0, 3)
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      {visible.map(item => (
+        <div key={`${orderId}-${item.id}`} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: '#7a5c42' }}>
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, paddingRight: 12 }}>{item.name}</span>
+          <span style={{ color: '#c4a882', flexShrink: 0 }}>×{item.quantity || 1}</span>
+        </div>
+      ))}
+      {items.length > 3 && (
+        <button
+          onClick={() => setExpanded(e => !e)}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: '#D4A574', fontWeight: 600, textAlign: 'left', padding: '4px 0', fontFamily: "'Outfit',sans-serif" }}>
+          {expanded ? '▲ Weniger anzeigen' : `▼ +${items.length - 3} weitere anzeigen`}
+        </button>
+      )}
+    </div>
+  )
+}
+
 export default function Profile() {
   const { user, token } = useAuth()
   const { totalItems: wishlistTotal } = useWishlist()
@@ -226,15 +248,7 @@ export default function Profile() {
                     </div>
                     <div style={{ borderTop: '1px solid #F0DCC8', paddingTop: 12 }}>
                       <p style={{ fontSize: 12, fontWeight: 600, color: '#7a5c42', margin: '0 0 8px' }}>{itemCount} Artikel</p>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                        {items.slice(0, 3).map(item => (
-                          <div key={`${order.id}-${item.id}`} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: '#7a5c42' }}>
-                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, paddingRight: 12 }}>{item.name}</span>
-                            <span style={{ color: '#c4a882', flexShrink: 0 }}>×{item.quantity || 1}</span>
-                          </div>
-                        ))}
-                        {items.length > 3 && <p style={{ fontSize: 12, color: '#c4a882', margin: '4px 0 0' }}>+{items.length - 3} weitere</p>}
-                      </div>
+                      <ExpandableItems items={items} orderId={order.id} />
                     </div>
                   </div>
                 )
