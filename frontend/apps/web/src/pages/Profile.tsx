@@ -158,7 +158,7 @@ export default function Profile() {
     <div className="profile-root" style={{ background: '#FDFAF6', minHeight: '100vh', padding: '0 0 60px' }}>
 
       {/* ── Hero Banner ── */}
-      <div style={{ background: 'linear-gradient(135deg, #1c1209 0%, #3a2410 100%)', padding: '48px 0 80px', marginBottom: -48 }}>
+      <div style={{ background: 'linear-gradient(135deg, #1c1209 0%, #3a2410 100%)', padding: '72px 0 96px', marginBottom: -48 }}>
         <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 24px' }}>
           <div className="p-fade" style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
             <div style={{ width: 72, height: 72, borderRadius: '50%', background: 'rgba(212,165,116,0.2)', border: '2px solid rgba(212,165,116,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -168,7 +168,7 @@ export default function Profile() {
             </div>
             <div>
               <p style={{ fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#D4A574', margin: '0 0 4px', fontWeight: 600 }}>
-                ✦ Mein Konto
+               
               </p>
               <h1 style={{ fontFamily: "'Outfit',sans-serif", fontSize: 'clamp(24px,4vw,36px)', fontWeight: 800, color: '#fff', margin: 0, letterSpacing: '-0.02em' }}>
                 Willkommen, {firstName}
