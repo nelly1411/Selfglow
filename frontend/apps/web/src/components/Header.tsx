@@ -134,9 +134,9 @@ export default function Header() {
           {/* NAVIGATION */}
           <nav className="hidden lg:flex flex-1 items-center justify-center gap-10">
             {[
-              { to: '/', label: 'Home', end: true },
-              { to: '/shop', label: 'Shop', end: false },
-              { to: '/about', label: 'About us', end: false },
+              { to: '/', label: 'Startseite', end: true },
+              { to: '/shop', label: 'Produkte', end: false },
+              { to: '/about', label: 'Über uns', end: false },
               { to: '/chatbot', label: 'KI-Beratung', end: false },
             ].map(({ to, label, end }) => (
               <NavLink
@@ -302,7 +302,7 @@ export default function Header() {
                   {user?.name || user?.email}
                 </span>
               ) : (
-                <span>Login</span>
+                <span>Anmelden</span>
               )}
             </NavLink>
 
