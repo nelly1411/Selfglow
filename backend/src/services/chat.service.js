@@ -1,7 +1,11 @@
 const prisma = require("../config/prisma");
 
-const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
+const OPENAI_API_URL = "https://api.openai.com/v1/responses";
 const DEFAULT_MODEL = "gpt-5-mini";
+const DEFAULT_OPENAI_TIMEOUT_MS = 20000;
+const DEFAULT_OPENAI_MAX_OUTPUT_TOKENS = 450;
+const DEFAULT_OPENAI_REASONING_EFFORT = "minimal";
+const DEFAULT_OPENAI_VERBOSITY = "low";
 const MAX_CONTEXT_PRODUCTS = 6;
 const MAX_FOLLOW_UP_HISTORY = 4;
 const MAX_FOLLOW_UP_PRODUCTS = 3;
@@ -1030,31 +1034,102 @@ function getShortProductName(name) {
     .join(" ");
 }
 
+function readPositiveInteger(value, fallback) {
+  const parsedValue = Number.parseInt(value, 10);
+
+  return Number.isInteger(parsedValue) && parsedValue > 0 ? parsedValue : fallback;
+}
+
+function buildOpenAIRequestBody(messages, maxOutputTokens) {
+  const instructions = messages
+    .filter((message) => message.role === "system")
+    .map((message) => message.content)
+    .filter(Boolean)
+    .join("\n\n");
+  const input = messages
+    .filter((message) => message.role !== "system")
+    .map((message) => ({
+      role: message.role,
+      content: message.content,
+    }));
+
+  return {
+    model: process.env.OPENAI_MODEL || DEFAULT_MODEL,
+    instructions,
+    input,
+    max_output_tokens: maxOutputTokens,
+    reasoning: {
+      effort: process.env.OPENAI_REASONING_EFFORT || DEFAULT_OPENAI_REASONING_EFFORT,
+    },
+    text: {
+      verbosity: process.env.OPENAI_VERBOSITY || DEFAULT_OPENAI_VERBOSITY,
+    },
+  };
+}
+
+function extractOpenAIText(data) {
+  if (typeof data.output_text === "string") {
+    return data.output_text.trim();
+  }
+
+  const outputText = [];
+
+  for (const item of data.output || []) {
+    for (const content of item.content || []) {
+      if (typeof content.text === "string") {
+        outputText.push(content.text);
+      }
+    }
+  }
+
+  return outputText.join("").trim();
+}
+
 async function requestOpenAI(messages, fallbackAnswer) {
   if (!process.env.OPENAI_API_KEY) {
     return fallbackAnswer;
   }
 
-  const response = await fetch(OPENAI_API_URL, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: process.env.OPENAI_MODEL || DEFAULT_MODEL,
-      messages,
-    }),
-  });
+  const timeoutMs = readPositiveInteger(
+    process.env.OPENAI_TIMEOUT_MS,
+    DEFAULT_OPENAI_TIMEOUT_MS
+  );
+  const maxOutputTokens = readPositiveInteger(
+    process.env.OPENAI_MAX_OUTPUT_TOKENS,
+    DEFAULT_OPENAI_MAX_OUTPUT_TOKENS
+  );
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error("OpenAI API error:", errorText);
+  try {
+    const response = await fetch(OPENAI_API_URL, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      signal: controller.signal,
+      body: JSON.stringify(buildOpenAIRequestBody(messages, maxOutputTokens)),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("OpenAI API error:", errorText);
+      return fallbackAnswer;
+    }
+
+    const data = await response.json();
+    return extractOpenAIText(data) || fallbackAnswer;
+  } catch (error) {
+    if (error.name === "AbortError") {
+      console.error(`OpenAI API request timed out after ${timeoutMs}ms`);
+    } else {
+      console.error("OpenAI API request failed:", error);
+    }
     return fallbackAnswer;
+  } finally {
+    clearTimeout(timeoutId);
   }
-
-  const data = await response.json();
-  return data.choices?.[0]?.message?.content?.trim() || fallbackAnswer;
 }
 
 // Generate the final assistant text. The OpenAI API key stays on the backend, so
