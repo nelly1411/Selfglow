@@ -27,6 +27,7 @@ model Product {
   concerns         String?
 
   wishlistItems WishlistItem[]
+  cartItems CartItem[]
   reviews       Review[]
   
   createdAt        DateTime @default(now())
@@ -52,6 +53,8 @@ wishlistItems WishlistItem[]
   orders        Order[]
   reviews       Review[]      
 
+  wishlistItems WishlistItem[]
+  cart Cart?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -84,6 +87,31 @@ model WishlistItem {
   product   Product  @relation(fields: [productId], references: [id])
 
   @@unique([userId, productId])
+}
+
+model Cart {
+  id        Int        @id @default(autoincrement())
+  userId    Int        @unique
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  user      User       @relation(fields: [userId], references: [id])
+  items     CartItem[]
+}
+
+model CartItem {
+  id        Int      @id @default(autoincrement())
+  cartId    Int
+  productId Int
+  quantity  Int      @default(1)
+  selected  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  cart      Cart     @relation(fields: [cartId], references: [id])
+  product   Product  @relation(fields: [productId], references: [id])
+
+  @@unique([cartId, productId])
 }
 
 model Review {

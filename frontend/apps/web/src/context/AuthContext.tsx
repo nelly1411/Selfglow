@@ -49,8 +49,10 @@ function isTokenExpired(token: string) {
 function clearStoredAuth() {
   localStorage.removeItem('token')
   localStorage.removeItem('user')
+  localStorage.removeItem('cart')
   sessionStorage.removeItem('token')
   sessionStorage.removeItem('user')
+  sessionStorage.removeItem('cart')
 }
 
 function getStoredAuth(): AuthState {
