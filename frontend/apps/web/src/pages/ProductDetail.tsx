@@ -421,7 +421,7 @@ export default function ProductDetail() {
  
                     <div className="flex-1">
                       <span className="font-medium text-foreground">
-                        {review.user?.name || 'Anonymer Benutzer'}
+                        {review.user?.name || review.user?.email?.split('@')[0]}
                       </span>
                       <p className="text-xs text-muted-foreground">
                         {new Date(review.createdAt).toLocaleDateString('de-DE')}
