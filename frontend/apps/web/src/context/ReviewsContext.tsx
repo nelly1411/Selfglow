@@ -10,6 +10,7 @@ export interface Review {
   user?: {
     id: number;
     name: string;
+    email?: string;
   };
 }
 
@@ -136,7 +137,7 @@ export function ReviewsProvider({
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(
-          errorData.message || "Failed to deöete review"
+          errorData.message || "Failed to delete review"
         );
       }
 
