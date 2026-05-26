@@ -41,6 +41,12 @@ type ChatState = {
   activeConversationId: string
 }
 
+type ChatResponseData = {
+  answer: string
+  products?: ChatProduct[]
+  canExplainProducts?: boolean
+}
+
 const starterQuestions = [
   'Ich habe ölige Haut und suche etwas gegen Unreinheiten.',
   'Welche parfumfreien Produkte passen zu empfindlicher Haut?',
@@ -157,6 +163,26 @@ function renderStructuredText(content: string) {
   )
 }
 
+function parseSseEvent(eventText: string) {
+  const eventType = eventText
+    .split('\n')
+    .find((line) => line.startsWith('event:'))
+    ?.slice(6)
+    .trim()
+  const dataText = eventText
+    .split('\n')
+    .filter((line) => line.startsWith('data:'))
+    .map((line) => line.slice(5).trim())
+    .join('\n')
+
+  if (!eventType || !dataText) return null
+
+  return {
+    event: eventType,
+    data: JSON.parse(dataText) as { text?: string } & ChatResponseData & { message?: string },
+  }
+}
+
 export default function Chatbot() {
   const [chatState, setChatState] = useState<ChatState>(loadStoredChatState)
   const [input, setInput] = useState('')
@@ -234,28 +260,76 @@ export default function Chatbot() {
     if (!trimmedMessage || isLoading) return
 
     const userMessage: Message = { id: crypto.randomUUID(), role: 'user', content: trimmedMessage }
+    const assistantMessageId = crypto.randomUUID()
+    const assistantMessage: Message = { id: assistantMessageId, role: 'assistant', content: '' }
     const chatHistory = [...messages, userMessage].slice(-4).map((message) => ({ role: message.role, content: message.content }))
     const contextProductIds = Array.from(new Set(messages.flatMap((message) => message.products || []).map((product) => product.id))).slice(-3)
 
-    updateActiveConversation((currentMessages) => [...currentMessages, userMessage])
+    updateActiveConversation((currentMessages) => [...currentMessages, userMessage, assistantMessage])
     setInput('')
     setError(null)
     setIsLoading(true)
 
     try {
-      const response = await fetch(apiUrl('/api/chat'), {
+      const response = await fetch(apiUrl('/api/chat/stream'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: trimmedMessage, history: chatHistory, contextProductIds }),
       })
       if (!response.ok) throw new Error('Die KI-Beratung konnte gerade nicht antworten.')
-      const data: { answer: string; products?: ChatProduct[]; canExplainProducts?: boolean } = await response.json()
-      updateActiveConversation((currentMessages) => [
-        ...currentMessages,
-        { id: crypto.randomUUID(), role: 'assistant', content: data.answer, products: data.products || [], canExplainProducts: data.canExplainProducts },
-      ])
+      if (!response.body) throw new Error('Streaming wird von diesem Browser nicht unterstützt.')
+
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
+
+      while (true) {
+        const { done, value } = await reader.read()
+        buffer += decoder.decode(value, { stream: !done })
+        const events = buffer.split('\n\n')
+        buffer = events.pop() || ''
+
+        for (const eventText of events) {
+          const parsedEvent = parseSseEvent(eventText)
+          if (!parsedEvent) continue
+
+          if (parsedEvent.event === 'delta' && parsedEvent.data.text) {
+            updateActiveConversation((currentMessages) =>
+              currentMessages.map((message) =>
+                message.id === assistantMessageId
+                  ? { ...message, content: `${message.content}${parsedEvent.data.text}` }
+                  : message
+              )
+            )
+          }
+
+          if (parsedEvent.event === 'done') {
+            updateActiveConversation((currentMessages) =>
+              currentMessages.map((message) =>
+                message.id === assistantMessageId
+                  ? {
+                      ...message,
+                      content: parsedEvent.data.answer || message.content,
+                      products: parsedEvent.data.products || [],
+                      canExplainProducts: parsedEvent.data.canExplainProducts,
+                    }
+                  : message
+              )
+            )
+          }
+
+          if (parsedEvent.event === 'error') {
+            throw new Error(parsedEvent.data.message || 'Die KI-Beratung konnte gerade nicht antworten.')
+          }
+        }
+
+        if (done) break
+      }
     } catch (err) {
       console.error(err)
+      updateActiveConversation((currentMessages) =>
+        currentMessages.filter((message) => message.id !== assistantMessageId || message.content.trim().length > 0)
+      )
       setError('Die KI-Beratung ist gerade nicht erreichbar. Bitte versuche es gleich nochmal.')
     } finally {
       setIsLoading(false)
@@ -401,7 +475,11 @@ export default function Chatbot() {
                         </div>
                       )}
                       <div className={cn('max-w-[min(620px,85%)] rounded-lg px-3 py-2 text-sm leading-relaxed', message.role === 'user' ? 'bg-[#D4A574] text-white' : 'bg-[#F5F5F5] text-foreground')}>
-                        {renderMessageContent(message)}
+                        {message.role === 'assistant' && message.content.trim().length === 0 ? (
+                          <span className="text-muted-foreground">Thinking...</span>
+                        ) : (
+                          renderMessageContent(message)
+                        )}
                       </div>
                       {message.role === 'user' && (
                         <div className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-foreground">
@@ -450,7 +528,7 @@ export default function Chatbot() {
                   </div>
                 ))}
 
-                {isLoading && (
+                {isLoading && messages[messages.length - 1]?.role === 'user' && (
                   <div className="flex gap-2">
                     <div className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#F5E6D3]">
                       <Bot className="h-3.5 w-3.5 text-[#A97745]" />
