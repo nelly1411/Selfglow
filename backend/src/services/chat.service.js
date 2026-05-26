@@ -14,6 +14,13 @@ const MAX_PROMPT_INGREDIENTS_LENGTH = 800;
 const MIN_RELEVANCE_SCORE = 2;
 const PRODUCT_RECOMMENDATION_ANSWER =
   "Ich habe folgende passende Produkte aus unserem Sortiment gefunden. Das ist keine medizinische Diagnose, sondern eine Produktempfehlung auf Basis deiner Anfrage.";
+const GENERAL_SKINCARE_FALLBACK_ANSWER =
+  "**Kurz erklärt**\n\n- Ich kann dir bei Hauttyp, Hautpflege-Routine, Inhaltsstoffen und passenden SelfGlow-Produkten helfen.\n- Sag mir gern, welches Hautanliegen du hast oder ob du ein bestimmtes Produkt suchst.";
+const OFF_TOPIC_ANSWER =
+  "**Kurz erklärt**\n\n- Ich kann dir hier nur bei Hautpflege, Hauttypen, Inhaltsstoffen und passenden SelfGlow-Produkten helfen.\n- Frag mich gern nach einer Routine, einem Hautanliegen oder Produkteigenschaften wie vegan, parfumfrei oder alkoholfrei.";
+const CHAT_DECISION_FALLBACK = {
+  intent: "skincare_general",
+};
 const AI_RESPONSE_FORMAT_INSTRUCTIONS = `
 Response style:
 - Use clear Markdown formatting.
@@ -989,6 +996,32 @@ ${message}
 `;
 }
 
+function buildSkincareChatPrompt(message, history = [], intent = "skincare_general") {
+  const conversationHistory = history
+    .slice(-MAX_FOLLOW_UP_HISTORY)
+    .map((item) => `${item.role === "assistant" ? "Assistant" : "Customer"}: ${item.content}`)
+    .join("\n");
+
+  return `
+You are SelfGlow's concise, careful skincare assistant.
+Answer in the same language as the customer.
+You may answer greetings, general skincare questions, routine questions, skin type questions, ingredient questions, and safe cosmetic-use questions.
+Do not recommend specific SelfGlow products unless product context is provided by the backend.
+If the customer wants a product recommendation, ask for the missing skin type, concern, budget, or preferences instead of inventing products.
+Do not answer topics outside skincare, beauty routines, cosmetic ingredients, and SelfGlow shopping support.
+Do not diagnose medical conditions or promise treatment results.
+If the question requires medical advice, suggest consulting a dermatologist.
+${intent === "greeting" ? "For a greeting, reply warmly and ask what skincare goal the customer has." : ""}
+${AI_RESPONSE_FORMAT_INSTRUCTIONS}
+
+Recent conversation:
+${conversationHistory || "No previous conversation."}
+
+Customer message:
+${message}
+`;
+}
+
 function buildProductExplanationPrompt(products, message) {
   const isSingleProduct = products.length === 1;
   const shortProductName = isSingleProduct ? getShortProductName(products[0].name) : "";
@@ -1085,7 +1118,7 @@ function extractOpenAIText(data) {
   return outputText.join("").trim();
 }
 
-async function requestOpenAI(messages, fallbackAnswer) {
+async function requestOpenAI(messages, fallbackAnswer, options = {}) {
   if (!process.env.OPENAI_API_KEY) {
     return fallbackAnswer;
   }
@@ -1095,7 +1128,7 @@ async function requestOpenAI(messages, fallbackAnswer) {
     DEFAULT_OPENAI_TIMEOUT_MS
   );
   const maxOutputTokens = readPositiveInteger(
-    process.env.OPENAI_MAX_OUTPUT_TOKENS,
+    options.maxOutputTokens || process.env.OPENAI_MAX_OUTPUT_TOKENS,
     DEFAULT_OPENAI_MAX_OUTPUT_TOKENS
   );
   const controller = new AbortController();
@@ -1109,7 +1142,10 @@ async function requestOpenAI(messages, fallbackAnswer) {
         "Content-Type": "application/json",
       },
       signal: controller.signal,
-      body: JSON.stringify(buildOpenAIRequestBody(messages, maxOutputTokens)),
+      body: JSON.stringify({
+        ...buildOpenAIRequestBody(messages, maxOutputTokens),
+        ...(options.textFormat ? { text: options.textFormat } : {}),
+      }),
     });
 
     if (!response.ok) {
@@ -1231,6 +1267,88 @@ function extractSseTextDelta(event) {
   return "";
 }
 
+function parseChatDecision(rawDecision, message) {
+  try {
+    const jsonText = rawDecision.match(/\{[\s\S]*\}/)?.[0] || rawDecision;
+    const parsedDecision = JSON.parse(jsonText);
+    const allowedIntents = new Set([
+      "product_search",
+      "skincare_general",
+      "greeting",
+      "off_topic",
+    ]);
+
+    if (allowedIntents.has(parsedDecision.intent)) {
+      return {
+        intent: parsedDecision.intent,
+      };
+    }
+  } catch {
+    // Fall through to the conservative local fallback.
+  }
+
+  return inferChatIntentLocally(message);
+}
+
+async function decideChatIntent(message, history = []) {
+  if (!process.env.OPENAI_API_KEY) {
+    return inferChatIntentLocally(message);
+  }
+
+  const conversationHistory = history
+    .slice(-MAX_FOLLOW_UP_HISTORY)
+    .map((item) => `${item.role === "assistant" ? "Assistant" : "Customer"}: ${item.content}`)
+    .join("\n");
+
+  const rawDecision = await requestOpenAI(
+    [
+      {
+        role: "system",
+        content:
+          "Classify SelfGlow chat messages. Return only JSON with one key: intent.",
+      },
+      {
+        role: "user",
+        content: `
+Choose exactly one intent:
+- product_search: customer wants suitable products, recommendations, shopping help, a routine with products, or asks which product to buy/use.
+- skincare_general: customer asks a general skincare, ingredient, skin type, routine, or cosmetic-use question without asking for concrete products.
+- greeting: customer only greets, thanks, or starts small talk in a skincare assistant context.
+- off_topic: customer asks about anything outside skincare, beauty routines, cosmetic ingredients, or SelfGlow shopping support.
+
+Recent conversation:
+${conversationHistory || "No previous conversation."}
+
+Customer message:
+${message}
+
+JSON only:
+`,
+      },
+    ],
+    JSON.stringify(CHAT_DECISION_FALLBACK),
+    {
+      maxOutputTokens: 80,
+    }
+  );
+
+  return parseChatDecision(rawDecision, message);
+}
+
+function inferChatIntentLocally(message) {
+  const normalizedMessage = normalizeText(message);
+
+  if (/^(hi|hello|hey|hallo|servus|moin|guten tag|guten morgen|guten abend|danke|thanks)\b/.test(normalizedMessage)) {
+    return { intent: "greeting" };
+  }
+
+  if (/\b(product|products|produkt|produkte|recommend|empfehl|routine|buy|kaufen|suche|finde|which|welche|welcher|welches)\b/.test(normalizedMessage)) {
+    return { intent: "product_search" };
+  }
+
+  return CHAT_DECISION_FALLBACK;
+}
+
 // Generate the final assistant text. The OpenAI API key stays on the backend, so
 // the browser never receives or stores it.
 async function createOpenAIAnswer(
@@ -1286,6 +1404,41 @@ async function getContextProducts(productIds) {
 }
 
 async function createChatResponse(message, history = [], contextProductIds = []) {
+  const decision = await decideChatIntent(message, history);
+
+  if (decision.intent === "off_topic") {
+    return {
+      answer: OFF_TOPIC_ANSWER,
+      products: [],
+      canExplainProducts: false,
+      usedFallback: false,
+    };
+  }
+
+  if (decision.intent !== "product_search") {
+    const answer = await requestOpenAI(
+      [
+        {
+          role: "system",
+          content:
+            "You are a concise, careful skincare assistant for an ecommerce site.",
+        },
+        {
+          role: "user",
+          content: buildSkincareChatPrompt(message, history, decision.intent),
+        },
+      ],
+      GENERAL_SKINCARE_FALLBACK_ANSWER
+    );
+
+    return {
+      answer,
+      products: [],
+      canExplainProducts: false,
+      usedFallback: !process.env.OPENAI_API_KEY,
+    };
+  }
+
   const products = await retrieveProducts(message);
   const contextProducts =
     products.length === 0 && process.env.OPENAI_API_KEY
@@ -1307,6 +1460,43 @@ async function createChatResponseStream(
   contextProductIds = [],
   onDelta = () => {}
 ) {
+  const decision = await decideChatIntent(message, history);
+
+  if (decision.intent === "off_topic") {
+    return {
+      answer: OFF_TOPIC_ANSWER,
+      products: [],
+      canExplainProducts: false,
+      usedFallback: false,
+    };
+  }
+
+  if (decision.intent !== "product_search") {
+    const fallbackAnswer = GENERAL_SKINCARE_FALLBACK_ANSWER;
+    const answer = await streamOpenAI(
+      [
+        {
+          role: "system",
+          content:
+            "You are a concise, careful skincare assistant for an ecommerce site.",
+        },
+        {
+          role: "user",
+          content: buildSkincareChatPrompt(message, history, decision.intent),
+        },
+      ],
+      fallbackAnswer,
+      onDelta
+    );
+
+    return {
+      answer,
+      products: [],
+      canExplainProducts: false,
+      usedFallback: answer === fallbackAnswer,
+    };
+  }
+
   const products = await retrieveProducts(message);
   const contextProducts =
     products.length === 0 && process.env.OPENAI_API_KEY
