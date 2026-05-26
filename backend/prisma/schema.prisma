@@ -16,6 +16,7 @@ model Product {
   imageUrl         String?
   description      String?
   ingredients      String?
+  application      String?
 
   alcoholFree      Boolean  @default(false)
   fragranceFree    Boolean  @default(false)
@@ -27,16 +28,30 @@ model Product {
 
   wishlistItems WishlistItem[]
   cartItems CartItem[]
+  reviews       Review[]
   
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 }
 
 model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
-  password  String
-  name      String?
+  id            Int      @id @default(autoincrement())
+  email         String   @unique
+  //passwordHash  String
+  name          String?
+  emailVerified Boolean  @default(false)
+  savedAddress String?
+  savedPostal  String?
+  savedCity    String?
+  savedCountry String?
+  savedPhone   String?
+  skinType     String?  
+  password String
+  usedWelcomeCode Boolean @default(false)
+
+wishlistItems WishlistItem[]
+  orders        Order[]
+  reviews       Review[]      
 
   wishlistItems WishlistItem[]
   cart Cart?
@@ -45,15 +60,21 @@ model User {
   updatedAt DateTime @updatedAt
 }
 model Order {
-  id          Int      @id @default(autoincrement())
-  totalPrice  Float
+  id            Int      @id @default(autoincrement())
+  orderNumber  String  @unique
+  totalPrice    Float
   paymentMethod String
-  address     String
-  city        String
-  postal      String
-  country     String
-  items       String
-  createdAt   DateTime @default(now())
+  address       String
+  city          String
+  postal        String
+  country       String
+  items         String
+
+
+  userId Int?
+  user   User? @relation(fields: [userId], references: [id])
+
+  createdAt DateTime @default(now())
 }
 
 model WishlistItem {
@@ -91,4 +112,18 @@ model CartItem {
   product   Product  @relation(fields: [productId], references: [id])
 
   @@unique([cartId, productId])
+}
+
+model Review {
+  id        Int       @id @default(autoincrement())
+  userId    Int
+  productId Int
+  rating    Int
+  reviewText String
+  createdAt   DateTime @default(now())
+
+  user      User       @relation(fields: [userId], references: [id])
+  product   Product    @relation(fields: [productId], references: [id])
+
+  @@unique([userId, productId])
 }

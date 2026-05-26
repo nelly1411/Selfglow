@@ -1,634 +1,625 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useCart } from '@/context/CartContext'
 import { useAuth } from '@/context/AuthContext'
 import { useNavigate, Link } from 'react-router-dom'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Tag, CheckCircle, Loader2 } from 'lucide-react'
+
+const API = 'http://localhost:5050'
+
+// ─── Validators ────────────────────────────────────────────────────────────────
+const validators = {
+  firstName: { regex: /^[a-zA-ZäöüÄÖÜßàáâãèéêìíîòóôùúû\s'\-]{2,50}$/, msg: 'Min. 2 Buchstaben, keine Zahlen' },
+  lastName:  { regex: /^[a-zA-ZäöüÄÖÜßàáâãèéêìíîòóôùúû\s'\-]{2,50}$/, msg: 'Min. 2 Buchstaben, keine Zahlen' },
+  email:     { regex: /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/,                  msg: 'Ungültige E-Mail' },
+  phone:     { regex: /^\+[1-9][0-9]{1,3}\s?[0-9\s\-]{6,15}$/,         msg: 'Bitte mit Vorwahl (z.B. +49 151 12345678)' },
+  address:   { regex: /^[a-zA-ZäöüÄÖÜß\s\.\-]+ \d+[a-zA-Z]?$/,        msg: 'Format: Straße + Hausnummer (z.B. Musterstraße 12)' },
+  postal:    { regex: /^[0-9]{4,5}$/,                                    msg: '4–5-stellige Postleitzahl' },
+  city:      { regex: /^[a-zA-ZäöüÄÖÜßàáâ\s\-\.]{2,85}$/,              msg: 'Nur Buchstaben erlaubt' },
+  country:   { regex: /^[a-zA-ZäöüÄÖÜßàáâ\s\-\.]{2,85}$/,              msg: 'Nur Buchstaben erlaubt' },
+}
+
+const BASE_FORM = {
+  firstName: '', lastName: '', email: '', phone: '',
+  address: '', postal: '', city: '', country: '',
+}
+
+// ─── Payment config ────────────────────────────────────────────────────────────
+const PAYMENT_METHODS = [
+  {
+    id: 'klarna',
+    label: 'Klarna',
+    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/40/Klarna_Payment_Badge.svg/200px-Klarna_Payment_Badge.svg.png',
+    color: '#FFB3C7',
+    textColor: '#1a1a1a',
+    tagline: 'Jetzt kaufen, später bezahlen',
+    description: 'Du wirst zu Klarna weitergeleitet, um sicher zu bezahlen. Klarna prüft deine Bonität und sendet dir eine Zahlungsaufforderung.',
+    redirectUrl: 'https://www.klarna.com',
+    buttonLabel: 'Weiter zu Klarna',
+    buttonColor: '#FFB3C7',
+    buttonTextColor: '#1a1a1a',
+  },
+  {
+    id: 'paypal',
+    label: 'PayPal',
+    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b5/PayPal.svg/200px-PayPal.svg.png',
+    color: '#003087',
+    textColor: '#fff',
+    tagline: 'Schnell & sicher bezahlen',
+    description: 'Du wirst zu PayPal weitergeleitet, um die Zahlung abzuschließen. Du kannst mit deinem PayPal-Konto oder als Gast bezahlen.',
+    redirectUrl: 'https://www.paypal.com',
+    buttonLabel: 'Weiter zu PayPal',
+    buttonColor: '#0070ba',
+    buttonTextColor: '#fff',
+  },
+] as const
+
+type PaymentId = 'klarna' | 'paypal'
 
 export default function Checkout() {
-const [discount, setDiscount] = useState('')
-const [discountValue, setDiscountValue] = useState(0)
-  const { items, totalPrice } = useCart()
-  const { user } = useAuth()
-  const navigate = useNavigate()
+const { user, updateUser } = useAuth()
+const token = user?.token
+  const navigate             = useNavigate()
+  const { items, totalPrice, clearCart } = useCart()
 
-  const [guestMode, setGuestMode] = useState(false)
-  const [payment, setPayment] = useState<'card' | 'paypal'>('card')
+  const [guestMode, setGuestMode]             = useState(false)
+  const [payment, setPayment]                 = useState<PaymentId>('klarna')
+  const [discount, setDiscount]               = useState('')
+  const [discountValue, setDiscountValue]     = useState(0)
+  const [discountError, setDiscountError]     = useState('')
+  const [discountApplied, setDiscountApplied] = useState(false)
+  const [discountLabel, setDiscountLabel]   = useState('')
+const [checkingCode, setCheckingCode]     = useState(false)
+  const [errorMsg, setErrorMsg]               = useState('')
+  const [errors, setErrors]                   = useState<Record<string, string>>({})
+  const [touched, setTouched]                 = useState<Record<string, boolean>>({})
+  const [loadingAddress, setLoadingAddress]   = useState(false)
+  const [addressLoaded, setAddressLoaded]     = useState(false)
+  const [redirecting, setRedirecting]         = useState(false)
+  const [form, setForm]                       = useState(BASE_FORM)
 
-  const [success, setSuccess] = useState('')
-  const [errors, setErrors] = useState<Record<string, string>>({})
+  const selectedMethod = PAYMENT_METHODS.find(m => m.id === payment)!
 
-  const [form, setForm] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    phone: '',
-    address: '',
-    postal: '',
-    city: '',
-    country: '',
-    cardNumber: '',
-    expire: '',
-    cvv: '',
-    paypalEmail: '',
-    paypalPassword: '',
-    paypalName: '',
-  })
+  // ─── Reset when user changes ──────────────────────────────────────────
+  useEffect(() => {
+    setForm(BASE_FORM)
+    setErrors({})
+    setTouched({})
+    setPayment('klarna')
+    setDiscount('')
+    setDiscountValue(0)
+    setDiscountApplied(false)
+    setDiscountError('')
+    setAddressLoaded(false)
+  }, [user?.id])
 
-  const handleChange = (e: any) => {
-  const updatedForm = { ...form, [e.target.name]: e.target.value }
-  setForm(updatedForm)
+  // ─── Load address from DB ────────────────────────────────────────────
+  useEffect(() => {
+    if (!user?.token) return
 
-  setTimeout(validate, 0)
-}
-  const validate = () => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (user.savedAddress) {
+      setForm((prev) => ({
+        ...prev,
+        address: user.savedAddress || '',
+        postal:  user.savedPostal  || '',
+        city:    user.savedCity    || '',
+        country: user.savedCountry || '',
+        phone:   user.savedPhone   || '',
+      }))
+      setTouched({ address: true, postal: true, city: true, country: true, phone: true })
+      setAddressLoaded(true)
+    }
+
+    setLoadingAddress(true)
+    fetch(`${API}/api/auth/address`, {
+      headers: { Authorization: `Bearer ${user.token}` },
+    })
+      .then(r => { if (!r.ok) throw new Error(`${r.status}`); return r.json() })
+      .then(data => {
+        if (data?.savedAddress) {
+          setForm(prev => ({
+            ...prev,
+            address: data.savedAddress || '',
+            postal:  data.savedPostal  || '',
+            city:    data.savedCity    || '',
+            country: data.savedCountry || '',
+            phone:   data.savedPhone   || '',
+          }))
+          setTouched({ address: true, postal: true, city: true, country: true, phone: true })
+          setAddressLoaded(true)
+          updateUser({ ...user, savedAddress: data.savedAddress, savedPostal: data.savedPostal, savedCity: data.savedCity, savedCountry: data.savedCountry, savedPhone: data.savedPhone })
+        }
+      })
+      .catch(err => console.warn('[Checkout] address fetch failed:', err.message))
+      .finally(() => setLoadingAddress(false))
+  }, [user?.token])
+
+  // ─── Validation ──────────────────────────────────────────────────────
+  const validateField = (name: string, value: string): string => {
+    if (!value) return 'Pflichtfeld'
+    const v = validators[name as keyof typeof validators]
+    if (!v) return ''
+    if (!v.regex.test(value)) return v.msg
+    return ''
+  }
+
+  const validateAll = () => {
     const newErrors: Record<string, string> = {}
+    const guestFields    = !user ? ['firstName', 'lastName', 'email', 'phone'] : []
+    const shippingFields = ['address', 'postal', 'city', 'country']
+    const allFields      = [...guestFields, ...shippingFields]
 
-    if (!user) {
-      if (!form.firstName) newErrors.firstName = 'Pflichtfeld'
-      if (!form.lastName) newErrors.lastName = 'Pflichtfeld'
-      if (!form.email) newErrors.email = 'Pflichtfeld'
-      if (!form.phone) newErrors.phone = 'Pflichtfeld'
-    }
-
-    if (!form.address) newErrors.address = 'Pflichtfeld'
-    if (!form.postal) newErrors.postal = 'Pflichtfeld'
-    if (!form.city) newErrors.city = 'Pflichtfeld'
-    if (!form.country) newErrors.country = 'Pflichtfeld'
-
-    if (payment === 'card') {
-      if (!form.cardNumber) newErrors.cardNumber = 'Pflichtfeld'
-      if (!form.expire) newErrors.expire = 'Pflichtfeld'
-      if (!form.cvv) newErrors.cvv = 'Pflichtfeld'
-    }
-
-    if (payment === 'paypal') {
-  if (!form.paypalName) newErrors.paypalName = 'Pflichtfeld'
-  if (!form.paypalEmail) {
-  newErrors.paypalEmail = 'Pflichtfeld'
-} else if (!emailRegex.test(form.paypalEmail)) {
-  newErrors.paypalEmail = 'Ungültige Email (muss @ enthalten)'
-}
-  if (!form.paypalPassword) newErrors.paypalPassword = 'Pflichtfeld'
-}
-
+    allFields.forEach(field => {
+      const err = validateField(field, form[field as keyof typeof form] || '')
+      if (err) newErrors[field] = err
+    })
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
 
-const handleCheckout = async () => {
-  setSuccess('')
-
-  if (!validate()) return
-
-const orderData = {
-  items,
-  totalPrice,
-  payment,
-  customer: {
-    firstName: form.firstName,
-    lastName: form.lastName,
-    email: form.email,
-    phone: form.phone,
-  },
-  shipping: {
-    address: form.address,
-    postal: form.postal,
-    city: form.city,
-    country: form.country,
-  },
-  paymentData: {
-    cardNumber: form.cardNumber,
-    expire: form.expire,
-    cvv: form.cvv,
-    paypalName: form.paypalName,
-    paypalEmail: form.paypalEmail,
-    paypalPassword: form.paypalPassword,
+  const handleChange = (name: string, value: string) => {
+    setForm(prev => ({ ...prev, [name]: value }))
+    setTouched(prev => ({ ...prev, [name]: true }))
+    setErrors(prev => ({ ...prev, [name]: validateField(name, value) }))
   }
-}
 
-  const res = await fetch('http://localhost:5050/api/checkout', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(orderData),
+  const inputProps = (name: string) => ({
+    name,
+    value: form[name as keyof typeof form] || '',
+    onChange: (e: React.ChangeEvent<HTMLInputElement>) => handleChange(name, e.target.value),
+    onBlur: () => setTouched(prev => ({ ...prev, [name]: true })),
+    className: `w-full px-3 py-2.5 rounded-lg border text-sm transition-colors outline-none ${
+      touched[name] && errors[name]
+        ? 'border-red-400 bg-red-50 focus:border-red-500'
+        : touched[name] && !errors[name]
+        ? 'border-green-400 bg-green-50 focus:border-green-500'
+        : 'border-gray-200 bg-white focus:border-[#D4A574]'
+    }`,
   })
 
-  const data = await res.json()
+  const ErrorMsg = ({ field }: { field: string }) =>
+    touched[field] && errors[field]
+      ? <p className="text-red-500 text-xs mt-1">{errors[field]}</p>
+      : null
 
-  if (res.ok) {
-    setSuccess('Deine Bestellung wurde erfolgreich abgeschlossen!')
-  } else {
-    setSuccess(data.message || 'Fehler beim Checkout')
+  // ─── Discount ─────────────────────────────────────────────────────────
+  const VALID_CODES: Record<string, number> = { SAVE10: 0.10, WELCOME5: 0.05 }
+
+  const applyDiscount = async () => {
+  setDiscountApplied(false)
+  setDiscountError('')
+  const code = discount.trim().toUpperCase()
+  if (!code) return
+
+  // SAVE10 — lokal prüfen
+  if (code === 'SAVE10') {
+    setDiscountValue(totalPrice * 0.10)
+    setDiscountLabel('SAVE10')
+    setDiscountApplied(true)
+    return
   }
-}
-const applyDiscount = () => {
-  if (discount === 'SAVE10') {
-    setDiscountValue(totalPrice * 0.1)
-  } else {
-    setDiscountValue(0)
+
+  // WELCOME10 — Backend prüfen
+  if (code === 'WELCOME10') {
+    const t = user?.token || localStorage.getItem('token')
+    if (!t) {
+      setDiscountError('Bitte einloggen um WELCOME10 zu verwenden.')
+      return
+    }
+    setCheckingCode(true)
+    try {
+      const res  = await fetch(`${API}/api/auth/check-welcome-code`, {
+        headers: { Authorization: `Bearer ${t}` },
+      })
+      const data = await res.json()
+      if (data.used) {
+        setDiscountError('WELCOME10 wurde bereits verwendet.')
+      } else {
+        setDiscountValue(totalPrice * 0.10)
+        setDiscountLabel('WELCOME10')
+        setDiscountApplied(true)
+      }
+    } catch {
+      setDiscountError('Code konnte nicht geprüft werden.')
+    } finally {
+      setCheckingCode(false)
+    }
+    return
   }
+
+  setDiscountError('Ungültiger Rabattcode')
+  setDiscountValue(0)
 }
-const finalTotal = totalPrice * 1.19 + 5 - discountValue
 
-  const inputClass = (field: string) =>
-    `w-full p-2 border rounded bg-white ${
-      errors[field] ? 'border-red-500' : 'border-gray-300'
-    }`
+  const finalTotal = totalPrice - discountValue
 
-if (!user && !guestMode) {
-  return (
-    <div className="min-h-[70vh] flex items-center justify-center px-4">
-      <div className="bg-white border rounded-xl p-8 text-center max-w-md w-full shadow">
+  // ─── Submit + redirect ─────────────────────────────────────────────────
+  const handleCheckout = async () => {
+    setErrorMsg('')
+    const allFields = [
+      ...(!user ? ['firstName', 'lastName', 'email', 'phone'] : []),
+      'address', 'postal', 'city', 'country',
+    ]
+    setTouched(Object.fromEntries(allFields.map(f => [f, true])))
+    if (!validateAll()) return
 
-        <h2 className="text-xl font-semibold mb-3">
-          Checkout
-        </h2>
+    const orderData = {
+      items,
+      totalPrice: finalTotal,
+      payment,
+      discountCode: discountApplied ? discountLabel : null, 
+      customer: { firstName: form.firstName, lastName: form.lastName, email: form.email, phone: form.phone },
+      shipping:  { address: form.address, postal: form.postal, city: form.city, country: form.country },
+      paymentData: { method: payment },
+    }
 
-        <p className="text-sm text-gray-600 mb-6">
-          Möchten Sie als Gast bestellen oder ein Konto verwenden?
-        </p>
+    try {
+  
+const headers: Record<string, string> = {
+  'Content-Type': 'application/json',
+}
 
-        <div className="flex flex-col gap-3">
-          <button
-            onClick={() => setGuestMode(true)}
-            className="bg-[#D4A574] text-white py-2 rounded-full"
-          >
-            Als Gast bestellen
-          </button>
+if (token) {
+  headers['Authorization'] = `Bearer ${token}`
+}
 
-          <button
-            onClick={() => navigate('/login')}
-            className="border py-2 rounded-full"
-          >
-            Login / Konto
-          </button>
+console.log("TOKEN:", token)
+console.log("HEADERS:", headers)
+
+      const res  = await fetch(`${API}/api/checkout`, { method: 'POST', headers, body: JSON.stringify(orderData) })
+      const data = await res.json()
+
+      if (res.status === 429) { setErrorMsg(data.message); return }
+      if (!res.ok) { setErrorMsg(data.message || 'Fehler beim Checkout'); return }
+
+      clearCart()
+
+      // Save address to DB
+      if (user?.token) {
+        const addrRes = await fetch(`${API}/api/auth/address`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${user.token}` },
+          body: JSON.stringify({ address: form.address, postal: form.postal, city: form.city, country: form.country, phone: form.phone }),
+        })
+        if (addrRes.ok) {
+          const addrData = await addrRes.json()
+          if (addrData.user) updateUser({ ...user, ...addrData.user, token: user.token })
+        }
+      }
+
+      const orderNumber = data.order?.orderNumber || ''
+
+      // ── Simulated redirect to payment provider ────────────────────────
+      setRedirecting(true)
+
+      // Store order info so ThankYou page can read it after "coming back"
+      sessionStorage.setItem('pendingOrder', JSON.stringify({
+        email: form.email || user?.email,
+        orderNumber,
+      }))
+
+      // Simulate redirect: open payment site, then after 2s navigate to thank-you
+      window.open(selectedMethod.redirectUrl, '_blank')
+
+      setTimeout(() => {
+        navigate('/thank-you', { state: { email: form.email || user?.email, orderNumber } })
+      }, 2000)
+
+    } catch {
+      setErrorMsg('Netzwerkfehler – bitte versuche es erneut.')
+    }
+  }
+
+  // ─── Gate ─────────────────────────────────────────────────────────────
+  if (!user && !guestMode) {
+    return (
+      <div className="min-h-[70vh] flex items-center justify-center px-4">
+        <div className="bg-white border rounded-xl p-8 text-center max-w-md w-full shadow">
+          <h2 className="text-xl font-semibold mb-3">Checkout</h2>
+          <p className="text-sm text-gray-600 mb-6">Möchten Sie als Gast bestellen oder ein Konto verwenden?</p>
+          <div className="flex flex-col gap-3">
+            <button onClick={() => setGuestMode(true)} className="bg-[#D4A574] text-white py-2 rounded-full hover:bg-[#c4945f] transition-colors">
+              Als Gast bestellen
+            </button>
+            <button onClick={() => navigate('/login')} className="border py-2 rounded-full hover:bg-gray-50 transition-colors">
+              Login / Konto
+            </button>
+          </div>
         </div>
-
       </div>
-    </div>
-  )
-}
-  return (
-    <div className="container mx-auto px-4 py-10 font-sans">
+    )
+  }
+const formatPrice = (value: number) =>
+  new Intl.NumberFormat('de-DE', {
+    style: 'currency',
+    currency: 'EUR',
+  }).format(value)
+  // ─── Redirect overlay ─────────────────────────────────────────────────
+  if (redirecting) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#FDFAF6]">
+        <div className="text-center space-y-4">
+          <Loader2 className="h-10 w-10 animate-spin text-[#D4A574] mx-auto" />
+          <p className="text-lg font-medium text-gray-700">
+            Du wirst zu {selectedMethod.label} weitergeleitet…
+          </p>
+          <p className="text-sm text-gray-400">Bitte warte einen Moment.</p>
+        </div>
+      </div>
+    )
+  }
 
-      {/* HEADER */}
-      <div className="flex items-center gap-3 mb-6">
-        <Link to="/cart">
+  const hasErrors = Object.values(errors).some(Boolean)
+
+  return (
+    <div className="container mx-auto px-4 py-10 font-sans max-w-5xl">
+
+      <div className="flex items-center gap-3 mb-8">
+        <Link to="/cart" className="hover:opacity-70 transition-opacity">
           <ArrowLeft className="h-5 w-5 text-gray-600" />
         </Link>
         <h1 className="text-2xl font-bold">Checkout</h1>
       </div>
 
-      {/* GUEST / LOGIN */}
-      {!user && !guestMode && (
-        <div className="bg-gray-100 p-6 rounded text-center mb-8 max-w-md mx-auto">
-          <p className="mb-4">
-            Möchten Sie als Gast bestellen oder ein Konto erstellen?
-          </p>
-
-          <div className="flex flex-col gap-3">
-            <button
-              onClick={() => setGuestMode(true)}
-              className="bg-[#D4A574] text-white py-2 rounded-full"
-            >
-              Als Gast bestellen
-            </button>
-
-            <button
-              onClick={() => navigate('/login')}
-              className="border py-2 rounded-full"
-            >
-              Login / Konto
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* SUCCESS MESSAGE */}
-      {success && (
-        <div className="bg-green-100 text-green-700 p-3 rounded mb-6 text-center">
-          {success}
+      {errorMsg && (
+        <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg mb-6 text-center">
+          {errorMsg}
         </div>
       )}
 
       <div className="grid lg:grid-cols-2 gap-10">
 
-        {/* LEFT */}
+        {/* ── LEFT ── */}
         <div className="space-y-8">
 
-          {/* CUSTOMER */}
-          {(user || guestMode) && (
-            <div>
-              <h2 className="font-semibold mb-3">Customer Details</h2>
-
-              {!user && (
-                <>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <input name="firstName" onChange={handleChange} className={inputClass('firstName')} placeholder="First Name" />
-                      {errors.firstName && <p className="text-red-500 text-xs">{errors.firstName}</p>}
-                    </div>
-
-                    <div>
-                      <input name="lastName" onChange={handleChange} className={inputClass('lastName')} placeholder="Last Name" />
-                      {errors.lastName && <p className="text-red-500 text-xs">{errors.lastName}</p>}
-                    </div>
+          {/* Customer */}
+          <section>
+            <h2 className="font-semibold text-gray-800 mb-4 pb-2 border-b">Kundendaten</h2>
+            {user ? (
+              <div className="bg-gray-50 p-3 rounded-lg border">
+                <p className="font-medium">{user.name}</p>
+                <p className="text-sm text-gray-500">{user.email}</p>
+              </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-2 gap-3 mb-3">
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1 block">Vorname *</label>
+                    <input {...inputProps('firstName')} placeholder="Max"
+                      onChange={e => { if (/^[a-zA-ZäöüÄÖÜßàáâãèéêìíîòóôùúû\s'\-]*$/.test(e.target.value)) handleChange('firstName', e.target.value) }} />
+                    <ErrorMsg field="firstName" />
                   </div>
-
-                  <div className="grid grid-cols-2 gap-3 mt-3">
-                    <div>
-                      <input
-  type="email"
-  name="email"
-  value={form.email}
-  onChange={handleChange}
-  className={inputClass('email')}
-  placeholder="Email"
-/>
-                      {errors.email && <p className="text-red-500 text-xs">{errors.email}</p>}
-                    </div>
-
-                    <div>
-                    <input
-  name="phone"
-  value={form.phone}
-  onChange={(e) => {
-    const value = e.target.value
-    if (/^[0-9+\s-]*$/.test(value)) {
-      handleChange(e)
-    }
-  }}
-  className={inputClass('phone')}
-  placeholder="Phone"
-/>
-                      {errors.phone && <p className="text-red-500 text-xs">{errors.phone}</p>}
-                    </div>
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1 block">Nachname *</label>
+                    <input {...inputProps('lastName')} placeholder="Mustermann"
+                      onChange={e => { if (/^[a-zA-ZäöüÄÖÜßàáâãèéêìíîòóôùúû\s'\-]*$/.test(e.target.value)) handleChange('lastName', e.target.value) }} />
+                    <ErrorMsg field="lastName" />
                   </div>
-                </>
-              )}
-
-              {user && (
-                <div className="bg-gray-100 p-3 rounded">
-                  <p>{user.name}</p>
-                  <p className="text-sm text-gray-600">{user.email}</p>
                 </div>
-              )}
-            </div>
-          )}
-
-          {/* SHIPPING */}
-          {(user || guestMode) && (
-            <div>
-              <h2 className="font-semibold mb-3">Shipping</h2>
-
-              <div>
-                <input name="address" onChange={handleChange} className={inputClass('address')} placeholder="Address" />
-                {errors.address && <p className="text-red-500 text-xs">{errors.address}</p>}
-              </div>
-
-              <div className="grid grid-cols-3 gap-3 mt-3">
-                <div>
-                 <input
-  name="postal"
-  value={form.postal}
-  onChange={(e) => {
-    const value = e.target.value
-    if (/^[0-9]*$/.test(value)) {
-      handleChange(e)
-    }
-  }}
-  className={inputClass('postal')}
-  placeholder="Postal"
-/>
-                  {errors.postal && <p className="text-red-500 text-xs">{errors.postal}</p>}
-                </div>
-
-                <div>
-                  <input
-  name="city"
-  value={form.city}
-  onChange={(e) => {
-    const value = e.target.value
-    if (/^[a-zA-ZäöüÄÖÜß\s-]*$/.test(value)) {
-      handleChange(e)
-    }
-  }}
-  className={inputClass('city')}
-  placeholder="City"
-/>
-                  {errors.city && <p className="text-red-500 text-xs">{errors.city}</p>}
-                </div>
-
-                <div>
-                 <input
-  name="country"
-  value={form.country}
-   onChange={(e) => {
-
-    const value = e.target.value
-
-    if (/^[a-zA-ZäöüÄÖÜß\s-]*$/.test(value)) {
-
-      handleChange(e)
-
-    }
-
-  }}
-  className={inputClass('country')}
-  placeholder="country"
->
-  
-</input>
-                  {errors.country && <p className="text-red-500 text-xs">{errors.country}</p>}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* PAYMENT */}
-
-          <div>
-
-            <h2 className="font-semibold mb-3">Payment Method</h2>
-
-            <div className="flex gap-3 mb-4">
-
-              <button
-
-                onClick={() => setPayment('paypal')}
-
-                className={`px-4 py-2 rounded-full border text-sm ${
-
-                  payment === 'paypal' ? 'bg-[#D4A574] text-white' : 'bg-[#F5E6D3]'
-
-                }`}
-
-              >
-
-                PayPal
-
-              </button>
-
-              <button
-
-                onClick={() => setPayment('card')}
-
-                className={`px-4 py-2 rounded-full border text-sm ${
-
-                  payment === 'card' ? 'bg-[#D4A574] text-white' : 'bg-[#F5E6D3]'
-
-                }`}
-
-              >
-
-                Card
-
-              </button>
-
-            </div>
-
-            {/* PAYPAL FORM */}
-
-            {payment === 'paypal' && (
-
-              <div className="space-y-2">
-
-               <input
-  name="paypalName"
-  value={form.paypalName}
-  onChange={(e) => {
-    const value = e.target.value
-    if (/^[a-zA-ZäöüÄÖÜß\s-]*$/.test(value)) {
-      handleChange(e)
-    }
-  }}
-  className="w-full p-2 border rounded"
-  placeholder="Name"
-/>
-
-              <input
-  type="email"
-  name="paypalEmail"
-  value={form.paypalEmail}
-  onChange={handleChange}
-  className={inputClass('paypalEmail')}
-  placeholder="PayPal Email"
-/>
-              <input
-  type="password"
-  name="paypalPassword"
-  value={form.paypalPassword}
-  onChange={handleChange}
-  className={inputClass('paypalPassword')}
-  placeholder="Password"
-/>
-              </div>
-
-            )}
-
-            {/* CARD FORM */}
-
-            {payment === 'card' && (
-
-              <div className="space-y-2">
-<input
-  name="cardNumber"
-  value={form.cardNumber}
-  onChange={(e) => {
-    const value = e.target.value
-    if (/^[0-9]*$/.test(value)) {
-      handleChange(e)
-    }
-  }}
-  className="w-full p-2 border rounded"
-  placeholder="Card Number"
-/>
-
                 <div className="grid grid-cols-2 gap-3">
-
-                 <input
-
-  name="expire"
-
-  value={form.expire}
-
-  onChange={handleChange}
-
-  className="p-2 border rounded"
-
-  placeholder="Expire Date"
-
-/>
-
-                 <input
-  name="cvv"
-  value={form.cvv}
-  onChange={(e) => {
-    const value = e.target.value
-    if (/^[0-9]{0,4}$/.test(value)) {
-      handleChange(e)
-    }
-  }}
-  className="p-2 border rounded"
-  placeholder="CVV"
-/>
-
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1 block">E-Mail *</label>
+                    <input {...inputProps('email')} type="email" placeholder="max@beispiel.de" />
+                    <ErrorMsg field="email" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1 block">Telefon *</label>
+                    <input {...inputProps('phone')} placeholder="+49 151 12345678"
+                      onChange={e => { if (/^[+0-9\s\-\(\)]*$/.test(e.target.value)) handleChange('phone', e.target.value) }} />
+                    <ErrorMsg field="phone" />
+                  </div>
                 </div>
+              </>
+            )}
+          </section>
 
+          {/* Shipping */}
+          <section>
+            <h2 className="font-semibold text-gray-800 mb-4 pb-2 border-b">Lieferadresse</h2>
+
+            {loadingAddress && (
+              <div className="flex items-center gap-2 text-xs text-gray-400 mb-3">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                Adresse wird geladen…
               </div>
-
+            )}
+            {addressLoaded && !loadingAddress && (
+              <div className="bg-blue-50 border border-blue-100 rounded-lg px-3 py-2 text-xs text-blue-600 flex items-center gap-2 mb-3">
+                <CheckCircle className="h-3.5 w-3.5 shrink-0" />
+                Deine gespeicherte Adresse wurde automatisch eingetragen.
+              </div>
             )}
 
-          </div>
+            <div className="mb-3">
+              <label className="text-xs text-gray-500 mb-1 block">Straße & Hausnummer *</label>
+              <input {...inputProps('address')} placeholder="Musterstraße 42" />
+              <ErrorMsg field="address" />
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <label className="text-xs text-gray-500 mb-1 block">PLZ *</label>
+                <input {...inputProps('postal')} placeholder="10115" maxLength={5}
+                  onChange={e => { if (/^[0-9]*$/.test(e.target.value)) handleChange('postal', e.target.value) }} />
+                <ErrorMsg field="postal" />
+              </div>
+              <div>
+                <label className="text-xs text-gray-500 mb-1 block">Stadt *</label>
+                <input {...inputProps('city')} placeholder="Berlin"
+                  onChange={e => { if (/^[a-zA-ZäöüÄÖÜßàáâ\s\-\.]*$/.test(e.target.value)) handleChange('city', e.target.value) }} />
+                <ErrorMsg field="city" />
+              </div>
+              <div>
+                <label className="text-xs text-gray-500 mb-1 block">Land *</label>
+                <input {...inputProps('country')} placeholder="Deutschland"
+                  onChange={e => { if (/^[a-zA-ZäöüÄÖÜßàáâ\s\-\.]*$/.test(e.target.value)) handleChange('country', e.target.value) }} />
+                <ErrorMsg field="country" />
+              </div>
+            </div>
+          </section>
 
+         {/* ── Payment Method ── */}
+<section>
+  <h2 className="font-semibold text-gray-800 mb-4 pb-2 border-b">
+    Zahlungsmethode
+  </h2>
+<div className="flex gap-3">
+
+  {/* Klarna */}
+  <button
+    type="button"
+    onClick={() => setPayment('klarna')}
+    className={`
+      flex-1 h-[74px] rounded-2xl border transition-all duration-200
+      flex items-center justify-between px-5 bg-white
+      ${payment === 'klarna'
+        ? 'border-gray-400'
+        : 'border-gray-200 hover:bg-gray-50'
+      }
+    `}
+  >
+    <img
+      src="https://upload.wikimedia.org/wikipedia/commons/4/40/Klarna_Payment_Badge.svg"
+      alt="Klarna"
+      className="h-7 object-contain"
+    />
+
+    <div
+      className={`
+        w-5 h-5 rounded-full border-2 flex items-center justify-center
+        ${payment === 'klarna'
+          ? 'border-pink-500'
+          : 'border-gray-300'
+        }
+      `}
+    >
+      {payment === 'klarna' && (
+        <div className="w-2.5 h-2.5 rounded-full bg-pink-500" />
+      )}
+    </div>
+  </button>
+
+  {/* PayPal */}
+  <button
+    type="button"
+    onClick={() => setPayment('paypal')}
+    className={`
+      flex-1 h-[74px] rounded-2xl border transition-all duration-200
+      flex items-center justify-between px-5 bg-white
+      ${payment === 'paypal'
+        ? 'border-gray-400'
+       : 'border-gray-200 hover:bg-gray-50'
+      }
+    `}
+  >
+    <img
+      src="https://upload.wikimedia.org/wikipedia/commons/b/b5/PayPal.svg"
+      alt="PayPal"
+      className="h-6 object-contain"
+    />
+
+    <div
+      className={`
+        w-5 h-5 rounded-full border-2 flex items-center justify-center
+        ${payment === 'paypal'
+          ? 'border-blue-500'
+          : 'border-gray-300'
+        }
+      `}
+    >
+      {payment === 'paypal' && (
+        <div className="w-2.5 h-2.5 rounded-full bg-blue-500" />
+      )}
+    </div>
+  </button>
+
+</div>
+
+</section>
         </div>
 
-        {/* RIGHT SIDE - FULL RESTORED SUMMARY */}
+        {/* ── RIGHT – Order Summary ── */}
+        <div className="bg-[#F5E6D3] p-6 rounded-xl h-fit sticky top-6">
+          <h2 className="font-semibold mb-5 text-gray-800">Bestellübersicht</h2>
 
-        <div className="bg-[#F5E6D3] p-6 rounded-xl h-fit">
+          <div className="space-y-4 max-h-60 overflow-y-auto pr-1">
+            {items.map(item => (
+              <div key={item.id} className="flex gap-3 items-center">
+                <img src={item.image} className="w-12 h-12 rounded-lg object-cover shrink-0" alt={item.name} />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium truncate">{item.name}</p>
+                  <p className="text-sm text-gray-600">
 
-          <h2 className="font-semibold mb-4">Order Summary</h2>
+  {formatPrice(item.price)}
 
-          {/* PRODUCTS */}
-
-          <div className="space-y-4">
-
-            {items.map((item) => (
-
-              <div key={item.id} className="flex gap-3">
-
-                <img src={item.image} className="w-12 h-12 rounded object-cover" />
-
-                <div className="min-w-0">
-
-                  <p className="text-sm truncate max-w-[180px]">
-
-                    {item.name}
-
-                  </p>
-
-                  <p className="text-sm">€{item.price}</p>
-
-                  <p className="text-xs text-gray-600">Anzahl: {item.quantity}</p>
-
+</p>
                 </div>
-
+                <span className="text-xs bg-white rounded-full px-2 py-0.5 text-gray-500 shrink-0">×{item.quantity}</span>
               </div>
-
             ))}
-
           </div>
 
-          <hr className="my-4" />
+          <hr className="my-5 border-[#e0c9a8]" />
 
-          {/* DISCOUNT */}
-
-          <div className="mb-4">
-
-            <h3 className="text-sm mb-2">Discount Code</h3>
-
+          {/* Discount */}
+          <div className="mb-5">
+            <label className="text-xs text-gray-600 mb-2 flex items-center gap-1">
+              <Tag className="h-3 w-3" /> Rabattcode
+            </label>
             <div className="flex gap-2">
-
-              <input
-
-                value={discount}
-
-                onChange={(e) => setDiscount(e.target.value)}
-
-                className="flex-1 p-2 border rounded bg-white"
-
-                placeholder="Enter code"
-
-              />
-
-              <button
-
-                onClick={applyDiscount}
-
-                className="bg-[#D4A574] text-white text-xs px-3 py-1 rounded"
-
-              >
-
-                Apply
-
+              <input value={discount}
+                onChange={e => { setDiscount(e.target.value.toUpperCase()); setDiscountError(''); setDiscountApplied(false) }}
+                className="flex-1 p-2 border border-[#e0c9a8] rounded-lg bg-white text-sm outline-none focus:border-[#D4A574]"
+                placeholder="Code eingeben" />
+              <button onClick={applyDiscount} className="bg-[#D4A574] text-white text-xs px-4 rounded-lg hover:bg-[#c4945f] transition-colors">
+                Anwenden
               </button>
-
             </div>
-
+            {discountError   && <p className="text-red-500 text-xs mt-1">{discountError}</p>}
+            {discountApplied && <p className="text-green-600 text-xs mt-1 flex items-center gap-1"><CheckCircle className="h-3 w-3" /> Rabatt angewendet!</p>}
           </div>
 
-          {/* TOTALS */}
+         {/* Totals */}
+<div className="space-y-2 text-sm">
 
-          <div className="space-y-2 text-sm">
+ 
 
-            <div className="flex justify-between">
+  {/* Shipping */}
+  <div className="flex justify-between text-gray-600">
+    <span>Versand</span>
+    <span>kostenlos</span>
+  </div>
 
-              <span>Subtotal</span>
+  {/* Discount */}
+  {discountValue > 0 && (
+    <div className="flex justify-between text-green-700 font-medium">
+      <span>Rabatt</span>
+      <span>−{formatPrice(discountValue)}</span>
+    </div>
+  )}
 
-              <span>€{totalPrice.toFixed(2)}</span>
+  {/* Final total */}
+  <div className="flex justify-between font-bold text-base border-t border-[#e0c9a8] pt-3 mt-2">
+    <span>Gesamt</span>
+    <span>{formatPrice(finalTotal)}</span>
+  </div>
 
-            </div>
+</div>
 
-            <div className="flex justify-between">
-
-              <span>Shipping</span>
-
-              <span>€5.00</span>
-
-            </div>
-
-            <div className="flex justify-between">
-
-              <span>Taxes</span>
-
-              <span>€{(totalPrice * 0.19).toFixed(2)}</span>
-
-            </div>
-
-            {discountValue > 0 && (
-
-              <div className="flex justify-between text-green-700">
-
-                <span>Discount</span>
-
-                <span>-€{discountValue.toFixed(2)}</span>
-
-              </div>
-
-            )}
-
-            <div className="flex justify-between font-bold border-t pt-2">
-
-              <span>Total</span>
-
-              <span>€{finalTotal.toFixed(2)}</span>
-
-            </div>
-
-          </div>
-
-          {/* CHECKOUT */}
-
-          <button
+          {/* Checkout button — shows payment method */}
+        <button
   onClick={handleCheckout}
-  disabled={Object.keys(errors).length > 0}
-  className={`w-full mt-4 py-3 rounded-full text-white ${
-    Object.keys(errors).length > 0
-      ? 'bg-gray-400 cursor-not-allowed'
-      : 'bg-[#D4A574]'
+  disabled={hasErrors}
+  className={`w-full mt-5 py-3 rounded-full text-white font-medium transition-colors ${
+    hasErrors
+      ? 'bg-gray-300 cursor-not-allowed text-gray-500'
+      : 'bg-[#D4A574] hover:bg-[#c4945f] active:scale-[0.98]'
   }`}
 >
-  Checkout
+  Jetzt bestellen
 </button>
 
+          <p className="text-xs text-center text-gray-400 mt-3">Sichere, verschlüsselte Übertragung</p>
         </div>
-
       </div>
-
     </div>
-
   )
-
 }
