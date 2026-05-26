@@ -8,6 +8,7 @@ import {
   User,
   CheckCircle,
   ChevronDown,
+  Trash2,
 } from 'lucide-react'
 import { Button } from '@workspace/ui/components/button'
 import { cn } from '@workspace/ui/lib/utils'
@@ -15,6 +16,8 @@ import { useCart } from '@/context/CartContext'
 import { useWishlist } from '@/context/WishlistContext'
 import { useAuth } from '@/context/AuthContext'
 import { apiUrl } from '@/lib/api'
+import { useReviews, type Review } from '@/context/ReviewsContext'
+import ReviewForm from '@/components/ReviewForm'
 
 type Product = {
   id: number
@@ -29,33 +32,14 @@ type Product = {
   application?: string | null
 }
 
-const mockReviews = [
-  {
-    id: 1,
-    userName: 'Maria S.',
-    rating: 5,
-    title: 'Absolut top!',
-    comment: 'Meine Haut hat sich extrem verbessert.',
-    date: '2026-01-10',
-    verified: true,
-  },
-  {
-    id: 2,
-    userName: 'Tom K.',
-    rating: 4,
-    title: 'Sehr gut',
-    comment: 'Zieht schnell ein und riecht angenehm.',
-    date: '2026-01-08',
-    verified: false,
-  },
-]
-
 export default function ProductDetail() {
   const { id } = useParams()
   const [searchParams] = useSearchParams()
-  const { addToCart } = useCart()
+
+  const { items, addToCart, updateQuantity, removeFromCart } = useCart()
   const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist()
-  const { isLoggedIn } = useAuth()
+  const { isLoggedIn, user, token } = useAuth()
+  const { reviews, getProductReviews, getAverageRating, deleteReview } = useReviews();
   const [showLoginHint, setShowLoginHint] = useState(false)
 
   const [product, setProduct] = useState<Product | null>(null)
@@ -63,6 +47,11 @@ export default function ProductDetail() {
   const [error, setError] = useState<string | null>(null)
   const [openSections, setOpenSections] = useState<string[]>(['description'])
   const [addedToCart, setAddedToCart] = useState(false)
+  const [averageRating, setAverageRating] = useState(0)
+  const [reviewCount, setReviewCount] = useState(0)
+  const [isReviewFormOpen, setIsReviewFormOpen] = useState(false)
+  const [deletingReviewId, setDeletingReviewId] = useState<number | null>(null)
+  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null)
 
   useEffect(() => {
     async function fetchProduct() {
@@ -86,6 +75,18 @@ export default function ProductDetail() {
     fetchProduct()
   }, [id])
 
+  useEffect(() => {
+    async function fetchReviews() {
+      if (!id) return
+      const productId = Number(id)
+      await getProductReviews(productId)
+      const ratingData = await getAverageRating(productId)
+      setAverageRating(ratingData.average)
+      setReviewCount(ratingData.count)
+    }
+    fetchReviews()
+  }, [id])
+
   function handleAddToCart() {
     if (!product) return
 
@@ -97,11 +98,6 @@ export default function ProductDetail() {
       image: product.imageUrl || 'https://placehold.co/300x300?text=No+Image',
     })
 
-    setAddedToCart(true)
-
-    setTimeout(() => {
-      setAddedToCart(false)
-    }, 1500)
   }
 
   function handleWishlistToggle() {
@@ -135,6 +131,38 @@ export default function ProductDetail() {
     )
   }
 
+  async function handleDeleteReview(reviewId: number) {
+    if (!token) return
+    setDeleteConfirmId(reviewId)
+  }
+  async function confirmDeleteReview() {
+    if (!token || !deleteConfirmId) return
+    setDeletingReviewId(deleteConfirmId)
+
+    const success = await deleteReview(deleteConfirmId, token)
+
+    if (success && id) {
+      const productId = Number(id)
+      await getProductReviews(productId)
+      const ratingData = await getAverageRating(productId)
+      setAverageRating(ratingData.average)
+      setReviewCount(ratingData.count)
+  }
+
+    setDeletingReviewId(null)
+    setDeleteConfirmId(null)
+  }
+
+  function handleReviewAdded() {
+    if (!id) return
+    const productId = Number(id)
+    getProductReviews(productId)
+    getAverageRating(productId).then((data) => {
+      setAverageRating(data.average)
+      setReviewCount(data.count)
+    })
+  }
+
   if (loading) {
     return (
       <div className="container mx-auto px-4 py-10">
@@ -157,8 +185,10 @@ export default function ProductDetail() {
     )
   }
 
-  const rating = product.rating ?? 0
+  const displayRating = averageRating > 0 ? averageRating : product.rating ?? 0
   const inWishlist = isInWishlist(product.id)
+  const cartItem = items.find((item) => item.id === product.id)
+  const isInCart = Boolean(cartItem)
   const fromChatbot = searchParams.get('from') === 'chatbot'
 
   const detailSections = [
@@ -228,7 +258,7 @@ export default function ProductDetail() {
                   key={i}
                   className={cn(
                     'h-5 w-5',
-                    i < Math.floor(rating)
+                    i < Math.floor(displayRating)
                       ? 'fill-[#D4A574] text-[#D4A574]'
                       : 'fill-muted text-muted'
                   )}
@@ -237,7 +267,8 @@ export default function ProductDetail() {
             </div>
 
             <span className="text-sm text-muted-foreground">
-              {rating.toFixed(1)}
+              {displayRating.toFixed(1)} ({reviewCount}{' '})
+              {reviewCount === 1 ? 'Bewertung' : 'Bewertungen'}
             </span>
           </div>
 
@@ -280,18 +311,43 @@ export default function ProductDetail() {
           </div>
 
           <div className="relative flex gap-4">
-            <Button
-              onClick={handleAddToCart}
-              className={cn(
-                'flex-1 rounded-full px-8 text-foreground transition-colors',
-                addedToCart
-                  ? 'bg-[#D4A574] text-white hover:bg-[#D4A574]'
-                  : 'bg-[#F5E6D3] hover:bg-[#E8D5C0]'
-              )}
-            >
-              <ShoppingCart className="h-4 w-4 mr-2" />
-              {addedToCart ? 'Hinzugefügt' : 'In den Warenkorb'}
-            </Button>
+           {isInCart && cartItem ? (
+              <div className="flex-1 flex items-center justify-center gap-4 bg-[#D4A574] text-white rounded-full py-2">
+                <span className="text-sm ">Menge</span>
+
+                <button
+                  onClick={() => {
+                  if (cartItem.quantity === 1) {
+                    removeFromCart(product.id)
+                  } else {
+                    updateQuantity(product.id, cartItem.quantity - 1)
+                  }
+                }}
+                  className="px-2 disabled:opacity-40 disabled:cursor-not-allowed"
+                  aria-label="Menge verringern"
+                >
+                  -
+                </button>
+
+                <span>{cartItem.quantity}</span>
+
+                <button
+                  onClick={() => updateQuantity(product.id, cartItem.quantity + 1)}
+                  className="px-2"
+                  aria-label="Menge erhöhen"
+                >
+                  +
+                </button>
+              </div>
+            ) : (
+              <Button
+                onClick={handleAddToCart}
+                className="flex-1 rounded-full px-8 text-foreground transition-colors bg-[#F5E6D3] hover:bg-[#E8D5C0]"
+              >
+                <ShoppingCart className="h-4 w-4 mr-2" />
+                In den Warenkorb
+              </Button>
+            )}
 
             <Button
               onClick={handleWishlistToggle}
@@ -336,37 +392,59 @@ export default function ProductDetail() {
         </div>
       </div>
 
-      <div className="mt-12 border-t pt-10">
-        <h2 className="text-2xl font-bold mb-6">Kundenbewertungen</h2>
+      {/*reviews*/}
+      <div className="mt-12 border-t pt-10 px-1">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-bold">Kundenbewertungen</h2>
 
-        <div className="space-y-6">
-          {mockReviews.map((review) => (
-            <div key={review.id} className="border-b pb-5">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-[#F5E6D3] flex items-center justify-center">
-                    <User className="h-5 w-5 text-[#D4A574]" />
-                  </div>
+          <Button
+            onClick={() => setIsReviewFormOpen(true)}
+            className="bg-[#D4A574] text-white hover:bg-[#C69563] px-6 py-3 text-base font-semibold"
+          >
+            Bewertung schreiben
+          </Button>
+        </div>
 
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">{review.userName}</span>
-
-                      {review.verified && (
-                        <span className="text-xs flex items-center gap-1 text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
-                          <CheckCircle className="h-3 w-3" />
-                          Kauf bestätigt
-                        </span>
-                      )}
+        {reviews.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            <p>Noch keine Bewertungen.</p>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {reviews.map((review: Review) => (
+              <div key={review.id} className="border-b pb-5 last:border-b-0">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-start gap-3 flex-1">
+                    <div className="w-10 h-10 rounded-full bg-[#F5E6D3] flex items-center justify-center flex-shrink-0">
+                      <User className="h-5 w-5 text-[#D4A574]" />
                     </div>
-
-                    <p className="text-xs text-muted-foreground">
-                      {review.date}
-                    </p>
+ 
+                    <div className="flex-1">
+                      <span className="font-medium text-foreground">
+                        {review.user?.name || 'Anonymer Benutzer'}
+                      </span>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(review.createdAt).toLocaleDateString('de-DE')}
+                      </p>
+                    </div>
                   </div>
+ 
+                  {/*Delete button*/}
+                  {user && review.userId === user.id && (
+                    <button
+                      onClick={() => handleDeleteReview(review.id)}
+                      disabled={deletingReviewId === review.id}
+                      className="text-muted-foreground hover:text-red-500 hover:bg-red-50 transition-all p-2 rounded-lg"
+                      aria-label="Bewertung löschen"
+                      title="Bewertung löschen"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  )}
                 </div>
-
-                <div className="flex">
+ 
+                {/* Sterne */}
+                <div className="flex mb-2">
                   {[...Array(5)].map((_, i) => (
                     <Star
                       key={i}
@@ -379,16 +457,51 @@ export default function ProductDetail() {
                     />
                   ))}
                 </div>
+ 
+                <p className="text-muted-foreground text-sm">{review.reviewText}</p>
               </div>
+            ))}
+          </div>
+        )}
+ 
+        <ReviewForm
+          productId={product.id}
+          isOpen={isReviewFormOpen}
+          onClose={() => setIsReviewFormOpen(false)}
+          onReviewAdded={handleReviewAdded}
+        />
+        {/*delete confirm modal*/}
+        {deleteConfirmId && (
+          <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+            <div className="bg-white w-full max-w-[560px] rounded-[36px] shadow-[0_25px_60px_rgba(0,0,0,0.18)] border border-[#EFE6DC] px-10 py-9 text-center">
+              <h3 className="text-2xl font-bold mb-3">
+                Bewertung löschen?
+              </h3>
 
-              <h4 className="font-semibold mb-1">{review.title}</h4>
-
-              <p className="text-muted-foreground text-sm">
-                {review.comment}
+              <p className="text-muted-foreground mb-8">
+                Möchten Sie diese bewertung wirklich löschen?
               </p>
+
+              <div className="flex gap-3">
+                <Button 
+                  variant="outline"
+                  onClick={() => setDeleteConfirmId(null)}
+                  className="flex-1 rounded-full hover:bg-[#F5E6D3] hover:border-[#D4A574]"
+                >
+                  Abbrechen
+                </Button>
+
+                <Button
+                  onClick={confirmDeleteReview}
+                  className="flex-1 rounded-full bg-[#D4A574] text-white hover:bg-[#C69563]"
+                  disabled={deletingReviewId !== null}
+                >
+                  Löschen
+                </Button>
+              </div>
             </div>
-          ))}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   )

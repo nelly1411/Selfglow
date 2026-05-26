@@ -1,22 +1,36 @@
 // services/mail.service.js
-/*
-App Password
-Das ist ein extra Passwort nur für Programme
-Node.js / Backend gedacht
-ohne unsicher
-Nodemailer verbindet sich mit Gmail SMTP:Simple Mail Transfer Protocol, Postsystem fürs Internet“, das E-Mails verschickt
-Gmail verschickt die Mail
-    */
-const nodemailer = require('nodemailer') //um email zu senden, verbindet sich im backend mit gemail
+const nodemailer = require('nodemailer')
+
+const DEFAULT_SENDER_NAME = 'SelfGlow'
 
 function createTransporter() {
-  return nodemailer.createTransport({ //Erstelle mir eine Verbindung zum Mailserver
-    service: 'gmail', // Gmail SMTP
-    auth: { //login daten
-      user: process.env.MAIL_USER,
-      pass: process.env.MAIL_PASS?.trim(),
+  const host = process.env.BREVO_SMTP_HOST || 'smtp-relay.brevo.com'
+  const port = Number(process.env.BREVO_SMTP_PORT || 587)
+  const user = process.env.BREVO_SMTP_USER || process.env.MAIL_USER
+  const pass = process.env.BREVO_SMTP_KEY || process.env.MAIL_PASS
+
+  if (!user || !pass) {
+    throw new Error('Brevo SMTP credentials are not configured')
+  }
+
+  return nodemailer.createTransport({
+    host,
+    port,
+    secure: port === 465,
+    family: Number(process.env.BREVO_SMTP_ADDRESS_FAMILY || 4),
+    auth: {
+      user,
+      pass: pass.trim(),
     },
   })
+}
+
+function getSenderAddress() {
+  return process.env.BREVO_SENDER_EMAIL || process.env.MAIL_USER
+}
+
+function getSenderName() {
+  return process.env.BREVO_SENDER_NAME || DEFAULT_SENDER_NAME
 }
 
 exports.sendOrderConfirmation = async ({ to, orderId, items, total, shipping }) => {//von checkout aufgerufen, bekommt diese daten
@@ -71,9 +85,44 @@ exports.sendOrderConfirmation = async ({ to, orderId, items, total, shipping }) 
   `
 
   await transporter.sendMail({
-    from: `"Dein Shop" <${process.env.MAIL_USER}>`,
+    from: `"${getSenderName()}" <${getSenderAddress()}>`,
     to,
     subject: `Bestellbestätigung #${orderId}`,
+    html,
+  })
+}
+
+exports.sendEmailConfirmation = async ({ to, name, confirmationUrl }) => {
+  const transporter = createTransporter()
+  const greetingName = name ? ` ${name}` : ''
+
+  const html = `
+    <div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;color:#333;">
+      <div style="background:#D4A574;padding:24px 32px;border-radius:12px 12px 0 0;">
+        <h1 style="margin:0;color:#fff;font-size:22px;">E-Mail bestätigen</h1>
+      </div>
+
+      <div style="background:#FFF8F2;padding:32px;border:1px solid #f0e0cc;border-top:none;border-radius:0 0 12px 12px;">
+        <p>Hallo${greetingName},</p>
+        <p>bitte bestätige deine E-Mail-Adresse, damit du dich bei SelfGlow anmelden kannst.</p>
+
+        <p style="margin:28px 0;">
+          <a href="${confirmationUrl}" style="display:inline-block;background:#D4A574;color:#fff;text-decoration:none;padding:12px 18px;border-radius:999px;font-weight:600;">
+            E-Mail bestätigen
+          </a>
+        </p>
+
+        <p style="color:#777;font-size:13px;line-height:1.6;">
+          Der Link ist 24 Stunden gültig. Falls du kein Konto erstellt hast, kannst du diese E-Mail ignorieren.
+        </p>
+      </div>
+    </div>
+  `
+
+  await transporter.sendMail({
+    from: `"${getSenderName()}" <${getSenderAddress()}>`,
+    to,
+    subject: 'Bestätige deine E-Mail-Adresse',
     html,
   })
 }

@@ -95,10 +95,10 @@ function FilterSection({ title, children, defaultOpen = true }: FilterSectionPro
 
 function ProductCard({ product }: { product: Product }) {
   const rating = product.rating ?? 0
-  const { addToCart, items } = useCart()
+  const { addToCart, updateQuantity, removeFromCart, items } = useCart()
   const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist()
-  const [justAdded, setJustAdded] = useState(false)
-  const isInCart = items.some((item) => item.id === product.id)
+  const cartItem = items.find((item) => item.id === product.id)
+  const isInCart = Boolean(cartItem)
   const inWishlist = isInWishlist(product.id)
   const { isLoggedIn } = useAuth()
   const [showLoginHint, setShowLoginHint] = useState(false)
@@ -111,8 +111,6 @@ function ProductCard({ product }: { product: Product }) {
       price: product.price,
       image: product.imageUrl || 'https://placehold.co/300x300?text=No+Image',
     })
-    setJustAdded(true)
-    setTimeout(() => setJustAdded(false), 1500)
   }
 
   const handleWishlistToggle = (e: React.MouseEvent) => {
@@ -223,29 +221,41 @@ function ProductCard({ product }: { product: Product }) {
       </Link>
 
       <div className="px-4 pb-4">
-        <Button 
-          onClick={handleAddToCart}
-          className={cn(
-            "w-full rounded-full text-sm transition-colors",
-            justAdded 
-              ? "bg-[#D4A574] text-white hover:bg-[#C49464]"
-              : isInCart 
-                ? "bg-[#D4A574] text-white hover:bg-[#C49464]"
-                : "bg-[#F5E6D3] text-foreground hover:bg-[#E8D5C0]"
-          )}
-        >
-          {justAdded ? (
-            <>
-              <Check className="h-4 w-4 mr-2" />
-              Hinzugefügt!
-            </>
-          ) : (
-            <>
-              <ShoppingCart className="h-4 w-4 mr-2" />
-              {isInCart ? 'Nochmal hinzufügen' : 'In den Warenkorb'}
-            </>
-          )}
-        </Button>
+        {isInCart && cartItem ? (
+          <div className="w-full flex items-center justify-center gap-4 bg-[#D4A574] text-white rounded-full py-2 text-sm">
+            <button
+              onClick={() => {
+                if (cartItem.quantity === 1) {
+                  removeFromCart(product.id)
+                } else {
+                  updateQuantity(product.id, cartItem.quantity - 1)
+                }
+              }}
+              className="px-2"
+              aria-label="Menge verringern"
+            >
+              -
+            </button>
+
+            <span>{cartItem.quantity}</span>
+
+            <button
+              onClick={() => updateQuantity(product.id, cartItem.quantity + 1)}
+              className="px-2"
+              aria-label="Menge erhöhen"
+            >
+              +
+            </button>
+          </div>
+        ) : (
+          <Button
+            onClick={handleAddToCart}
+            className="w-full rounded-full text-sm transition-colors bg-[#F5E6D3] text-foreground hover:bg-[#E8D5C0]"
+          >
+            <ShoppingCart className="h-4 w-4 mr-2" />
+            In den Warenkorb
+          </Button>
+        )}
       </div>
     </div>
   )

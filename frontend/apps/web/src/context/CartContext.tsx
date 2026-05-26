@@ -1,5 +1,6 @@
-import { createContext, useContext, useState, useEffect, type ReactNode } from 'react'
+import { createContext, useContext, useState, useEffect, type ReactNode, useRef } from 'react'
 import { useAuth } from '@/context/AuthContext'
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5050'
 
 export interface CartItem {
   id: number
@@ -9,14 +10,16 @@ export interface CartItem {
   originalPrice?: number
   image: string
   quantity: number
+  selected?: boolean
 }
 
 interface CartContextType {
   items: CartItem[]
-  addToCart: (product: Omit<CartItem, 'quantity'>) => void
-  removeFromCart: (id: number) => void
-  updateQuantity: (id: number, quantity: number) => void
-  clearCart: () => void
+  addToCart: (product: Omit<CartItem, 'quantity'>) => Promise<void>
+  removeFromCart: (id: number) =>Promise<void>
+  updateQuantity: (id: number, quantity: number) => Promise<void>
+  updateSelected: (id: number, selected: boolean) => Promise<void>
+  clearCart: () => Promise<void>
   totalItems: number
   totalPrice: number
 }
@@ -24,41 +27,42 @@ interface CartContextType {
 const CartContext = createContext<CartContextType | undefined>(undefined)
 
 export function CartProvider({ children }: { children: ReactNode }) {
-  const { user } = useAuth()
+  const { token, isLoggedIn } = useAuth()
+  const wasLoggedIn = useRef(isLoggedIn)
 
-const getCartKey = (user: any): string | undefined =>
-  user?.id ? `cart_user_${user.id}` : undefined
-
- const [items, setItems] = useState<CartItem[]>(() => {
-  const key = getCartKey(user)
-  if (!key) return []
-
-  const stored = localStorage.getItem(key)
+  const [items, setItems] = useState<CartItem[]>(() => {
+  const stored = localStorage.getItem('cart')
   return stored ? JSON.parse(stored) : []
 })
 
-  // Load cart when user changes
-  useEffect(() => {
-  if (!user?.id) {
-    setItems([]) // GAST = IMMER LEER
-    return
+useEffect(() => {
+    if (!isLoggedIn  && items.length > 0) {
+      localStorage.setItem('cart', JSON.stringify(items))
+    }
+}, [items, isLoggedIn])
+
+useEffect(() => {
+  if (wasLoggedIn.current && !isLoggedIn) {
+    setItems([])
+    localStorage.removeItem('cart')
   }
 
-  const key = `cart_user_${user.id}`
-  const stored = localStorage.getItem(key)
+  wasLoggedIn.current = isLoggedIn
+}, [isLoggedIn])
 
-  setItems(stored ? JSON.parse(stored) : [])
-}, [user])
+  const addToCart =async (product: Omit<CartItem, 'quantity'>) => {
+      // Wenn der User eingeloggt ist, wird das Produkt zusätzlich im Backend gespeichert.
+    if (isLoggedIn && token) {
+      await fetch(`${API_BASE_URL}/api/cart/items/${product.id}`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+    }
 
-  // Save cart
-  useEffect(() => {
-  const key = getCartKey(user)
-  if (!key) return
-
-  localStorage.setItem(key, JSON.stringify(items))
-}, [items, user])
-
-  const addToCart = (product: Omit<CartItem, 'quantity'>) => {
+    // Danach wird der Warenkorb im Frontend aktualisiert,
+    // damit die Änderung sofort sichtbar ist.
     setItems((prev) => {
       const existing = prev.find((item) => item.id === product.id)
 
@@ -69,17 +73,92 @@ const getCartKey = (user: any): string | undefined =>
             : item
         )
       }
-
-      return [...prev, { ...product, quantity: 1 }]
+      return [...prev, { ...product, quantity: 1, selected: true }]
     })
   }
 
-  const removeFromCart = (id: number) => {
+ useEffect(() => {
+  async function syncAndLoadBackendCart() {
+    if (!isLoggedIn || !token) return
+
+    const localCart = localStorage.getItem('cart')
+    const localItems: CartItem[] = localCart ? JSON.parse(localCart) : []
+
+    if (localItems.length > 0) {
+      await fetch(`${API_BASE_URL}/api/cart/sync`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          items: localItems.map((item) => ({
+            productId: item.id,
+            quantity: item.quantity,
+            selected: item.selected !== false,
+          })),
+        }),
+      })
+
+      localStorage.removeItem('cart')
+    }
+
+    const response = await fetch(`${API_BASE_URL}/api/cart`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+
+    if (!response.ok) return
+
+    const cart = await response.json()
+
+    const backendItems = cart.items.map((cartItem: any) => ({
+      id: cartItem.product.id,
+      name: cartItem.product.name,
+      category: cartItem.product.category,
+      price: cartItem.product.price,
+      originalPrice: undefined,
+      image: cartItem.product.imageUrl || '',
+      quantity: cartItem.quantity,
+      selected: cartItem.selected,
+     
+    }))
+
+    setItems(backendItems)
+  }
+
+  syncAndLoadBackendCart()
+}, [isLoggedIn, token])
+
+  const removeFromCart = async(id: number) => {
+     if (isLoggedIn && token) {
+      await fetch(`${API_BASE_URL}/api/cart/items/${id}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+    }
+
     setItems((prev) => prev.filter((item) => item.id !== id))
   }
 
-  const updateQuantity = (id: number, quantity: number) => {
-    if (quantity <= 0) return removeFromCart(id)
+  const updateQuantity = async (id: number, quantity: number) => {
+    if (quantity < 1) {
+      return
+    }
+
+    if (isLoggedIn && token) {
+      await fetch(`${API_BASE_URL}/api/cart/items/${id}/quantity`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ quantity }),
+      })
+    }
 
     setItems((prev) =>
       prev.map((item) =>
@@ -88,14 +167,38 @@ const getCartKey = (user: any): string | undefined =>
     )
   }
 
- const clearCart = () => {
-  setItems([])
+  // Auswahl eines Produkts im Warenkorb ändern
+  const updateSelected = async (id: number, selected: boolean) => {
+    if (isLoggedIn && token) {
+      await fetch(`${API_BASE_URL}/api/cart/items/${id}/selected`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ selected }),
+      })
+    }
 
-  const key = getCartKey(user)
-  if (key) {
-    localStorage.removeItem(key)
+    setItems((prev) =>
+      prev.map((item) =>
+        item.id === id ? { ...item, selected } : item
+      )
+    )
   }
-}
+
+  const clearCart = async () => {
+    if (isLoggedIn && token) {
+      await fetch(`${API_BASE_URL}/api/cart`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+    }
+    setItems([])
+  }
+
 
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0)
   const totalPrice = items.reduce(
@@ -110,6 +213,7 @@ const getCartKey = (user: any): string | undefined =>
         addToCart,
         removeFromCart,
         updateQuantity,
+        updateSelected,
         clearCart,
         totalItems,
         totalPrice,
