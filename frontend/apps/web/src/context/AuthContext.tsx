@@ -12,6 +12,7 @@ export type User = {
   savedPhone?:   string | null
    skinType?: string | null
    usedWelcomeCode?: boolean | null 
+   emailVerified?: boolean | null
 }
 
 type AuthContextType = {
