@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import {
   CheckCircle2,
@@ -90,6 +90,14 @@ export default function Login() {
   const location = useLocation()
   const locationState = location.state as LoginLocationState | null
 
+  useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    if (params.get('verified') === '1') {
+      setMode('login')
+      setSuccess('E-Mail bestätigt. Du kannst dich jetzt anmelden.')
+    }
+  }, [location.search])
+
   function handleClose() {
     navigate(-1)
   }
@@ -166,7 +174,7 @@ export default function Login() {
       }
 
       if (mode === 'register') {
-        setSuccess('Konto erstellt. Du kannst dich jetzt anmelden.')
+        setSuccess(data.message || 'Konto erstellt. Bitte bestätige deine E-Mail-Adresse.')
         setMode('login')
         setPassword('')
         setConfirmPassword('')

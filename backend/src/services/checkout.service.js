@@ -1,7 +1,8 @@
+// services/checkout.service.js
 const crypto = require('crypto')
 const prisma = require('../config/prisma')
 
-// ─── Spam-Schutz ─────────────────────────────
+// ─── Spam-Schutz ──────────────────────────────────────────────────────────────
 const attemptMap = new Map()
 const MAX_ATTEMPTS = 3
 const WINDOW_MS = 60_000
@@ -23,9 +24,9 @@ function checkSpam(key) {
   entry.count++
 }
 
-// ─── Create Order ───────────────────────────
+// ─── Create Order ─────────────────────────────────────────────────────────────
 exports.createOrder = async (data, userId = null, userIp = 'unknown') => {
-  const { items, totalPrice, payment, shipping } = data
+  const { items, totalPrice, payment, shipping, customer, discountCode } = data
 
   if (userId) {
     userId = Number(userId)
@@ -39,12 +40,24 @@ exports.createOrder = async (data, userId = null, userIp = 'unknown') => {
   if (!shipping?.address) throw new Error('Adresse fehlt')
   if (!payment) throw new Error('Zahlungsmethode fehlt')
 
+  const code = discountCode?.trim().toUpperCase() || null
+
+  if (code === 'WELCOME10' && userId) {
+    const dbUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { usedWelcomeCode: true },
+    })
+
+    if (dbUser?.usedWelcomeCode) {
+      throw new Error('WELCOME10 wurde bereits verwendet.')
+    }
+  }
+
   const orderNumber = `JE-${crypto.randomUUID().slice(0, 8).toUpperCase()}`
 
   const order = await prisma.order.create({
     data: {
       orderNumber,
-      userId: userId || null,
       totalPrice,
       paymentMethod: payment,
       address: shipping.address,
@@ -52,13 +65,28 @@ exports.createOrder = async (data, userId = null, userIp = 'unknown') => {
       postal: shipping.postal,
       country: shipping.country,
       items: JSON.stringify(items),
+      ...(userId ? { userId } : {}),
     },
   })
+
+  if (userId) {
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        savedAddress: shipping.address,
+        savedPostal: shipping.postal,
+        savedCity: shipping.city,
+        savedCountry: shipping.country,
+        savedPhone: customer?.phone ?? '',
+        ...(code === 'WELCOME10' ? { usedWelcomeCode: true } : {}),
+      },
+    })
+  }
 
   return order
 }
 
-// ─── Orders fetch ───────────────────────────
+// ─── Orders by User ───────────────────────────────────────────────────────────
 exports.getOrdersByUserId = async (userId) => {
   return prisma.order.findMany({
     where: { userId },

@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { Bot, MessageCircle, Plus, Send, Sparkles, Trash2, User } from 'lucide-react'
+import { Bot, Camera, MessageCircle, Plus, Send, Sparkles, Trash2, User, X } from 'lucide-react'
 import { Button } from '@workspace/ui/components/button'
 import { apiUrl } from '@/lib/api'
 import { cn } from '@workspace/ui/lib/utils'
+import SkinAnalysis from '@/pages/SkinAnalysis'
 
 type ChatProduct = {
   id: number
@@ -24,8 +25,6 @@ type Message = {
   id: string
   role: 'user' | 'assistant'
   content: string
-  // Assistant messages can include retrieved products from the backend. The UI
-  // renders these as clickable cards below the assistant answer.
   products?: ChatProduct[]
   canExplainProducts?: boolean
 }
@@ -42,8 +41,12 @@ type ChatState = {
   activeConversationId: string
 }
 
-// Example prompts help users discover what the keyword RAG MVP can answer well:
-// skin type, concerns, and concrete product preferences.
+type ChatResponseData = {
+  answer: string
+  products?: ChatProduct[]
+  canExplainProducts?: boolean
+}
+
 const starterQuestions = [
   'Ich habe ölige Haut und suche etwas gegen Unreinheiten.',
   'Welche parfumfreien Produkte passen zu empfindlicher Haut?',
@@ -74,11 +77,7 @@ function createConversation(messages: Message[] = initialMessages): Conversation
 
 function getConversationTitle(messages: Message[]) {
   const firstUserMessage = messages.find((message) => message.role === 'user')
-
-  if (!firstUserMessage) {
-    return 'Neue Beratung'
-  }
-
+  if (!firstUserMessage) return 'Neue Beratung'
   return firstUserMessage.content.length > 42
     ? `${firstUserMessage.content.slice(0, 42)}...`
     : firstUserMessage.content
@@ -96,55 +95,36 @@ function formatConversationDate(value: string) {
 function loadStoredChatState(): ChatState {
   try {
     const storedState = sessionStorage.getItem(chatStorageKey)
-
     if (storedState) {
       const parsedState = JSON.parse(storedState) as ChatState
-
       if (parsedState.conversations?.length && parsedState.activeConversationId) {
         const activeConversationId = parsedState.conversations.some(
           (conversation) => conversation.id === parsedState.activeConversationId
         )
           ? parsedState.activeConversationId
           : parsedState.conversations[0].id
-
-        return {
-          conversations: parsedState.conversations,
-          activeConversationId,
-        }
+        return { conversations: parsedState.conversations, activeConversationId }
       }
     }
-
     const legacyMessages = sessionStorage.getItem(legacyChatStorageKey)
-
     if (legacyMessages) {
       const messages = JSON.parse(legacyMessages) as Message[]
       const conversation = createConversation(messages)
       conversation.title = getConversationTitle(messages)
-
-      return {
-        conversations: [conversation],
-        activeConversationId: conversation.id,
-      }
+      return { conversations: [conversation], activeConversationId: conversation.id }
     }
   } catch {
-    // Fall back to a clean conversation when stored data is malformed.
+    // Fall back to clean conversation
   }
-
   const conversation = createConversation()
-
-  return {
-    conversations: [conversation],
-    activeConversationId: conversation.id,
-  }
+  return { conversations: [conversation], activeConversationId: conversation.id }
 }
 
 function renderMessageContent(message: Message) {
   if (message.role !== 'assistant' || !message.content.includes(medicalDisclaimer)) {
     return renderStructuredText(message.content)
   }
-
   const mainContent = message.content.replace(medicalDisclaimer, '').trim()
-
   return (
     <>
       {mainContent && renderStructuredText(mainContent)}
@@ -157,66 +137,63 @@ function renderMessageContent(message: Message) {
 
 function renderInlineText(text: string) {
   const match = text.match(/^\*\*(.+)\*\*$/)
-
-  if (match) {
-    return <span className="font-semibold">{match[1]}</span>
-  }
-
+  if (match) return <span className="font-semibold">{match[1]}</span>
   return text
 }
 
 function renderStructuredText(content: string) {
-  const lines = content
-    .split('\n')
-    .map((line) => line.trim())
-    .filter(Boolean)
-
-  if (lines.length <= 1) {
-    return content
-  }
-
+  const lines = content.split('\n').map((line) => line.trim()).filter(Boolean)
+  if (lines.length <= 1) return content
   return (
     <div className="space-y-2">
       {lines.map((line, index) => {
-        if (line === '---') {
-          return <hr key={`${line}-${index}`} className="border-border" />
-        }
-
-        if (line.startsWith('- ')) {
-          return (
-            <div key={`${line}-${index}`} className="flex gap-2">
-              <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[#D4A574]" />
-              <span>{renderInlineText(line.slice(2))}</span>
-            </div>
-          )
-        }
-
-        if (line.startsWith('**') && line.endsWith('**')) {
-          return (
-            <p key={`${line}-${index}`} className="pt-1 font-semibold">
-              {renderInlineText(line)}
-            </p>
-          )
-        }
-
+        if (line === '---') return <hr key={`${line}-${index}`} className="border-border" />
+        if (line.startsWith('- ')) return (
+          <div key={`${line}-${index}`} className="flex gap-2">
+            <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[#D4A574]" />
+            <span>{renderInlineText(line.slice(2))}</span>
+          </div>
+        )
+        if (line.startsWith('**') && line.endsWith('**')) return (
+          <p key={`${line}-${index}`} className="pt-1 font-semibold">{renderInlineText(line)}</p>
+        )
         return <p key={`${line}-${index}`}>{renderInlineText(line)}</p>
       })}
     </div>
   )
 }
 
+function parseSseEvent(eventText: string) {
+  const eventType = eventText
+    .split('\n')
+    .find((line) => line.startsWith('event:'))
+    ?.slice(6)
+    .trim()
+  const dataText = eventText
+    .split('\n')
+    .filter((line) => line.startsWith('data:'))
+    .map((line) => line.slice(5).trim())
+    .join('\n')
+
+  if (!eventType || !dataText) return null
+
+  return {
+    event: eventType,
+    data: JSON.parse(dataText) as { text?: string } & ChatResponseData & { message?: string },
+  }
+}
+
 export default function Chatbot() {
-  // Keep all conversations in sessionStorage so product detail navigation does
-  // not wipe the current consultation in this browser tab.
   const [chatState, setChatState] = useState<ChatState>(loadStoredChatState)
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [explainingMessageId, setExplainingMessageId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [showAnalysis, setShowAnalysis] = useState(false)   // ← NEU
+
   const activeConversation =
-    chatState.conversations.find(
-      (conversation) => conversation.id === chatState.activeConversationId
-    ) || chatState.conversations[0]
+    chatState.conversations.find((c) => c.id === chatState.activeConversationId) ||
+    chatState.conversations[0]
   const messages = activeConversation?.messages || initialMessages
 
   useEffect(() => {
@@ -227,179 +204,138 @@ export default function Chatbot() {
     setChatState((currentState) => ({
       ...currentState,
       conversations: currentState.conversations.map((conversation) => {
-        if (conversation.id !== currentState.activeConversationId) {
-          return conversation
-        }
-
+        if (conversation.id !== currentState.activeConversationId) return conversation
         const nextMessages = updater(conversation.messages)
-
-        return {
-          ...conversation,
-          title: getConversationTitle(nextMessages),
-          updatedAt: new Date().toISOString(),
-          messages: nextMessages,
-        }
+        return { ...conversation, title: getConversationTitle(nextMessages), updatedAt: new Date().toISOString(), messages: nextMessages }
       }),
     }))
   }
 
-  function updateConversation(
-    conversationId: string,
-    updater: (messages: Message[]) => Message[]
-  ) {
+  function updateConversation(conversationId: string, updater: (messages: Message[]) => Message[]) {
     setChatState((currentState) => ({
       ...currentState,
       conversations: currentState.conversations.map((conversation) => {
-        if (conversation.id !== conversationId) {
-          return conversation
-        }
-
+        if (conversation.id !== conversationId) return conversation
         const nextMessages = updater(conversation.messages)
-
-        return {
-          ...conversation,
-          title: getConversationTitle(nextMessages),
-          updatedAt: new Date().toISOString(),
-          messages: nextMessages,
-        }
+        return { ...conversation, title: getConversationTitle(nextMessages), updatedAt: new Date().toISOString(), messages: nextMessages }
       }),
     }))
   }
 
   function startNewConversation() {
     if (isLoading) return
-
     const conversation = createConversation()
-
-    setChatState((currentState) => ({
-      conversations: [conversation, ...currentState.conversations],
-      activeConversationId: conversation.id,
-    }))
+    setChatState((currentState) => ({ conversations: [conversation, ...currentState.conversations], activeConversationId: conversation.id }))
     setInput('')
     setError(null)
   }
 
   function selectConversation(conversationId: string) {
     if (isLoading) return
-
-    setChatState((currentState) => ({
-      ...currentState,
-      activeConversationId: conversationId,
-    }))
+    setChatState((currentState) => ({ ...currentState, activeConversationId: conversationId }))
     setInput('')
     setError(null)
   }
 
   function deleteConversation(conversationId: string) {
     if (isLoading) return
-
     setChatState((currentState) => {
-      const remainingConversations = currentState.conversations.filter(
-        (conversation) => conversation.id !== conversationId
-      )
-
+      const remainingConversations = currentState.conversations.filter((c) => c.id !== conversationId)
       if (remainingConversations.length === 0) {
         const conversation = createConversation()
-
-        return {
-          conversations: [conversation],
-          activeConversationId: conversation.id,
-        }
+        return { conversations: [conversation], activeConversationId: conversation.id }
       }
-
       const activeConversationId =
         currentState.activeConversationId === conversationId
           ? remainingConversations[0].id
           : currentState.activeConversationId
-
-      return {
-        conversations: remainingConversations,
-        activeConversationId,
-      }
+      return { conversations: remainingConversations, activeConversationId }
     })
     setInput('')
     setError(null)
   }
 
-  // Send one customer message to the backend. The backend performs retrieval
-  // over the Product table and optionally asks OpenAI to generate the answer.
   async function sendMessage(messageText: string) {
     const trimmedMessage = messageText.trim()
     if (!trimmedMessage || isLoading) return
 
-    // Add the user's message immediately so the chat feels responsive while the
-    // backend searches products and generates the assistant answer.
-    const userMessage: Message = {
-      id: crypto.randomUUID(),
-      role: 'user',
-      content: trimmedMessage,
-    }
-    const chatHistory = [...messages, userMessage].slice(-4).map((message) => ({
-      role: message.role,
-      content: message.content,
-    }))
-    const contextProductIds = Array.from(
-      new Set(
-        messages
-          .flatMap((message) => message.products || [])
-          .map((product) => product.id)
-      )
-    ).slice(-3)
+    const userMessage: Message = { id: crypto.randomUUID(), role: 'user', content: trimmedMessage }
+    const assistantMessageId = crypto.randomUUID()
+    const assistantMessage: Message = { id: assistantMessageId, role: 'assistant', content: '' }
+    const chatHistory = [...messages, userMessage].slice(-4).map((message) => ({ role: message.role, content: message.content }))
+    const contextProductIds = Array.from(new Set(messages.flatMap((message) => message.products || []).map((product) => product.id))).slice(-3)
 
-    updateActiveConversation((currentMessages) => [...currentMessages, userMessage])
+    updateActiveConversation((currentMessages) => [...currentMessages, userMessage, assistantMessage])
     setInput('')
     setError(null)
     setIsLoading(true)
 
     try {
-      // The frontend never calls OpenAI directly. It only talks to our backend,
-      // which keeps API keys private and controls the product context.
-      const response = await fetch(apiUrl('/api/chat'), {
+      const response = await fetch(apiUrl('/api/chat/stream'), {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          message: trimmedMessage,
-          history: chatHistory,
-          contextProductIds,
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: trimmedMessage, history: chatHistory, contextProductIds }),
       })
+      if (!response.ok) throw new Error('Die KI-Beratung konnte gerade nicht antworten.')
+      if (!response.body) throw new Error('Streaming wird von diesem Browser nicht unterstützt.')
 
-      if (!response.ok) {
-        throw new Error('Die KI-Beratung konnte gerade nicht antworten.')
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
+
+      while (true) {
+        const { done, value } = await reader.read()
+        buffer += decoder.decode(value, { stream: !done })
+        const events = buffer.split('\n\n')
+        buffer = events.pop() || ''
+
+        for (const eventText of events) {
+          const parsedEvent = parseSseEvent(eventText)
+          if (!parsedEvent) continue
+
+          if (parsedEvent.event === 'delta' && parsedEvent.data.text) {
+            updateActiveConversation((currentMessages) =>
+              currentMessages.map((message) =>
+                message.id === assistantMessageId
+                  ? { ...message, content: `${message.content}${parsedEvent.data.text}` }
+                  : message
+              )
+            )
+          }
+
+          if (parsedEvent.event === 'done') {
+            updateActiveConversation((currentMessages) =>
+              currentMessages.map((message) =>
+                message.id === assistantMessageId
+                  ? {
+                      ...message,
+                      content: parsedEvent.data.answer || message.content,
+                      products: parsedEvent.data.products || [],
+                      canExplainProducts: parsedEvent.data.canExplainProducts,
+                    }
+                  : message
+              )
+            )
+          }
+
+          if (parsedEvent.event === 'error') {
+            throw new Error(parsedEvent.data.message || 'Die KI-Beratung konnte gerade nicht antworten.')
+          }
+        }
+
+        if (done) break
       }
-
-      const data: {
-        answer: string
-        products?: ChatProduct[]
-        canExplainProducts?: boolean
-      } = await response.json()
-
-      // Store the assistant answer together with the retrieved products. This is
-      // why the user can read the explanation and jump directly to product pages.
-      updateActiveConversation((currentMessages) => [
-        ...currentMessages,
-        {
-          id: crypto.randomUUID(),
-          role: 'assistant',
-          content: data.answer,
-          products: data.products || [],
-          canExplainProducts: data.canExplainProducts,
-        },
-      ])
     } catch (err) {
       console.error(err)
-      // A user-facing error is enough here because the backend logs the detailed
-      // server/model failure.
+      updateActiveConversation((currentMessages) =>
+        currentMessages.filter((message) => message.id !== assistantMessageId || message.content.trim().length > 0)
+      )
       setError('Die KI-Beratung ist gerade nicht erreichbar. Bitte versuche es gleich nochmal.')
     } finally {
       setIsLoading(false)
     }
   }
 
-  // The form handles Enter/click submit in one place, then delegates to the same
-  // sendMessage function used by starter-question buttons.
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     sendMessage(input)
@@ -407,7 +343,6 @@ export default function Chatbot() {
 
   async function explainProduct(message: Message, product: ChatProduct) {
     if (explainingMessageId || isLoading || !activeConversation) return
-
     const conversationId = activeConversation.id
     const explanationId = `${message.id}-${product.id}`
     const lastUserMessage = messages
@@ -421,28 +356,14 @@ export default function Chatbot() {
     try {
       const response = await fetch(apiUrl('/api/chat/explain'), {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          productIds: [product.id],
-          message: lastUserMessage?.content || message.content,
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ productIds: [product.id], message: lastUserMessage?.content || message.content }),
       })
-
-      if (!response.ok) {
-        throw new Error('Die AI-Erklärung konnte gerade nicht erstellt werden.')
-      }
-
+      if (!response.ok) throw new Error('Die AI-Erklärung konnte gerade nicht erstellt werden.')
       const data: { answer: string } = await response.json()
-
       updateConversation(conversationId, (currentMessages) => [
         ...currentMessages,
-        {
-          id: crypto.randomUUID(),
-          role: 'assistant',
-          content: data.answer,
-        },
+        { id: crypto.randomUUID(), role: 'assistant', content: data.answer },
       ])
     } catch (err) {
       console.error(err)
@@ -454,17 +375,27 @@ export default function Chatbot() {
 
   return (
     <div className="min-h-[calc(100vh-160px)] bg-[#FBFAF7]">
+
+      {/* ── Haut-Analyse Modal ── */}
+      {showAnalysis && (
+        <div
+          style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+          onClick={(e) => { if (e.target === e.currentTarget) setShowAnalysis(false) }}
+        >
+          <div style={{ width: '100%', maxWidth: 500, maxHeight: '90vh', overflowY: 'auto', borderRadius: 20, boxShadow: '0 24px 60px rgba(0,0,0,0.2)' }}>
+            <SkinAnalysis onClose={() => setShowAnalysis(false)} />
+          </div>
+        </div>
+      )}
+
       <div className="container mx-auto max-w-6xl px-4 pb-5 lg:pb-6">
         <div className="sticky top-0 z-20 mb-4 flex items-center gap-3 bg-[#FBFAF7] py-4 lg:py-5">
           <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#F5E6D3]">
             <Sparkles className="h-4 w-4 text-[#A97745]" />
           </div>
-
           <div>
             <h1 className="text-xl font-bold text-foreground">KI-Beratung</h1>
-            <p className="text-xs text-muted-foreground">
-              Produktempfehlungen aus dem SelfGlow Sortiment
-            </p>
+            <p className="text-xs text-muted-foreground">Produktempfehlungen aus dem SelfGlow Sortiment</p>
           </div>
         </div>
 
@@ -480,20 +411,27 @@ export default function Chatbot() {
               Neue Beratung
             </Button>
 
+            {/* ── Haut-Analyse Button in Sidebar ── */}
+            <button
+              type="button"
+              onClick={() => setShowAnalysis(true)}
+              className="mb-3 flex h-9 w-full items-center justify-center gap-2 rounded-full border border-[#e0c9a8] bg-[#FDF6EE] text-sm font-medium text-[#A97745] transition-colors hover:bg-[#F5E6D3]"
+            >
+              <Camera className="h-4 w-4" />
+              Haut analysieren
+            </button>
+
             <h2 className="mb-3 text-sm font-semibold text-foreground">Chatverlauf</h2>
 
-            <div className="max-h-[420px] space-y-2 overflow-y-auto pr-1 lg:max-h-[calc(100vh-14rem)]">
+            <div className="max-h-[420px] space-y-2 overflow-y-auto pr-1 lg:max-h-[calc(100vh-18rem)]">
               {chatState.conversations.map((conversation) => {
                 const isActive = conversation.id === chatState.activeConversationId
-
                 return (
                   <div
                     key={conversation.id}
                     className={cn(
                       'group flex w-full items-start gap-1 rounded-lg border p-1.5 transition-colors',
-                      isActive
-                        ? 'border-[#D4A574] bg-[#FBFAF7]'
-                        : 'border-border hover:border-[#D4A574] hover:bg-[#FBFAF7]'
+                      isActive ? 'border-[#D4A574] bg-[#FBFAF7]' : 'border-border hover:border-[#D4A574] hover:bg-[#FBFAF7]'
                     )}
                   >
                     <button
@@ -505,16 +443,11 @@ export default function Chatbot() {
                       <div className="flex items-start gap-2">
                         <MessageCircle className="mt-0.5 h-4 w-4 shrink-0 text-[#A97745]" />
                         <div className="min-w-0">
-                          <p className="truncate text-sm font-medium text-foreground">
-                            {conversation.title}
-                          </p>
-                          <p className="mt-1 text-xs text-muted-foreground">
-                            {formatConversationDate(conversation.updatedAt)}
-                          </p>
+                          <p className="truncate text-sm font-medium text-foreground">{conversation.title}</p>
+                          <p className="mt-1 text-xs text-muted-foreground">{formatConversationDate(conversation.updatedAt)}</p>
                         </div>
                       </div>
                     </button>
-
                     <button
                       type="button"
                       onClick={() => deleteConversation(conversation.id)}
@@ -535,30 +468,19 @@ export default function Chatbot() {
               <div className="flex-1 space-y-3 overflow-y-auto p-3 md:p-4">
                 {messages.map((message) => (
                   <div key={message.id} className="space-y-2">
-                    {/* Chat bubbles are aligned by role so users can scan the conversation quickly. */}
-                    <div
-                      className={cn(
-                        'flex gap-2',
-                        message.role === 'user' ? 'justify-end' : 'justify-start'
-                      )}
-                    >
+                    <div className={cn('flex gap-2', message.role === 'user' ? 'justify-end' : 'justify-start')}>
                       {message.role === 'assistant' && (
                         <div className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#F5E6D3]">
                           <Bot className="h-3.5 w-3.5 text-[#A97745]" />
                         </div>
                       )}
-
-                      <div
-                        className={cn(
-                          'max-w-[min(620px,85%)] rounded-lg px-3 py-2 text-sm leading-relaxed',
-                          message.role === 'user'
-                            ? 'bg-[#D4A574] text-white'
-                            : 'bg-[#F5F5F5] text-foreground'
+                      <div className={cn('max-w-[min(620px,85%)] rounded-lg px-3 py-2 text-sm leading-relaxed', message.role === 'user' ? 'bg-[#D4A574] text-white' : 'bg-[#F5F5F5] text-foreground')}>
+                        {message.role === 'assistant' && message.content.trim().length === 0 ? (
+                          <span className="text-muted-foreground">Thinking...</span>
+                        ) : (
+                          renderMessageContent(message)
                         )}
-                      >
-                        {renderMessageContent(message)}
                       </div>
-
                       {message.role === 'user' && (
                         <div className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-foreground">
                           <User className="h-3.5 w-3.5 text-background" />
@@ -566,42 +488,25 @@ export default function Chatbot() {
                       )}
                     </div>
 
-                    {/* Product cards are rendered only for assistant messages that include retrieved products. */}
                     {message.products && message.products.length > 0 && (
                       <div className="ml-9 grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-3">
                         {message.products.slice(0, 3).map((product) => (
-                          <div
-                            key={product.id}
-                            className="overflow-hidden rounded-lg border border-border bg-background transition-shadow hover:shadow-md"
-                          >
+                          <div key={product.id} className="overflow-hidden rounded-lg border border-border bg-background transition-shadow hover:shadow-md">
                             <Link to={`/product/${product.id}?from=chatbot`} className="group block">
                               <div className="flex gap-2 p-2">
                                 <img
-                                  src={
-                                    product.imageUrl ||
-                                    'https://placehold.co/120x120?text=No+Image'
-                                  }
+                                  src={product.imageUrl || 'https://placehold.co/120x120?text=No+Image'}
                                   alt={product.name}
                                   className="h-16 w-16 shrink-0 rounded-md bg-[#F5F5F5] object-cover"
                                 />
-
                                 <div className="min-w-0">
-                                  <p className="text-xs text-muted-foreground">
-                                    {product.category}
-                                  </p>
-                                  <h3 className="line-clamp-2 text-sm font-medium group-hover:text-[#D4A574]">
-                                    {product.name}
-                                  </h3>
-                                  <p className="mt-0.5 text-xs text-muted-foreground">
-                                    {product.brand}
-                                  </p>
-                                  <p className="mt-1 text-sm font-semibold">
-                                    €{product.price.toFixed(2)}
-                                  </p>
+                                  <p className="text-xs text-muted-foreground">{product.category}</p>
+                                  <h3 className="line-clamp-2 text-sm font-medium group-hover:text-[#D4A574]">{product.name}</h3>
+                                  <p className="mt-0.5 text-xs text-muted-foreground">{product.brand}</p>
+                                  <p className="mt-1 text-sm font-semibold">€{product.price.toFixed(2)}</p>
                                 </div>
                               </div>
                             </Link>
-
                             {message.canExplainProducts && (
                               <div className="border-t border-border px-2 py-2">
                                 <Button
@@ -612,9 +517,7 @@ export default function Chatbot() {
                                   className="h-8 w-full rounded-full border-[#E8D5C0] px-3 text-xs text-[#A97745] hover:bg-[#FDF7F0]"
                                 >
                                   <Sparkles className="mr-1.5 h-3.5 w-3.5" />
-                                  {explainingMessageId === `${message.id}-${product.id}`
-                                    ? 'AI erklärt...'
-                                    : 'AI erklären'}
+                                  {explainingMessageId === `${message.id}-${product.id}` ? 'AI erklärt...' : 'AI erklären'}
                                 </Button>
                               </div>
                             )}
@@ -625,15 +528,12 @@ export default function Chatbot() {
                   </div>
                 ))}
 
-                {/* Loading state appears inside the conversation area to make the wait feel conversational. */}
-                {isLoading && (
+                {isLoading && messages[messages.length - 1]?.role === 'user' && (
                   <div className="flex gap-2">
                     <div className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#F5E6D3]">
                       <Bot className="h-3.5 w-3.5 text-[#A97745]" />
                     </div>
-                    <div className="rounded-lg bg-[#F5F5F5] px-3 py-2 text-sm text-muted-foreground">
-                      Thinking...
-                    </div>
+                    <div className="rounded-lg bg-[#F5F5F5] px-3 py-2 text-sm text-muted-foreground">Thinking...</div>
                   </div>
                 )}
 
@@ -642,21 +542,27 @@ export default function Chatbot() {
                     <div className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#F5E6D3]">
                       <Bot className="h-3.5 w-3.5 text-[#A97745]" />
                     </div>
-                    <div className="rounded-lg bg-[#F5F5F5] px-3 py-2 text-sm text-muted-foreground">
-                      AI erklärt das Produkt...
-                    </div>
+                    <div className="rounded-lg bg-[#F5F5F5] px-3 py-2 text-sm text-muted-foreground">AI erklärt das Produkt...</div>
                   </div>
                 )}
               </div>
 
               {error && (
-                <div className="border-t border-border px-3 py-2 text-sm text-red-600 md:px-4">
-                  {error}
-                </div>
+                <div className="border-t border-border px-3 py-2 text-sm text-red-600 md:px-4">{error}</div>
               )}
 
               <form onSubmit={handleSubmit} className="border-t border-border p-3 md:p-4">
                 <div className="flex gap-2">
+                  {/* ── Kamera-Button im Input-Bereich ── */}
+                  <button
+                    type="button"
+                    onClick={() => setShowAnalysis(true)}
+                    title="Haut analysieren"
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#e0c9a8] bg-[#FDF6EE] text-[#A97745] transition-colors hover:bg-[#F5E6D3]"
+                  >
+                    <Camera className="h-4 w-4" />
+                  </button>
+
                   <input
                     value={input}
                     onChange={(event) => setInput(event.target.value)}
@@ -664,7 +570,6 @@ export default function Chatbot() {
                     className="min-w-0 flex-1 rounded-full border border-border bg-background px-3 py-2 text-sm outline-none transition-colors focus:border-[#D4A574]"
                     disabled={isLoading}
                   />
-
                   <Button
                     type="submit"
                     disabled={isLoading || input.trim().length === 0}
@@ -684,8 +589,6 @@ export default function Chatbot() {
                   <button
                     key={question}
                     type="button"
-                    // Starter questions use the same submit path as typed messages,
-                    // so they test the exact same backend RAG flow.
                     onClick={() => sendMessage(question)}
                     disabled={isLoading}
                     className="w-full rounded-lg border border-border px-3 py-2 text-left text-sm transition-colors hover:border-[#D4A574] hover:bg-[#FBFAF7] disabled:cursor-not-allowed disabled:opacity-60"
@@ -694,7 +597,6 @@ export default function Chatbot() {
                   </button>
                 ))}
               </div>
-
               <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
                 Die Beratung nutzt Produktdaten aus dem Shop und ersetzt keine medizinische Beratung.
               </p>

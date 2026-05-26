@@ -5,7 +5,7 @@ import Layout from './components/Layout'
 import Home from './pages/Home'
 import Shop from './pages/Shop'
 import About from './pages/About'
-
+import SkinQuiz from '@/pages/SkinQuiz'
 import Cart from './pages/Cart'
 import Chatbot from './pages/Chatbot'
 import Wishlist from './pages/Wishlist'
@@ -46,6 +46,7 @@ function App() {
               <Route path="product/:id" element={<ProductDetail />} />
               <Route path="/checkout" element={<Checkout />} />
               <Route path="/thank-you" element={<ThankYou />} />
+              <Route path="/quiz" element={<SkinQuiz />} />
               <Route
                 path="/profile"
                 element={

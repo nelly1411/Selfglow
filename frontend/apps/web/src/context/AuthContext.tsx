@@ -10,6 +10,9 @@ export type User = {
   savedCity?:    string | null
   savedCountry?: string | null
   savedPhone?:   string | null
+   skinType?: string | null
+   usedWelcomeCode?: boolean | null 
+   emailVerified?: boolean | null
 }
 
 type AuthContextType = {
@@ -47,8 +50,10 @@ function isTokenExpired(token: string) {
 function clearStoredAuth() {
   localStorage.removeItem('token')
   localStorage.removeItem('user')
+  localStorage.removeItem('cart')
   sessionStorage.removeItem('token')
   sessionStorage.removeItem('user')
+  sessionStorage.removeItem('cart')
 }
 
 function getStoredAuth(): AuthState {

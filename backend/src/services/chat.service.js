@@ -1,7 +1,11 @@
 const prisma = require("../config/prisma");
 
-const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
+const OPENAI_API_URL = "https://api.openai.com/v1/responses";
 const DEFAULT_MODEL = "gpt-5-mini";
+const DEFAULT_OPENAI_TIMEOUT_MS = 20000;
+const DEFAULT_OPENAI_MAX_OUTPUT_TOKENS = 450;
+const DEFAULT_OPENAI_REASONING_EFFORT = "minimal";
+const DEFAULT_OPENAI_VERBOSITY = "low";
 const MAX_CONTEXT_PRODUCTS = 6;
 const MAX_FOLLOW_UP_HISTORY = 4;
 const MAX_FOLLOW_UP_PRODUCTS = 3;
@@ -10,6 +14,13 @@ const MAX_PROMPT_INGREDIENTS_LENGTH = 800;
 const MIN_RELEVANCE_SCORE = 2;
 const PRODUCT_RECOMMENDATION_ANSWER =
   "Ich habe folgende passende Produkte aus unserem Sortiment gefunden. Das ist keine medizinische Diagnose, sondern eine Produktempfehlung auf Basis deiner Anfrage.";
+const GENERAL_SKINCARE_FALLBACK_ANSWER =
+  "**Kurz erklärt**\n\n- Ich kann dir bei Hauttyp, Hautpflege-Routine, Inhaltsstoffen und passenden SelfGlow-Produkten helfen.\n- Sag mir gern, welches Hautanliegen du hast oder ob du ein bestimmtes Produkt suchst.";
+const OFF_TOPIC_ANSWER =
+  "**Kurz erklärt**\n\n- Ich kann dir hier nur bei Hautpflege, Hauttypen, Inhaltsstoffen und passenden SelfGlow-Produkten helfen.\n- Frag mich gern nach einer Routine, einem Hautanliegen oder Produkteigenschaften wie vegan, parfumfrei oder alkoholfrei.";
+const CHAT_DECISION_FALLBACK = {
+  intent: "skincare_general",
+};
 const AI_RESPONSE_FORMAT_INSTRUCTIONS = `
 Response style:
 - Use clear Markdown formatting.
@@ -985,6 +996,32 @@ ${message}
 `;
 }
 
+function buildSkincareChatPrompt(message, history = [], intent = "skincare_general") {
+  const conversationHistory = history
+    .slice(-MAX_FOLLOW_UP_HISTORY)
+    .map((item) => `${item.role === "assistant" ? "Assistant" : "Customer"}: ${item.content}`)
+    .join("\n");
+
+  return `
+You are SelfGlow's concise, careful skincare assistant.
+Answer in the same language as the customer.
+You may answer greetings, general skincare questions, routine questions, skin type questions, ingredient questions, and safe cosmetic-use questions.
+Do not recommend specific SelfGlow products unless product context is provided by the backend.
+If the customer wants a product recommendation, ask for the missing skin type, concern, budget, or preferences instead of inventing products.
+Do not answer topics outside skincare, beauty routines, cosmetic ingredients, and SelfGlow shopping support.
+Do not diagnose medical conditions or promise treatment results.
+If the question requires medical advice, suggest consulting a dermatologist.
+${intent === "greeting" ? "For a greeting, reply warmly and ask what skincare goal the customer has." : ""}
+${AI_RESPONSE_FORMAT_INSTRUCTIONS}
+
+Recent conversation:
+${conversationHistory || "No previous conversation."}
+
+Customer message:
+${message}
+`;
+}
+
 function buildProductExplanationPrompt(products, message) {
   const isSingleProduct = products.length === 1;
   const shortProductName = isSingleProduct ? getShortProductName(products[0].name) : "";
@@ -1030,31 +1067,286 @@ function getShortProductName(name) {
     .join(" ");
 }
 
-async function requestOpenAI(messages, fallbackAnswer) {
+function readPositiveInteger(value, fallback) {
+  const parsedValue = Number.parseInt(value, 10);
+
+  return Number.isInteger(parsedValue) && parsedValue > 0 ? parsedValue : fallback;
+}
+
+function buildOpenAIRequestBody(messages, maxOutputTokens) {
+  const instructions = messages
+    .filter((message) => message.role === "system")
+    .map((message) => message.content)
+    .filter(Boolean)
+    .join("\n\n");
+  const input = messages
+    .filter((message) => message.role !== "system")
+    .map((message) => ({
+      role: message.role,
+      content: message.content,
+    }));
+
+  return {
+    model: process.env.OPENAI_MODEL || DEFAULT_MODEL,
+    instructions,
+    input,
+    max_output_tokens: maxOutputTokens,
+    reasoning: {
+      effort: process.env.OPENAI_REASONING_EFFORT || DEFAULT_OPENAI_REASONING_EFFORT,
+    },
+    text: {
+      verbosity: process.env.OPENAI_VERBOSITY || DEFAULT_OPENAI_VERBOSITY,
+    },
+  };
+}
+
+function extractOpenAIText(data) {
+  if (typeof data.output_text === "string") {
+    return data.output_text.trim();
+  }
+
+  const outputText = [];
+
+  for (const item of data.output || []) {
+    for (const content of item.content || []) {
+      if (typeof content.text === "string") {
+        outputText.push(content.text);
+      }
+    }
+  }
+
+  return outputText.join("").trim();
+}
+
+async function requestOpenAI(messages, fallbackAnswer, options = {}) {
   if (!process.env.OPENAI_API_KEY) {
     return fallbackAnswer;
   }
 
-  const response = await fetch(OPENAI_API_URL, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: process.env.OPENAI_MODEL || DEFAULT_MODEL,
-      messages,
-    }),
-  });
+  const timeoutMs = readPositiveInteger(
+    process.env.OPENAI_TIMEOUT_MS,
+    DEFAULT_OPENAI_TIMEOUT_MS
+  );
+  const maxOutputTokens = readPositiveInteger(
+    options.maxOutputTokens || process.env.OPENAI_MAX_OUTPUT_TOKENS,
+    DEFAULT_OPENAI_MAX_OUTPUT_TOKENS
+  );
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error("OpenAI API error:", errorText);
+  try {
+    const response = await fetch(OPENAI_API_URL, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      signal: controller.signal,
+      body: JSON.stringify({
+        ...buildOpenAIRequestBody(messages, maxOutputTokens),
+        ...(options.textFormat ? { text: options.textFormat } : {}),
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("OpenAI API error:", errorText);
+      return fallbackAnswer;
+    }
+
+    const data = await response.json();
+    return extractOpenAIText(data) || fallbackAnswer;
+  } catch (error) {
+    if (error.name === "AbortError") {
+      console.error(`OpenAI API request timed out after ${timeoutMs}ms`);
+    } else {
+      console.error("OpenAI API request failed:", error);
+    }
+    return fallbackAnswer;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+async function streamOpenAI(messages, fallbackAnswer, onDelta) {
+  if (!process.env.OPENAI_API_KEY) {
     return fallbackAnswer;
   }
 
-  const data = await response.json();
-  return data.choices?.[0]?.message?.content?.trim() || fallbackAnswer;
+  const timeoutMs = readPositiveInteger(
+    process.env.OPENAI_TIMEOUT_MS,
+    DEFAULT_OPENAI_TIMEOUT_MS
+  );
+  const maxOutputTokens = readPositiveInteger(
+    process.env.OPENAI_MAX_OUTPUT_TOKENS,
+    DEFAULT_OPENAI_MAX_OUTPUT_TOKENS
+  );
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  let fullAnswer = "";
+
+  try {
+    const response = await fetch(OPENAI_API_URL, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      signal: controller.signal,
+      body: JSON.stringify({
+        ...buildOpenAIRequestBody(messages, maxOutputTokens),
+        stream: true,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("OpenAI API stream error:", errorText);
+      return fallbackAnswer;
+    }
+
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    for await (const chunk of response.body) {
+      buffer += decoder.decode(chunk, { stream: true });
+      const events = buffer.split("\n\n");
+      buffer = events.pop() || "";
+
+      for (const event of events) {
+        const delta = extractSseTextDelta(event);
+
+        if (delta) {
+          fullAnswer += delta;
+          onDelta(delta);
+        }
+      }
+    }
+
+    buffer += decoder.decode();
+    const finalDelta = extractSseTextDelta(buffer);
+
+    if (finalDelta) {
+      fullAnswer += finalDelta;
+      onDelta(finalDelta);
+    }
+
+    return fullAnswer.trim() || fallbackAnswer;
+  } catch (error) {
+    if (error.name === "AbortError") {
+      console.error(`OpenAI API stream timed out after ${timeoutMs}ms`);
+    } else {
+      console.error("OpenAI API stream failed:", error);
+    }
+    return fullAnswer.trim() || fallbackAnswer;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+function extractSseTextDelta(event) {
+  const dataLines = event
+    .split("\n")
+    .filter((line) => line.startsWith("data:"))
+    .map((line) => line.slice(5).trim());
+
+  for (const dataLine of dataLines) {
+    if (!dataLine || dataLine === "[DONE]") continue;
+
+    try {
+      const data = JSON.parse(dataLine);
+
+      if (data.type === "response.output_text.delta" && typeof data.delta === "string") {
+        return data.delta;
+      }
+    } catch {
+      // Ignore non-JSON stream housekeeping lines.
+    }
+  }
+
+  return "";
+}
+
+function parseChatDecision(rawDecision, message) {
+  try {
+    const jsonText = rawDecision.match(/\{[\s\S]*\}/)?.[0] || rawDecision;
+    const parsedDecision = JSON.parse(jsonText);
+    const allowedIntents = new Set([
+      "product_search",
+      "skincare_general",
+      "greeting",
+      "off_topic",
+    ]);
+
+    if (allowedIntents.has(parsedDecision.intent)) {
+      return {
+        intent: parsedDecision.intent,
+      };
+    }
+  } catch {
+    // Fall through to the conservative local fallback.
+  }
+
+  return inferChatIntentLocally(message);
+}
+
+async function decideChatIntent(message, history = []) {
+  if (!process.env.OPENAI_API_KEY) {
+    return inferChatIntentLocally(message);
+  }
+
+  const conversationHistory = history
+    .slice(-MAX_FOLLOW_UP_HISTORY)
+    .map((item) => `${item.role === "assistant" ? "Assistant" : "Customer"}: ${item.content}`)
+    .join("\n");
+
+  const rawDecision = await requestOpenAI(
+    [
+      {
+        role: "system",
+        content:
+          "Classify SelfGlow chat messages. Return only JSON with one key: intent.",
+      },
+      {
+        role: "user",
+        content: `
+Choose exactly one intent:
+- product_search: customer wants suitable products, recommendations, shopping help, a routine with products, or asks which product to buy/use.
+- skincare_general: customer asks a general skincare, ingredient, skin type, routine, or cosmetic-use question without asking for concrete products.
+- greeting: customer only greets, thanks, or starts small talk in a skincare assistant context.
+- off_topic: customer asks about anything outside skincare, beauty routines, cosmetic ingredients, or SelfGlow shopping support.
+
+Recent conversation:
+${conversationHistory || "No previous conversation."}
+
+Customer message:
+${message}
+
+JSON only:
+`,
+      },
+    ],
+    JSON.stringify(CHAT_DECISION_FALLBACK),
+    {
+      maxOutputTokens: 80,
+    }
+  );
+
+  return parseChatDecision(rawDecision, message);
+}
+
+function inferChatIntentLocally(message) {
+  const normalizedMessage = normalizeText(message);
+
+  if (/^(hi|hello|hey|hallo|servus|moin|guten tag|guten morgen|guten abend|danke|thanks)\b/.test(normalizedMessage)) {
+    return { intent: "greeting" };
+  }
+
+  if (/\b(product|products|produkt|produkte|recommend|empfehl|routine|buy|kaufen|suche|finde|which|welche|welcher|welches)\b/.test(normalizedMessage)) {
+    return { intent: "product_search" };
+  }
+
+  return CHAT_DECISION_FALLBACK;
 }
 
 // Generate the final assistant text. The OpenAI API key stays on the backend, so
@@ -1112,6 +1404,41 @@ async function getContextProducts(productIds) {
 }
 
 async function createChatResponse(message, history = [], contextProductIds = []) {
+  const decision = await decideChatIntent(message, history);
+
+  if (decision.intent === "off_topic") {
+    return {
+      answer: OFF_TOPIC_ANSWER,
+      products: [],
+      canExplainProducts: false,
+      usedFallback: false,
+    };
+  }
+
+  if (decision.intent !== "product_search") {
+    const answer = await requestOpenAI(
+      [
+        {
+          role: "system",
+          content:
+            "You are a concise, careful skincare assistant for an ecommerce site.",
+        },
+        {
+          role: "user",
+          content: buildSkincareChatPrompt(message, history, decision.intent),
+        },
+      ],
+      GENERAL_SKINCARE_FALLBACK_ANSWER
+    );
+
+    return {
+      answer,
+      products: [],
+      canExplainProducts: false,
+      usedFallback: !process.env.OPENAI_API_KEY,
+    };
+  }
+
   const products = await retrieveProducts(message);
   const contextProducts =
     products.length === 0 && process.env.OPENAI_API_KEY
@@ -1124,6 +1451,89 @@ async function createChatResponse(message, history = [], contextProductIds = [])
     products,
     canExplainProducts: Boolean(process.env.OPENAI_API_KEY && products.length > 0),
     usedFallback: !process.env.OPENAI_API_KEY,
+  };
+}
+
+async function createChatResponseStream(
+  message,
+  history = [],
+  contextProductIds = [],
+  onDelta = () => {}
+) {
+  const decision = await decideChatIntent(message, history);
+
+  if (decision.intent === "off_topic") {
+    return {
+      answer: OFF_TOPIC_ANSWER,
+      products: [],
+      canExplainProducts: false,
+      usedFallback: false,
+    };
+  }
+
+  if (decision.intent !== "product_search") {
+    const fallbackAnswer = GENERAL_SKINCARE_FALLBACK_ANSWER;
+    const answer = await streamOpenAI(
+      [
+        {
+          role: "system",
+          content:
+            "You are a concise, careful skincare assistant for an ecommerce site.",
+        },
+        {
+          role: "user",
+          content: buildSkincareChatPrompt(message, history, decision.intent),
+        },
+      ],
+      fallbackAnswer,
+      onDelta
+    );
+
+    return {
+      answer,
+      products: [],
+      canExplainProducts: false,
+      usedFallback: answer === fallbackAnswer,
+    };
+  }
+
+  const products = await retrieveProducts(message);
+  const contextProducts =
+    products.length === 0 && process.env.OPENAI_API_KEY
+      ? await getContextProducts(contextProductIds)
+      : [];
+
+  if (products.length > 0 || !process.env.OPENAI_API_KEY) {
+    return {
+      answer: await createOpenAIAnswer(message, products, history, contextProducts),
+      products,
+      canExplainProducts: Boolean(process.env.OPENAI_API_KEY && products.length > 0),
+      usedFallback: !process.env.OPENAI_API_KEY,
+    };
+  }
+
+  const fallbackAnswer = buildFallbackAnswer(products);
+  const answer = await streamOpenAI(
+    [
+      {
+        role: "system",
+        content:
+          "You are a concise, careful skincare shopping assistant for an ecommerce site.",
+      },
+      {
+        role: "user",
+        content: buildGeneralPrompt(message, history, contextProducts),
+      },
+    ],
+    fallbackAnswer,
+    onDelta
+  );
+
+  return {
+    answer,
+    products,
+    canExplainProducts: false,
+    usedFallback: answer === fallbackAnswer,
   };
 }
 
@@ -1180,5 +1590,6 @@ async function createProductExplanation(productIds, message) {
 
 module.exports = {
   createChatResponse,
+  createChatResponseStream,
   createProductExplanation,
 };
