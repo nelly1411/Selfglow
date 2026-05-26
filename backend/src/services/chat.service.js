@@ -13,19 +13,19 @@ const MAX_PROMPT_DESCRIPTION_LENGTH = 600;
 const MAX_PROMPT_INGREDIENTS_LENGTH = 800;
 const MIN_RELEVANCE_SCORE = 2;
 const PRODUCT_RECOMMENDATION_ANSWER =
-  "Ich habe folgende passende Produkte aus unserem Sortiment gefunden. Das ist keine medizinische Diagnose, sondern eine Produktempfehlung auf Basis deiner Anfrage.";
+  "Ich habe folgende passende Produkte aus unserem Sortiment für dich gefunden. Das ist keine medizinische Diagnose, sondern eine Produktempfehlung auf Basis deiner Anfrage.";
 const GENERAL_SKINCARE_FALLBACK_ANSWER =
-  "**Kurz erklärt**\n\n- Ich kann dir bei Hauttyp, Hautpflege-Routine, Inhaltsstoffen und passenden SelfGlow-Produkten helfen.\n- Sag mir gern, welches Hautanliegen du hast oder ob du ein bestimmtes Produkt suchst.";
+  "- Ich kann dir bei Hauttyp, Hautpflege-Routine, Inhaltsstoffen und passenden SelfGlow-Produkten helfen.\n- Sag mir gern, welches Hautanliegen du hast oder ob du ein bestimmtes Produkt suchst.";
 const OFF_TOPIC_ANSWER =
-  "**Kurz erklärt**\n\n- Ich kann dir hier nur bei Hautpflege, Hauttypen, Inhaltsstoffen und passenden SelfGlow-Produkten helfen.\n- Frag mich gern nach einer Routine, einem Hautanliegen oder Produkteigenschaften wie vegan, parfumfrei oder alkoholfrei.";
+  "- Ich kann dir hier nur bei Hautpflege, Hauttypen, Inhaltsstoffen und passenden SelfGlow-Produkten helfen.\n- Frag mich gern nach einer Routine, einem Hautanliegen oder Produkteigenschaften wie vegan, parfumfrei oder alkoholfrei.";
 const CHAT_DECISION_FALLBACK = {
   intent: "skincare_general",
 };
 const AI_RESPONSE_FORMAT_INSTRUCTIONS = `
 Response style:
 - Use clear Markdown formatting.
-- Start with one short bold heading, for example "**Kurz erklärt**" or "**Warum es passt**".
-- Split the answer into 2-3 short sections with bold section labels.
+- Do not start with the fixed heading "**Kurz erklärt**".
+- Split the answer into 1-3 short sections with bold section labels only when they add clarity.
 - Put a blank line between sections.
 - Use bullet points inside each section.
 - Write at most 2 bullet points per section unless the customer explicitly asks for more detail.
