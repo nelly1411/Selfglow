@@ -63,13 +63,8 @@ export default function Cart() {
           <Link to="/shop">
             <Button className="bg-[#D4A574] text-white hover:bg-[#C49464] rounded-full px-8">
               <ArrowLeft className="h-4 w-4 mr-2" />
-<<<<<<< HEAD
               Continue Shopping
             </Button>d
-=======
-              Weiter einkaufen
-            </Button>
->>>>>>> 9a6effc7386f907515fbeb414e0af3cd386fc64d
           </Link>
         </div>
       </div>
