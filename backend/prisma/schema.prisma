@@ -49,11 +49,9 @@ model User {
   password String
   usedWelcomeCode Boolean @default(false)
 
-wishlistItems WishlistItem[]
+  wishlistItems WishlistItem[]
   orders        Order[]
   reviews       Review[]      
-
-  wishlistItems WishlistItem[]
   cart Cart?
 
   createdAt DateTime @default(now())
