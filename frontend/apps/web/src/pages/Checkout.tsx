@@ -284,7 +284,7 @@ const [checkingCode, setCheckingCode]     = useState(false)
       }
 
       if (!res.ok) {
-        setErrorMsg(data.message || 'Fehler beim Checkout')
+        setErrorMsg(data.message || 'Fehler beim Bestellen')
         return
       }
 
