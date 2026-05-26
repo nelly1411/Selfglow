@@ -163,7 +163,7 @@ export default function SkinAnalysis({ onClose }: SkinAnalysisProps) {
 
     try {
       // Bild komprimieren bevor es gesendet wird
-      const compressed = await compressImage(imageData, 800, 0.7)
+      const compressed = await compressImage(imageData, 1200, 0.85)
       const mediaType  = 'image/jpeg'
 
       const response = await fetch(`${API}/api/skin-analysis/analyze`, {
