@@ -1132,6 +1132,105 @@ async function requestOpenAI(messages, fallbackAnswer) {
   }
 }
 
+async function streamOpenAI(messages, fallbackAnswer, onDelta) {
+  if (!process.env.OPENAI_API_KEY) {
+    return fallbackAnswer;
+  }
+
+  const timeoutMs = readPositiveInteger(
+    process.env.OPENAI_TIMEOUT_MS,
+    DEFAULT_OPENAI_TIMEOUT_MS
+  );
+  const maxOutputTokens = readPositiveInteger(
+    process.env.OPENAI_MAX_OUTPUT_TOKENS,
+    DEFAULT_OPENAI_MAX_OUTPUT_TOKENS
+  );
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  let fullAnswer = "";
+
+  try {
+    const response = await fetch(OPENAI_API_URL, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      signal: controller.signal,
+      body: JSON.stringify({
+        ...buildOpenAIRequestBody(messages, maxOutputTokens),
+        stream: true,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("OpenAI API stream error:", errorText);
+      return fallbackAnswer;
+    }
+
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    for await (const chunk of response.body) {
+      buffer += decoder.decode(chunk, { stream: true });
+      const events = buffer.split("\n\n");
+      buffer = events.pop() || "";
+
+      for (const event of events) {
+        const delta = extractSseTextDelta(event);
+
+        if (delta) {
+          fullAnswer += delta;
+          onDelta(delta);
+        }
+      }
+    }
+
+    buffer += decoder.decode();
+    const finalDelta = extractSseTextDelta(buffer);
+
+    if (finalDelta) {
+      fullAnswer += finalDelta;
+      onDelta(finalDelta);
+    }
+
+    return fullAnswer.trim() || fallbackAnswer;
+  } catch (error) {
+    if (error.name === "AbortError") {
+      console.error(`OpenAI API stream timed out after ${timeoutMs}ms`);
+    } else {
+      console.error("OpenAI API stream failed:", error);
+    }
+    return fullAnswer.trim() || fallbackAnswer;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+function extractSseTextDelta(event) {
+  const dataLines = event
+    .split("\n")
+    .filter((line) => line.startsWith("data:"))
+    .map((line) => line.slice(5).trim());
+
+  for (const dataLine of dataLines) {
+    if (!dataLine || dataLine === "[DONE]") continue;
+
+    try {
+      const data = JSON.parse(dataLine);
+
+      if (data.type === "response.output_text.delta" && typeof data.delta === "string") {
+        return data.delta;
+      }
+    } catch {
+      // Ignore non-JSON stream housekeeping lines.
+    }
+  }
+
+  return "";
+}
+
 // Generate the final assistant text. The OpenAI API key stays on the backend, so
 // the browser never receives or stores it.
 async function createOpenAIAnswer(
@@ -1202,6 +1301,52 @@ async function createChatResponse(message, history = [], contextProductIds = [])
   };
 }
 
+async function createChatResponseStream(
+  message,
+  history = [],
+  contextProductIds = [],
+  onDelta = () => {}
+) {
+  const products = await retrieveProducts(message);
+  const contextProducts =
+    products.length === 0 && process.env.OPENAI_API_KEY
+      ? await getContextProducts(contextProductIds)
+      : [];
+
+  if (products.length > 0 || !process.env.OPENAI_API_KEY) {
+    return {
+      answer: await createOpenAIAnswer(message, products, history, contextProducts),
+      products,
+      canExplainProducts: Boolean(process.env.OPENAI_API_KEY && products.length > 0),
+      usedFallback: !process.env.OPENAI_API_KEY,
+    };
+  }
+
+  const fallbackAnswer = buildFallbackAnswer(products);
+  const answer = await streamOpenAI(
+    [
+      {
+        role: "system",
+        content:
+          "You are a concise, careful skincare shopping assistant for an ecommerce site.",
+      },
+      {
+        role: "user",
+        content: buildGeneralPrompt(message, history, contextProducts),
+      },
+    ],
+    fallbackAnswer,
+    onDelta
+  );
+
+  return {
+    answer,
+    products,
+    canExplainProducts: false,
+    usedFallback: answer === fallbackAnswer,
+  };
+}
+
 async function createProductExplanation(productIds, message) {
   if (!process.env.OPENAI_API_KEY) {
     return {
@@ -1255,5 +1400,6 @@ async function createProductExplanation(productIds, message) {
 
 module.exports = {
   createChatResponse,
+  createChatResponseStream,
   createProductExplanation,
 };
