@@ -24,7 +24,7 @@ async function getReviewsByProductId(productId){
         where: {productId},
         include: {
             user: {
-                select:{id: true, name: true},
+                select:{id: true, name: true, email: true},
             },
         },
         orderBy: {createdAt: "desc"},

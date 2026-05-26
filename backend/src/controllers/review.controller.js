@@ -1,10 +1,31 @@
 const reviewService = require("../services/review.service");
+const prisma = require("../config/prisma");
 
 async function createReview(req, res) {
     try {
+        //users can only write a review after making a purchase
         const userId = req.userId;
 
         const { productId, rating, reviewText } = req.body;
+
+        const orders = await prisma.order.findMany({
+            where: {userId}
+        });
+
+        const hasPurchased = orders.some(order => {
+            try {
+                const items = JSON.parse(order.items);
+                return items.some((item) => item.id === Number(productId));
+            } catch {
+                return false;
+            }
+        });
+
+        if (!hasPurchased) {
+            return res.status(403).json({
+                message: "Sie können nur Produkte bewerten, die sie gekauft haben."
+            });
+        }
 
         if(!productId || !rating || !reviewText) {
             return res.status(400).json({

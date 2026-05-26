@@ -43,6 +43,63 @@ async function createChatResponse(req, res) {
   }
 }
 
+function writeStreamEvent(res, event, data) {
+  res.write(`event: ${event}\n`);
+  res.write(`data: ${JSON.stringify(data)}\n\n`);
+}
+
+async function createChatResponseStream(req, res) {
+  try {
+    const { message, history, contextProductIds } = req.body;
+
+    if (!message || typeof message !== "string" || message.trim().length < 2) {
+      return res.status(400).json({ message: "Message is required" });
+    }
+
+    const safeHistory = Array.isArray(history)
+      ? history
+          .filter(
+            (item) =>
+              item &&
+              (item.role === "user" || item.role === "assistant") &&
+              typeof item.content === "string"
+          )
+          .slice(-4)
+      : [];
+
+    const safeContextProductIds = Array.isArray(contextProductIds)
+      ? contextProductIds
+          .map((productId) => Number(productId))
+          .filter((productId) => Number.isInteger(productId))
+          .slice(-3)
+      : [];
+
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache, no-transform");
+    res.setHeader("Connection", "keep-alive");
+    res.flushHeaders?.();
+
+    const response = await chatService.createChatResponseStream(
+      message,
+      safeHistory,
+      safeContextProductIds,
+      (text) => writeStreamEvent(res, "delta", { text })
+    );
+
+    writeStreamEvent(res, "done", response);
+    res.end();
+  } catch (error) {
+    console.error("Failed to stream chat response:", error);
+
+    if (!res.headersSent) {
+      return res.status(500).json({ message: "Failed to stream chat response" });
+    }
+
+    writeStreamEvent(res, "error", { message: "Failed to stream chat response" });
+    res.end();
+  }
+}
+
 async function explainProducts(req, res) {
   try {
     const { productIds, message } = req.body;
@@ -69,5 +126,6 @@ async function explainProducts(req, res) {
 
 module.exports = {
   createChatResponse,
+  createChatResponseStream,
   explainProducts,
 };
