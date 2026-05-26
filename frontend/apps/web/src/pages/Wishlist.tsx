@@ -62,7 +62,7 @@ export default function Wishlist() {
 
           <Link to="/login">
             <Button className="bg-[#D4A574] text-white hover:bg-[#C49464] rounded-full px-8">
-              Zum Login
+              Zur Anmeldung
             </Button>
           </Link>
         </div>

@@ -152,7 +152,7 @@ export default function Profile() {
     if (ok) setUserReviews(prev => prev.filter(r => r.id !== reviewId))
   }
 
-  const firstName = user?.name?.split(' ')[0] || user?.email?.split('@')[0] || 'User'
+  const firstName = user?.name?.split(' ')[0] || user?.email?.split('@')[0] || 'Nutzer'
 
   return (
     <div className="profile-root" style={{ background: '#FDFAF6', minHeight: '100vh', padding: '0 0 60px' }}>
@@ -176,7 +176,7 @@ export default function Profile() {
               <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', margin: '4px 0 0', fontWeight: 300 }}>{user?.email}</p>
             </div>
             <Link to="/shop" style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 8, background: '#D4A574', color: '#fff', padding: '12px 24px', borderRadius: 100, fontSize: 13, fontWeight: 600, textDecoration: 'none', transition: 'background 0.2s' }}>
-              <Sparkles size={14} /> Shop
+              <Sparkles size={14} /> Produkte
             </Link>
           </div>
         </div>

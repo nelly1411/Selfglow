@@ -270,6 +270,21 @@ export default function SkinAnalysis({ onClose }: SkinAnalysisProps) {
     return 'Hoch'
   }
 
+  const displaySkinType = (skinType: string) => {
+    const labels: Record<string, string> = {
+      Normal: 'Normale Haut',
+      Oily: 'Fettige Haut',
+      Dry: 'Trockene Haut',
+      Sensitive: 'Sensible Haut',
+      Combination: 'Mischhaut',
+      Fettig: 'Fettige Haut',
+      Trocken: 'Trockene Haut',
+      Sensibel: 'Sensible Haut',
+    }
+
+    return labels[skinType] || skinType
+  }
+
   const categoryEmoji = (category: string) => {
     if (category === 'Serum') return '💧'
     if (category === 'Feuchtigkeitspflege') return '🌿'
@@ -781,7 +796,7 @@ export default function SkinAnalysis({ onClose }: SkinAnalysisProps) {
                     letterSpacing: '-0.02em',
                   }}
                 >
-                  {result.skinType}
+                  {displaySkinType(result.skinType)}
                 </p>
 
                 <p

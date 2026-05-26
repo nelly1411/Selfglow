@@ -28,6 +28,20 @@ const CSS = `
   .team-avatar:hover {
     transform: translateY(-8px) scale(1.05);
   }
+  .team-grid {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: clamp(8px, 2vw, 24px);
+    align-items: start;
+  }
+  .team-avatar-circle {
+    width: clamp(72px, 9vw, 120px);
+    height: clamp(72px, 9vw, 120px);
+  }
+  .team-member-role {
+    overflow-wrap: anywhere;
+    line-height: 1.35;
+  }
 `
 
 const values = [
@@ -38,12 +52,12 @@ const values = [
 ]
 
 const team = [
-  { name: 'Alaa Hejazi',    role: 'Skincare Specialist',   initial: 'AH', color: '#D4A574' },
-  { name: 'Bayan Agha',      role: 'Backend Developer', initial: 'BA', color: '#B8967A' },
-   { name: 'Nelly Nzumegue',  role: 'Marketing Manager',      initial: 'NN', color: '#C4925A' },
-  { name: 'Nurefsan Almas',  role: 'Product Designer',  initial: 'NA', color: '#B8967A' },
-  { name: 'Sevde Istanbul',  role: 'Frontend Developer',    initial: 'SI', color: '#C4925A' },
-  { name: 'Yichen Zhong',    role: 'AI Engineer',          initial: 'YZ', color: '#D4A574' },
+  { name: 'Alaa Hejazi',    role: 'Hautpflege-Spezialistin', initial: 'AH', color: '#D4A574' },
+  { name: 'Bayan Agha',     role: 'Backend-Entwicklerin',    initial: 'BA', color: '#B8967A' },
+  { name: 'Nelly Nzumegue', role: 'Marketing-Managerin',     initial: 'NN', color: '#C4925A' },
+  { name: 'Nurefsan Almas', role: 'Produktdesignerin',       initial: 'NA', color: '#B8967A' },
+  { name: 'Sevde Istanbul', role: 'Frontend-Entwicklerin',   initial: 'SI', color: '#C4925A' },
+  { name: 'Yichen Zhong',   role: 'KI-Entwicklerin',         initial: 'YZ', color: '#D4A574' },
 ]
 
 export default function About() {
@@ -173,17 +187,15 @@ export default function About() {
           </div>
 
           {/* 6 circles in one row */}
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 40, flexWrap: 'wrap' }}>
+          <div className="team-grid">
             {team.map((member) => (
               <div
                 key={member.name}
                 className="team-avatar"
-                style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}
+                style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, minWidth: 0 }}
               >
                 {/* Circle */}
-                <div style={{
-                  width: 120,
-                  height: 120,
+                <div className="team-avatar-circle" style={{
                   borderRadius: '50%',
                   background: `linear-gradient(135deg, ${member.color}, ${member.color}bb)`,
                   display: 'flex',
@@ -203,7 +215,7 @@ export default function About() {
                   <p style={{ fontWeight: 700, fontSize: 15, margin: '0 0 3px', color: '#1c1209' }}>
                     {member.name}
                   </p>
-                  <p style={{ fontSize: 12, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#D4A574', margin: 0, fontWeight: 600 }}>
+                  <p className="team-member-role" style={{ fontSize: 12, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#D4A574', margin: 0, fontWeight: 600 }}>
                     {member.role}
                   </p>
                 </div>

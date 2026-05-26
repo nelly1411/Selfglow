@@ -364,14 +364,14 @@ const [checkingCode, setCheckingCode]     = useState(false)
     return (
       <div className="min-h-[70vh] flex items-center justify-center px-4">
         <div className="bg-white border rounded-xl p-8 text-center max-w-md w-full shadow">
-          <h2 className="text-xl font-semibold mb-3">Checkout</h2>
+          <h2 className="text-xl font-semibold mb-3">Kasse</h2>
           <p className="text-sm text-gray-600 mb-6">Möchten Sie als Gast bestellen oder ein Konto verwenden?</p>
           <div className="flex flex-col gap-3">
             <button onClick={() => setGuestMode(true)} className="bg-[#D4A574] text-white py-2 rounded-full hover:bg-[#c4945f] transition-colors">
               Als Gast bestellen
             </button>
             <button onClick={() => navigate('/login')} className="border py-2 rounded-full hover:bg-gray-50 transition-colors">
-              Login / Konto
+              Anmelden / Konto
             </button>
           </div>
         </div>
@@ -393,7 +393,7 @@ const formatPrice = (value: number) =>
         <Link to="/cart" className="hover:opacity-70 transition-opacity">
           <ArrowLeft className="h-5 w-5 text-gray-600" />
         </Link>
-        <h1 className="text-2xl font-bold">Checkout</h1>
+        <h1 className="text-2xl font-bold">Kasse</h1>
       </div>
 
       {errorMsg && (
@@ -407,7 +407,7 @@ const formatPrice = (value: number) =>
         {/* ── LEFT ── */}
         <div className="space-y-8">
 
-          {/* Customer */}
+          {/* Kundendaten */}
           <section>
             <h2 className="font-semibold text-gray-800 mb-4 pb-2 border-b">Kundendaten</h2>
             {user ? (
@@ -492,7 +492,7 @@ const formatPrice = (value: number) =>
             </div>
           </section>
 
-         {/* ── Payment Method ── */}
+         {/* ── Zahlungsmethode ── */}
 <section>
   <h2 className="font-semibold text-gray-800 mb-4 pb-2 border-b">
     Zahlungsmethode
@@ -572,7 +572,7 @@ const formatPrice = (value: number) =>
 </section>
         </div>
 
-        {/* ── RIGHT – Order Summary ── */}
+        {/* ── RECHTS – Bestellübersicht ── */}
         <div className="bg-[#F5E6D3] p-6 rounded-xl h-fit sticky top-6">
           <h2 className="font-semibold mb-5 text-gray-800">Bestellübersicht</h2>
 
