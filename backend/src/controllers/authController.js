@@ -2,6 +2,7 @@
 const bcrypt = require("bcrypt");
 const jwt    = require("jsonwebtoken");
 const prisma = require("../config/prisma");
+const { sendEmailConfirmation } = require("../services/mail.service");
 
 const EMAIL_PATTERN            = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const SPECIAL_CHARACTER_PATTERN = /[^A-Za-z0-9]/;
@@ -28,7 +29,19 @@ function toAuthUser(user) {
     savedCountry: user.savedCountry ?? null,
     savedPhone:   user.savedPhone   ?? null,
     usedWelcomeCode: user.usedWelcomeCode ?? false, 
+    emailVerified: user.emailVerified ?? false,
   };
+}
+
+function getBackendUrl(req) {
+  return (
+    process.env.BACKEND_URL ||
+    `${req.protocol}://${req.get("host")}`
+  ).replace(/\/$/, "");
+}
+
+function getFrontendUrl() {
+  return (process.env.FRONTEND_URL || "http://localhost:5173").replace(/\/$/, "");
 }
 
 function normalizeEmail(email) {
@@ -84,6 +97,9 @@ async function register(req, res) {
       return res.status(409).json({ message: "Dieser Benutzer existiert bereits" });
 
     const hashedPassword = await bcrypt.hash(password, 10);
+    const jwtSecret = getJwtSecret(res);
+    if (!jwtSecret) return;
+
     const user = await prisma.user.create({
       data: {
         email:    normalizedEmail,
@@ -92,8 +108,29 @@ async function register(req, res) {
       },
     });
 
+    const confirmationToken = jwt.sign(
+      { userId: user.id, email: user.email, purpose: "email-confirmation" },
+      jwtSecret,
+      { expiresIn: process.env.EMAIL_CONFIRMATION_EXPIRES_IN || "24h" }
+    );
+    const confirmationUrl = `${getBackendUrl(req)}/api/auth/confirm/${confirmationToken}`;
+
+    try {
+      await sendEmailConfirmation({
+        to: user.email,
+        name: user.name,
+        confirmationUrl,
+      });
+    } catch (mailError) {
+      await prisma.user.delete({ where: { id: user.id } });
+      console.error("Failed to send confirmation email:", mailError);
+      return res.status(500).json({
+        message: "Konto konnte nicht erstellt werden, weil die Bestätigungs-E-Mail nicht gesendet werden konnte",
+      });
+    }
+
     return res.status(201).json({
-      message: "Benutzer erfolgreich erstellt",
+      message: "Konto erstellt. Bitte bestätige deine E-Mail-Adresse, bevor du dich anmeldest.",
       user:    toAuthUser(user),
     });
   } catch (error) {
@@ -125,6 +162,7 @@ async function login(req, res) {
         savedCountry: true,
         savedPhone:   true,
         usedWelcomeCode: true,
+        emailVerified: true,
       },
     });
 
@@ -135,6 +173,9 @@ async function login(req, res) {
 
     if (!passwordIsValid)
       return res.status(401).json({ message: "Ungültige E-Mail-Adresse oder ungültiges Passwort" });
+
+    if (!user.emailVerified)
+      return res.status(403).json({ message: "Bitte bestätige zuerst deine E-Mail-Adresse" });
 
     const jwtSecret = getJwtSecret(res);
     if (!jwtSecret) return;
@@ -224,11 +265,14 @@ async function confirmEmail(req, res) {
     if (!jwtSecret) return;
 
     const decoded = jwt.verify(token, jwtSecret);
+    if (decoded.purpose !== "email-confirmation")
+      return res.status(400).json({ message: "Ungültiger Bestätigungslink" });
+
     await prisma.user.update({
       where: { id: decoded.userId },
       data:  { emailVerified: true },
     });
-    return res.redirect("http://localhost:5173/login");
+    return res.redirect(`${getFrontendUrl()}/login?verified=1`);
   } catch (error) {
     console.error(error);
     return res.status(400).json({ message: "Ungültiger oder abgelaufener Bestätigungslink" });
