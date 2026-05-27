@@ -37,18 +37,18 @@ const sortOptions: { value: SortOption; label: string }[] = [
 ]
 
 const skinTypes = [
-  { name: 'Combination' },
-  { name: 'Dry'},
-  { name: 'Oily' },
-  { name: 'Normal' },
-  { name: 'Sensitive'},
+  { name: 'Combination', label: 'Mischhaut' },
+  { name: 'Dry', label: 'Trockene Haut'},
+  { name: 'Oily', label: 'Fettige Haut' },
+  { name: 'Normal', label: 'Normale Haut' },
+  { name: 'Sensitive', label: 'Sensible Haut'},
 ]
 
 const concerns = [
-  { name: 'Acne' },
-  { name: 'Anti-Aging' },
-  { name: 'Grosse Poren' },
-  { name: 'Rötungen' },
+  { name: 'Acne', label: 'Akne' },
+  { name: 'Anti-Aging', label: 'Anti-Aging' },
+  { name: 'Grosse Poren', label: 'Große Poren' },
+  { name: 'Rötungen', label: 'Rötungen' },
 ]
 
 const productTypes = [
@@ -61,8 +61,8 @@ const productTypes = [
 
 const productFeatures = [
   { key: 'vegan', label: 'Vegan'},
-  { key: 'alcoholFree', label: 'Alcohol Free'},
-  { key: 'fragranceFree', label: 'Fragrance Free'},
+  { key: 'alcoholFree', label: 'Alkoholfrei'},
+  { key: 'fragranceFree', label: 'Parfümfrei'},
 ]
 
 interface FilterSectionProps {
@@ -109,7 +109,7 @@ function ProductCard({ product }: { product: Product }) {
       name: product.name,
       category: product.category,
       price: product.price,
-      image: product.imageUrl || 'https://placehold.co/300x300?text=No+Image',
+      image: product.imageUrl || 'https://placehold.co/300x300?text=Kein+Bild',
     })
   }
 
@@ -132,7 +132,7 @@ function ProductCard({ product }: { product: Product }) {
         name: product.name,
         category: product.category,
         price: product.price,
-        image: product.imageUrl || 'https://placehold.co/300x300?text=No+Image',
+        image: product.imageUrl || 'https://placehold.co/300x300?text=Kein+Bild',
         rating: product.rating ?? 0,
         reviews: 0,
       })
@@ -145,7 +145,7 @@ function ProductCard({ product }: { product: Product }) {
         <Link to={`/product/${product.id}`} className="block">
           <div className="aspect-square overflow-hidden bg-[#F5F5F5]">
             <img
-              src={product.imageUrl || 'https://placehold.co/300x300?text=No+Image'}
+              src={product.imageUrl || 'https://placehold.co/300x300?text=Kein+Bild'}
               alt={product.name}
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
             />
@@ -174,7 +174,7 @@ function ProductCard({ product }: { product: Product }) {
             to="/login"
             className="font-medium text-[#D4A574] hover:underline"
           >
-            Zum Login
+            Zur Anmeldung
           </Link>
         </div>
         )}
@@ -437,7 +437,7 @@ export default function Shop() {
 
   const renderFilterContent = () => (
     <>
-      <FilterSection title="Skin Type">
+      <FilterSection title="Hauttyp">
         {skinTypes.map((type) => (
           <label key={type.name} className="flex items-center gap-2 cursor-pointer">
            <Checkbox
@@ -451,12 +451,12 @@ export default function Shop() {
                 )
               }
             />
-            <span className="text-sm text-foreground">{type.name}</span>
+            <span className="text-sm text-foreground">{type.label}</span>
           </label>
         ))}
       </FilterSection>
 
-      <FilterSection title="Concerns">
+      <FilterSection title="Hautanliegen">
         {concerns.map((concern) => (
           <label key={concern.name} className="flex items-center gap-2 cursor-pointer">
             <Checkbox
@@ -470,12 +470,12 @@ export default function Shop() {
                 )
               }
             />
-            <span className="text-sm text-foreground">{concern.name}</span>
+            <span className="text-sm text-foreground">{concern.label}</span>
           </label>
         ))}
       </FilterSection>
 
-      <FilterSection title="Product Features">
+      <FilterSection title="Produkteigenschaften">
         {productFeatures.map((feature) => (
           <label key={feature.key} className="flex items-center gap-2 cursor-pointer">
             <Checkbox
@@ -493,7 +493,7 @@ export default function Shop() {
         ))}
       </FilterSection>
 
-      <FilterSection title="Product Type">
+      <FilterSection title="Produkttyp">
         {productTypes.map((type) => (
           <label key={type.name} className="flex items-center gap-2 cursor-pointer">
            <Checkbox
@@ -512,7 +512,7 @@ export default function Shop() {
         ))}
       </FilterSection>
 
-      <FilterSection title="Price">
+      <FilterSection title="Preis">
           <div className="px-2 space-y-4"> 
             <div className="flex items-center gap-3">
               <div className="flex-1">

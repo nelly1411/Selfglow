@@ -182,7 +182,7 @@ export default function Login() {
       }
 
       if (!data.token || !data.user) {
-        setError('In der Login-Antwort fehlen Benutzerdaten.')
+        setError('In der Anmeldeantwort fehlen Benutzerdaten.')
         return
       }
 
@@ -261,7 +261,7 @@ export default function Login() {
               className="rounded-md border border-input bg-background px-3 py-2.5 text-base font-normal outline-none transition focus:ring-2 focus:ring-[#D4A574]"
               type="email"
               autoComplete="email"
-              placeholder="you@example.com"
+              placeholder="dein.name@beispiel.de"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
               aria-invalid={Boolean(fieldErrors.email)}

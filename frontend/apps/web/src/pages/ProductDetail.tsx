@@ -95,7 +95,7 @@ export default function ProductDetail() {
       name: product.name,
       category: product.category,
       price: product.price,
-      image: product.imageUrl || 'https://placehold.co/300x300?text=No+Image',
+      image: product.imageUrl || 'https://placehold.co/300x300?text=Kein+Bild',
     })
 
   }
@@ -116,7 +116,7 @@ export default function ProductDetail() {
         name: product.name,
         category: product.category,
         price: product.price,
-        image: product.imageUrl || 'https://placehold.co/300x300?text=No+Image',
+        image: product.imageUrl || 'https://placehold.co/300x300?text=Kein+Bild',
         rating: product.rating ?? 0,
         reviews: 0,
       })
@@ -179,7 +179,7 @@ export default function ProductDetail() {
         </p>
 
         <Link to="/shop">
-          <Button variant="outline">Zurück zum Shop</Button>
+          <Button variant="outline">Zurück zu den Produkten</Button>
         </Link>
       </div>
     )
@@ -217,7 +217,7 @@ export default function ProductDetail() {
           className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="h-4 w-4" />
-          Zurück zum Shop
+          Zurück zu den Produkten
         </Link>
 
         {fromChatbot && (
@@ -234,7 +234,7 @@ export default function ProductDetail() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
         <div className="rounded-2xl overflow-hidden flex items-start justify-center">
           <img
-            src={product.imageUrl || 'https://placehold.co/600x600?text=No+Image'}
+            src={product.imageUrl || 'https://placehold.co/600x600?text=Kein+Bild'}
             alt={product.name}
             className="max-h-[620px] w-auto object-contain"
           />
@@ -384,7 +384,7 @@ export default function ProductDetail() {
                   to="/login"
                   className="font-medium text-[#D4A574] hover:underline"
                 >
-                  Zum Login
+                  Zur Anmeldung
                 </Link>
               </div>
             )}
