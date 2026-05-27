@@ -56,7 +56,7 @@ const categories = [
   { name: 'Serum',               value: 'Serum',               img: serumBild },
   { name: 'Toner',               value: 'Toner',               img: tonerBild },
   { name: 'Sonnenschutz',        value: 'Sonnenschutz',        img: sonnenschutzBild },
-  { name: 'Reinigung',           value: 'Gesischtsreinigung',  img: cleanserBild },
+  { name: 'Reinigung',           value: 'Gesichtsreinigung',  img: cleanserBild },
 ]
 
 const features = [
@@ -199,7 +199,7 @@ export default function Home() {
                     <button onClick={() => navigate('/chatbot')} className="greet-option" style={optionStyle}>
                       <span style={{ fontSize: 22, flexShrink: 0 }}></span>
                       <div>
-                        <p style={{ fontWeight: 700, fontSize: 14, margin: 0, color: '#fff' }}>SelfGlow AI fragen</p>
+                        <p style={{ fontWeight: 700, fontSize: 14, margin: 0, color: '#fff' }}>SelfGlow KI fragen</p>
                         <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', margin: 0, fontWeight: 300 }}>Persönliche KI-Beratung</p>
                       </div>
                       <ArrowRight size={16} style={{ marginLeft: 'auto', color: '#D4A574', flexShrink: 0 }} />
@@ -234,7 +234,7 @@ export default function Home() {
                     <button onClick={() => navigate('/chatbot')} className="greet-option" style={optionStyle}>
                       <span style={{ fontSize: 22, flexShrink: 0 }}></span>
                       <div>
-                        <p style={{ fontWeight: 700, fontSize: 14, margin: 0, color: '#fff' }}>SelfGlow AI fragen</p>
+                        <p style={{ fontWeight: 700, fontSize: 14, margin: 0, color: '#fff' }}>SelfGlow KI fragen</p>
                         <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', margin: 0, fontWeight: 300 }}>Persönliche KI-Beratung</p>
                       </div>
                       <ArrowRight size={16} style={{ marginLeft: 'auto', color: '#D4A574', flexShrink: 0 }} />
@@ -258,7 +258,7 @@ export default function Home() {
                 Entdecke kuratierte Hautpflege — abgestimmt auf deinen Hauttyp und deine Bedürfnisse.
               </p>
               <Link to="/shop" className="pill-btn" style={{ display: 'inline-flex', alignItems: 'center', gap: 10, background: '#D4A574', color: '#fff', padding: '15px 32px', borderRadius: 100, fontSize: 13, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', textDecoration: 'none' }}>
-                Shop entdecken <ArrowRight size={15} />
+                Produkte entdecken <ArrowRight size={15} />
               </Link>
             </div>
           )}
@@ -290,7 +290,7 @@ export default function Home() {
         <div style={{ maxWidth: 1200, margin: '0 auto' }}>
           <div style={{ textAlign: 'center', marginBottom: 48 }}>
             <p style={{ fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#C4925A', marginBottom: 8, fontWeight: 500 }}>Stöbere & entdecke</p>
-            <h2 style={{ fontFamily: "'Outfit', sans-serif", fontSize: 'clamp(24px,3vw,38px)', fontWeight: 700, margin: 0, letterSpacing: '-0.02em' }}>Shop by Category</h2>
+            <h2 style={{ fontFamily: "'Outfit', sans-serif", fontSize: 'clamp(24px,3vw,38px)', fontWeight: 700, margin: 0, letterSpacing: '-0.02em' }}>Nach Kategorie einkaufen</h2>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gridTemplateRows: '320px 320px', gap: 14 }}>
             <Link to={`/shop?category=${encodeURIComponent(categories[0].value)}`} className="cat-card" style={{ gridRow: 'span 2', borderRadius: 20, overflow: 'hidden', position: 'relative', display: 'block' }}>

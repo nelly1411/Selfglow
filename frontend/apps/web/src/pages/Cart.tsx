@@ -86,7 +86,7 @@ export default function Cart() {
       </div>
 
       <div className="grid lg:grid-cols-3 gap-8">
-        {/* Cart Items */}
+        {/* Warenkorb-Artikel */}
         <div className="lg:col-span-2 space-y-4">
           <label className="flex items-center gap-2 text-sm text-muted-foreground">
             <input
@@ -170,7 +170,7 @@ export default function Cart() {
           ))}
         </div>
 
-        {/* Order Summary */}
+        {/* Bestellübersicht */}
         <div className="lg:col-span-1">
           <div className="sticky top-24 bg-[#F5E6D3] rounded-xl p-6">
             <h2 className="text-lg font-bold text-foreground mb-4">Bestellübersicht</h2>
@@ -215,4 +215,3 @@ export default function Cart() {
     </div>
   )
 }
-

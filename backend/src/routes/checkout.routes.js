@@ -14,7 +14,7 @@ function optionalAuth(req, res, next) {
   return authMiddleware(req, res, next)
 }
 
-router.post('/', authMiddleware, checkoutController.createOrder)
+router.post('/', optionalAuth, checkoutController.createOrder)
 router.get('/orders', authMiddleware, checkoutController.getMyOrders)
 
 module.exports = router

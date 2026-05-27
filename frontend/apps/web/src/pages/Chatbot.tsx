@@ -50,7 +50,7 @@ type ChatResponseData = {
 const starterQuestions = [
   'Ich habe ölige Haut und suche etwas gegen Unreinheiten.',
   'Welche parfumfreien Produkte passen zu empfindlicher Haut?',
-  'I need a simple vegan skincare routine.',
+  'Ich brauche eine einfache vegane Hautpflegeroutine.',
 ]
 
 const chatStorageKey = 'selfglow-chatbot-conversations'
@@ -129,7 +129,7 @@ function renderMessageContent(message: Message) {
     <>
       {mainContent && renderStructuredText(mainContent)}
       <p className="mt-2 text-xs leading-snug text-muted-foreground">
-        <span className="font-medium">Note:</span> {medicalDisclaimer}
+        <span className="font-medium">Hinweis:</span> {medicalDisclaimer}
       </p>
     </>
   )
@@ -277,7 +277,7 @@ export default function Chatbot() {
         body: JSON.stringify({ message: trimmedMessage, history: chatHistory, contextProductIds }),
       })
       if (!response.ok) throw new Error('Die KI-Beratung konnte gerade nicht antworten.')
-      if (!response.body) throw new Error('Streaming wird von diesem Browser nicht unterstützt.')
+      if (!response.body) throw new Error('Live-Antworten werden von diesem Browser nicht unterstützt.')
 
       const reader = response.body.getReader()
       const decoder = new TextDecoder()
@@ -359,7 +359,7 @@ export default function Chatbot() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ productIds: [product.id], message: lastUserMessage?.content || message.content }),
       })
-      if (!response.ok) throw new Error('Die AI-Erklärung konnte gerade nicht erstellt werden.')
+      if (!response.ok) throw new Error('Die KI-Erklärung konnte gerade nicht erstellt werden.')
       const data: { answer: string } = await response.json()
       updateConversation(conversationId, (currentMessages) => [
         ...currentMessages,
@@ -367,7 +367,7 @@ export default function Chatbot() {
       ])
     } catch (err) {
       console.error(err)
-      setError('Die AI-Erklärung ist gerade nicht erreichbar. Bitte versuche es gleich nochmal.')
+      setError('Die KI-Erklärung ist gerade nicht erreichbar. Bitte versuche es gleich nochmal.')
     } finally {
       setExplainingMessageId(null)
     }
@@ -476,7 +476,7 @@ export default function Chatbot() {
                       )}
                       <div className={cn('max-w-[min(620px,85%)] rounded-lg px-3 py-2 text-sm leading-relaxed', message.role === 'user' ? 'bg-[#D4A574] text-white' : 'bg-[#F5F5F5] text-foreground')}>
                         {message.role === 'assistant' && message.content.trim().length === 0 ? (
-                          <span className="text-muted-foreground">Thinking...</span>
+                          <span className="text-muted-foreground">Denke nach...</span>
                         ) : (
                           renderMessageContent(message)
                         )}
@@ -495,7 +495,7 @@ export default function Chatbot() {
                             <Link to={`/product/${product.id}?from=chatbot`} className="group block">
                               <div className="flex gap-2 p-2">
                                 <img
-                                  src={product.imageUrl || 'https://placehold.co/120x120?text=No+Image'}
+                                  src={product.imageUrl || 'https://placehold.co/120x120?text=Kein+Bild'}
                                   alt={product.name}
                                   className="h-16 w-16 shrink-0 rounded-md bg-[#F5F5F5] object-cover"
                                 />
@@ -517,7 +517,7 @@ export default function Chatbot() {
                                   className="h-8 w-full rounded-full border-[#E8D5C0] px-3 text-xs text-[#A97745] hover:bg-[#FDF7F0]"
                                 >
                                   <Sparkles className="mr-1.5 h-3.5 w-3.5" />
-                                  {explainingMessageId === `${message.id}-${product.id}` ? 'AI erklärt...' : 'AI erklären'}
+                                  {explainingMessageId === `${message.id}-${product.id}` ? 'KI erklärt...' : 'Von KI erklären lassen'}
                                 </Button>
                               </div>
                             )}
@@ -533,7 +533,7 @@ export default function Chatbot() {
                     <div className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#F5E6D3]">
                       <Bot className="h-3.5 w-3.5 text-[#A97745]" />
                     </div>
-                    <div className="rounded-lg bg-[#F5F5F5] px-3 py-2 text-sm text-muted-foreground">Thinking...</div>
+                    <div className="rounded-lg bg-[#F5F5F5] px-3 py-2 text-sm text-muted-foreground">Denke nach...</div>
                   </div>
                 )}
 
@@ -542,7 +542,7 @@ export default function Chatbot() {
                     <div className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#F5E6D3]">
                       <Bot className="h-3.5 w-3.5 text-[#A97745]" />
                     </div>
-                    <div className="rounded-lg bg-[#F5F5F5] px-3 py-2 text-sm text-muted-foreground">AI erklärt das Produkt...</div>
+                    <div className="rounded-lg bg-[#F5F5F5] px-3 py-2 text-sm text-muted-foreground">KI erklärt das Produkt...</div>
                   </div>
                 )}
               </div>
@@ -598,7 +598,7 @@ export default function Chatbot() {
                 ))}
               </div>
               <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
-                Die Beratung nutzt Produktdaten aus dem Shop und ersetzt keine medizinische Beratung.
+                Die Beratung nutzt Produktdaten aus dem Sortiment und ersetzt keine medizinische Beratung.
               </p>
             </section>
           </main>
