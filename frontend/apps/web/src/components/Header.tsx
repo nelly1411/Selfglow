@@ -329,7 +329,40 @@ export default function Header() {
             </button>
           </div>
         </div>
+
       </header>
+
+      {showLogout && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
+            <h2 className="mb-2 text-lg font-bold text-[#2a1c10]">
+              Wirklich abmelden?
+            </h2>
+
+            <p className="mb-6 text-sm text-gray-600">
+              Möchtest du dich wirklich von deinem SelfGlow-Konto abmelden?
+            </p>
+
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setShowLogout(false)}
+                className="flex-1 rounded-full border border-gray-300 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Abbrechen
+              </button>
+
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="flex-1 rounded-full bg-[#D4A574] py-2.5 text-sm font-medium text-white hover:bg-[#c4945f]"
+              >
+                Abmelden
+              </button>
+            </div>
+          </div>
+        </div>
+    )}
     </>
   )
 }
