@@ -8,6 +8,9 @@ const EMAIL_PATTERN            = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const SPECIAL_CHARACTER_PATTERN = /[^A-Za-z0-9]/;
 const USER_NAME_PATTERN        = /^[A-Za-z0-9 _-]+$/;
 
+const REQUIRE_EMAIL_VERIFICATION =
+  process.env.REQUIRE_EMAIL_VERIFICATION === "true";
+
 function getJwtSecret(res) {
   if (!process.env.JWT_SECRET) {
     console.error("JWT_SECRET is not configured");
@@ -105,10 +108,11 @@ async function register(req, res) {
         email:    normalizedEmail,
         password: hashedPassword,   // ← FIX: war passwordHash
         name:     trimmedName || null,
+        emailVerified: !REQUIRE_EMAIL_VERIFICATION,
       },
     });
 
-    const confirmationToken = jwt.sign(
+    /*const confirmationToken = jwt.sign(
       { userId: user.id, email: user.email, purpose: "email-confirmation" },
       jwtSecret,
       { expiresIn: process.env.EMAIL_CONFIRMATION_EXPIRES_IN || "24h" }
@@ -127,10 +131,36 @@ async function register(req, res) {
       return res.status(500).json({
         message: "Konto konnte nicht erstellt werden, weil die Bestätigungs-E-Mail nicht gesendet werden konnte",
       });
-    }
+    }*/
+      if (REQUIRE_EMAIL_VERIFICATION) {
+        const confirmationToken = jwt.sign(
+          { userId: user.id, email: user.email, purpose: "email-confirmation" },
+          jwtSecret,
+          { expiresIn: process.env.EMAIL_CONFIRMATION_EXPIRES_IN || "24h" }
+        );
+      
+        const confirmationUrl = `${getBackendUrl(req)}/api/auth/confirm/${confirmationToken}`;
+      
+        try {
+          await sendEmailConfirmation({
+            to: user.email,
+            name: user.name,
+            confirmationUrl,
+          });
+        } catch (mailError) {
+          await prisma.user.delete({ where: { id: user.id } });
+          console.error("Failed to send confirmation email:", mailError);
+          return res.status(500).json({
+            message:
+              "Konto konnte nicht erstellt werden, weil die Bestätigungs-E-Mail nicht gesendet werden konnte",
+          });
+        }
+      }
 
     return res.status(201).json({
-      message: "Konto erstellt. Bitte bestätige deine E-Mail-Adresse, bevor du dich anmeldest.",
+      message: REQUIRE_EMAIL_VERIFICATION
+      ? "Konto erstellt. Bitte bestätige deine E-Mail-Adresse, bevor du dich anmeldest."
+      : "Konto erstellt. Du kannst dich jetzt anmelden.",
       user:    toAuthUser(user),
     });
   } catch (error) {
@@ -174,9 +204,14 @@ async function login(req, res) {
     if (!passwordIsValid)
       return res.status(401).json({ message: "Ungültige E-Mail-Adresse oder ungültiges Passwort" });
 
-    if (!user.emailVerified)
+    /*if (!user.emailVerified)
       return res.status(403).json({ message: "Bitte bestätige zuerst deine E-Mail-Adresse" });
-
+    */
+    if (REQUIRE_EMAIL_VERIFICATION && !user.emailVerified) {
+      return res.status(403).json({
+        message: "Bitte bestätige zuerst deine E-Mail-Adresse",
+      });
+    }
     const jwtSecret = getJwtSecret(res);
     if (!jwtSecret) return;
 
