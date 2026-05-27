@@ -56,7 +56,7 @@ const categories = [
   { name: 'Serum',               value: 'Serum',               img: serumBild },
   { name: 'Toner',               value: 'Toner',               img: tonerBild },
   { name: 'Sonnenschutz',        value: 'Sonnenschutz',        img: sonnenschutzBild },
-  { name: 'Reinigung',           value: 'Gesischtsreinigung',  img: cleanserBild },
+  { name: 'Reinigung',           value: 'Gesichtsreinigung',  img: cleanserBild },
 ]
 
 const features = [
