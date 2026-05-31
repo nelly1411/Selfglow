@@ -39,14 +39,18 @@ export default function ProductDetail() {
   const { items, addToCart, updateQuantity, removeFromCart } = useCart()
   const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist()
   const { isLoggedIn, user, token } = useAuth()
-  const { reviews, getProductReviews, getAverageRating, deleteReview } = useReviews();
-  const [showLoginHint, setShowLoginHint] = useState(false)
+  const { reviews, getProductReviews, getAverageRating, deleteReview } = useReviews()
 
+  const [showLoginHint, setShowLoginHint] = useState(false)
   const [product, setProduct] = useState<Product | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [openSections, setOpenSections] = useState<string[]>(['description'])
+
   const [addedToCart, setAddedToCart] = useState(false)
+  const [cartToastLeaving, setCartToastLeaving] = useState(false)
+  const [cartToastEntered, setCartToastEntered] = useState(false)
+
   const [averageRating, setAverageRating] = useState(0)
   const [reviewCount, setReviewCount] = useState(0)
   const [isReviewFormOpen, setIsReviewFormOpen] = useState(false)
@@ -78,19 +82,23 @@ export default function ProductDetail() {
   useEffect(() => {
     async function fetchReviews() {
       if (!id) return
+
       const productId = Number(id)
+
       await getProductReviews(productId)
+
       const ratingData = await getAverageRating(productId)
       setAverageRating(ratingData.average)
       setReviewCount(ratingData.count)
     }
+
     fetchReviews()
   }, [id])
 
-  function handleAddToCart() {
+  async function handleAddToCart() {
     if (!product) return
 
-    addToCart({
+    await addToCart({
       id: product.id,
       name: product.name,
       category: product.category,
@@ -98,6 +106,22 @@ export default function ProductDetail() {
       image: product.imageUrl || 'https://placehold.co/300x300?text=Kein+Bild',
     })
 
+    setAddedToCart(true)
+    setCartToastLeaving(false)
+    setCartToastEntered(false)
+
+    setTimeout(() => {
+      setCartToastEntered(true)
+    }, 50)
+
+    setTimeout(() => {
+      setCartToastLeaving(true)
+    }, 2200)
+
+    setTimeout(() => {
+      setAddedToCart(false)
+      setCartToastEntered(false)
+    }, 2800)
   }
 
   function handleWishlistToggle() {
@@ -135,19 +159,23 @@ export default function ProductDetail() {
     if (!token) return
     setDeleteConfirmId(reviewId)
   }
+
   async function confirmDeleteReview() {
     if (!token || !deleteConfirmId) return
+
     setDeletingReviewId(deleteConfirmId)
 
     const success = await deleteReview(deleteConfirmId, token)
 
     if (success && id) {
       const productId = Number(id)
+
       await getProductReviews(productId)
+
       const ratingData = await getAverageRating(productId)
       setAverageRating(ratingData.average)
       setReviewCount(ratingData.count)
-  }
+    }
 
     setDeletingReviewId(null)
     setDeleteConfirmId(null)
@@ -155,8 +183,11 @@ export default function ProductDetail() {
 
   function handleReviewAdded() {
     if (!id) return
+
     const productId = Number(id)
+
     getProductReviews(productId)
+
     getAverageRating(productId).then((data) => {
       setAverageRating(data.average)
       setReviewCount(data.count)
@@ -211,6 +242,25 @@ export default function ProductDetail() {
 
   return (
     <div className="container mx-auto px-4 py-10">
+      {addedToCart && (
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[100] pointer-events-none">
+          <div
+            className={cn(
+              'flex items-center gap-3 rounded-2xl bg-[#D4A574] px-6 py-4 text-white shadow-2xl transition-all duration-500 ease-out',
+              !cartToastEntered && 'opacity-0 -translate-y-4 scale-95',
+              cartToastEntered && !cartToastLeaving && 'opacity-100 translate-y-0 scale-100',
+              cartToastLeaving && 'opacity-0 -translate-y-3 scale-95'
+            )}
+          >
+            <CheckCircle className="h-5 w-5" />
+
+            <span className="text-sm font-medium">
+              Produkt wurde zum Warenkorb hinzugefügt
+            </span>
+          </div>
+        </div>
+      )}
+
       <div className="mb-8 flex flex-wrap items-center gap-4">
         <Link
           to="/shop"
@@ -249,7 +299,9 @@ export default function ProductDetail() {
             {product.name}
           </h1>
 
-          <p className="text-muted-foreground mb-4">{product.brand}</p>
+          <p className="text-muted-foreground mb-4">
+            {product.brand}
+          </p>
 
           <div className="flex items-center gap-2 mb-5">
             <div className="flex">
@@ -267,8 +319,8 @@ export default function ProductDetail() {
             </div>
 
             <span className="text-sm text-muted-foreground">
-              {displayRating.toFixed(1)} ({reviewCount}{' '})
-              {reviewCount === 1 ? 'Bewertung' : 'Bewertungen'}
+              {displayRating.toFixed(1)} ({reviewCount}{' '}
+              {reviewCount === 1 ? 'Bewertung' : 'Bewertungen'})
             </span>
           </div>
 
@@ -311,18 +363,18 @@ export default function ProductDetail() {
           </div>
 
           <div className="relative flex gap-4">
-           {isInCart && cartItem ? (
+            {isInCart && cartItem ? (
               <div className="flex-1 flex items-center justify-center gap-4 bg-[#D4A574] text-white rounded-full py-2">
-                <span className="text-sm ">Menge</span>
+                <span className="text-sm">Menge</span>
 
                 <button
                   onClick={() => {
-                  if (cartItem.quantity === 1) {
-                    removeFromCart(product.id)
-                  } else {
-                    updateQuantity(product.id, cartItem.quantity - 1)
-                  }
-                }}
+                    if (cartItem.quantity === 1) {
+                      removeFromCart(product.id)
+                    } else {
+                      updateQuantity(product.id, cartItem.quantity - 1)
+                    }
+                  }}
                   className="px-2 disabled:opacity-40 disabled:cursor-not-allowed"
                   aria-label="Menge verringern"
                 >
@@ -392,7 +444,6 @@ export default function ProductDetail() {
         </div>
       </div>
 
-      {/*reviews*/}
       <div className="mt-12 border-t pt-10 px-1">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold">Kundenbewertungen</h2>
@@ -418,18 +469,18 @@ export default function ProductDetail() {
                     <div className="w-10 h-10 rounded-full bg-[#F5E6D3] flex items-center justify-center flex-shrink-0">
                       <User className="h-5 w-5 text-[#D4A574]" />
                     </div>
- 
+
                     <div className="flex-1">
                       <span className="font-medium text-foreground">
                         {review.user?.name || review.user?.email?.split('@')[0]}
                       </span>
+
                       <p className="text-xs text-muted-foreground">
                         {new Date(review.createdAt).toLocaleDateString('de-DE')}
                       </p>
                     </div>
                   </div>
- 
-                  {/*Delete button*/}
+
                   {user && review.userId === user.id && (
                     <button
                       onClick={() => handleDeleteReview(review.id)}
@@ -442,8 +493,7 @@ export default function ProductDetail() {
                     </button>
                   )}
                 </div>
- 
-                {/* Sterne */}
+
                 <div className="flex mb-2">
                   {[...Array(5)].map((_, i) => (
                     <Star
@@ -457,20 +507,22 @@ export default function ProductDetail() {
                     />
                   ))}
                 </div>
- 
-                <p className="text-muted-foreground text-sm">{review.reviewText}</p>
+
+                <p className="text-muted-foreground text-sm">
+                  {review.reviewText}
+                </p>
               </div>
             ))}
           </div>
         )}
- 
+
         <ReviewForm
           productId={product.id}
           isOpen={isReviewFormOpen}
           onClose={() => setIsReviewFormOpen(false)}
           onReviewAdded={handleReviewAdded}
         />
-        {/*delete confirm modal*/}
+
         {deleteConfirmId && (
           <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
             <div className="bg-white w-full max-w-[560px] rounded-[36px] shadow-[0_25px_60px_rgba(0,0,0,0.18)] border border-[#EFE6DC] px-10 py-9 text-center">
@@ -479,11 +531,11 @@ export default function ProductDetail() {
               </h3>
 
               <p className="text-muted-foreground mb-8">
-                Möchten Sie diese bewertung wirklich löschen?
+                Möchtest du diese Bewertung wirklich löschen?
               </p>
 
               <div className="flex gap-3">
-                <Button 
+                <Button
                   variant="outline"
                   onClick={() => setDeleteConfirmId(null)}
                   className="flex-1 rounded-full hover:bg-[#F5E6D3] hover:border-[#D4A574]"
