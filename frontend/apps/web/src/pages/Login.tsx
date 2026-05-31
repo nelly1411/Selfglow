@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import {
+  Check,
   CheckCircle2,
   Eye,
   EyeOff,
@@ -11,6 +12,7 @@ import {
 } from 'lucide-react'
 import { apiUrl } from '@/lib/api'
 import { useAuth, type User } from '@/context/AuthContext'
+import { cn } from '@workspace/ui/lib/utils'
 
 type AuthResponse = {
   message?: string
@@ -19,6 +21,7 @@ type AuthResponse = {
 }
 
 type FieldErrors = Partial<Record<'name' | 'email' | 'password' | 'confirmPassword', string>>
+
 type LoginLocationState = {
   from?: {
     pathname?: string
@@ -32,43 +35,52 @@ const specialCharacterPattern = /[^A-Za-z0-9]/
 const userNamePattern = /^[A-Za-z0-9 _-]+$/
 
 function getPasswordValidationMessage(password: string) {
-  if (password.length < 8) {
-    return 'Das Passwort muss mindestens 8 Zeichen lang sein.'
-  }
-
-  if (!/[A-Z]/.test(password)) {
-    return 'Das Passwort muss mindestens einen Großbuchstaben enthalten.'
-  }
-
-  if (!/[a-z]/.test(password)) {
-    return 'Das Passwort muss mindestens einen Kleinbuchstaben enthalten.'
-  }
-
-  if (!/[0-9]/.test(password)) {
-    return 'Das Passwort muss mindestens eine Zahl enthalten.'
-  }
-
-  if (!specialCharacterPattern.test(password)) {
-    return 'Das Passwort muss mindestens ein Sonderzeichen enthalten.'
-  }
-
+  if (password.length < 8) return 'Das Passwort muss mindestens 8 Zeichen lang sein.'
+  if (!/[A-Z]/.test(password)) return 'Das Passwort muss mindestens einen Großbuchstaben enthalten.'
+  if (!/[a-z]/.test(password)) return 'Das Passwort muss mindestens einen Kleinbuchstaben enthalten.'
+  if (!/[0-9]/.test(password)) return 'Das Passwort muss mindestens eine Zahl enthalten.'
+  if (!specialCharacterPattern.test(password)) return 'Das Passwort muss mindestens ein Sonderzeichen enthalten.'
   return ''
 }
 
 function getUserNameValidationMessage(userName: string) {
-  if (!userName) {
-    return ''
-  }
-
+  if (!userName) return ''
   if (userName.length < 2 || userName.length > 30) {
     return 'Der Benutzername muss zwischen 2 und 30 Zeichen lang sein.'
   }
-
   if (!userNamePattern.test(userName)) {
     return 'Der Benutzername darf nur Buchstaben, Zahlen, Leerzeichen, Unterstriche und Bindestriche enthalten.'
   }
-
   return ''
+}
+
+function PasswordRequirement({
+  fulfilled,
+  text,
+}: {
+  fulfilled: boolean
+  text: string
+}) {
+  return (
+    <div
+      className={cn(
+        'flex items-center gap-2 text-xs transition-colors',
+        fulfilled ? 'text-green-700' : 'text-muted-foreground'
+      )}
+    >
+      <span
+        className={cn(
+          'flex h-4 w-4 items-center justify-center rounded-full border transition-colors',
+          fulfilled
+            ? 'border-green-600 bg-green-600 text-white'
+            : 'border-muted-foreground/40'
+        )}
+      >
+        {fulfilled && <Check className="h-3 w-3" />}
+      </span>
+      {text}
+    </div>
+  )
 }
 
 export default function Login() {
@@ -89,6 +101,14 @@ export default function Login() {
   const navigate = useNavigate()
   const location = useLocation()
   const locationState = location.state as LoginLocationState | null
+
+  const passwordRequirements = [
+    { text: 'Mindestens 8 Zeichen', fulfilled: password.length >= 8 },
+    { text: 'Mindestens ein Großbuchstabe', fulfilled: /[A-Z]/.test(password) },
+    { text: 'Mindestens ein Kleinbuchstabe', fulfilled: /[a-z]/.test(password) },
+    { text: 'Mindestens eine Zahl', fulfilled: /[0-9]/.test(password) },
+    { text: 'Mindestens ein Sonderzeichen', fulfilled: specialCharacterPattern.test(password) },
+  ]
 
   useEffect(() => {
     const params = new URLSearchParams(location.search)
@@ -117,18 +137,12 @@ export default function Login() {
       errors.password = 'Gib dein Passwort ein.'
     } else if (mode === 'register') {
       const passwordValidationMessage = getPasswordValidationMessage(password)
-
-      if (passwordValidationMessage) {
-        errors.password = passwordValidationMessage
-      }
+      if (passwordValidationMessage) errors.password = passwordValidationMessage
     }
 
     if (mode === 'register') {
       const userNameValidationMessage = getUserNameValidationMessage(normalizedName)
-
-      if (userNameValidationMessage) {
-        errors.name = userNameValidationMessage
-      }
+      if (userNameValidationMessage) errors.name = userNameValidationMessage
 
       if (!confirmPassword) {
         errors.confirmPassword = 'Bestätige dein Passwort.'
@@ -147,18 +161,14 @@ export default function Login() {
     setSuccess('')
     setFieldErrors({})
 
-    if (!validateForm()) {
-      return
-    }
+    if (!validateForm()) return
 
     setIsSubmitting(true)
 
     try {
       const response = await fetch(apiUrl(`/api/auth/${mode}`), {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: email.trim(),
           password,
@@ -187,6 +197,7 @@ export default function Login() {
       }
 
       login(data.token, { ...data.user, token: data.token }, rememberMe)
+
       navigate(
         `${locationState?.from?.pathname || '/'}${locationState?.from?.search || ''}${
           locationState?.from?.hash || ''
@@ -251,7 +262,9 @@ export default function Login() {
                 onChange={(event) => setName(event.target.value)}
                 aria-invalid={Boolean(fieldErrors.name)}
               />
-              {fieldErrors.name && <span className="text-sm font-normal text-red-600">{fieldErrors.name}</span>}
+              {fieldErrors.name && (
+                <span className="text-sm font-normal text-red-600">{fieldErrors.name}</span>
+              )}
             </label>
           )}
 
@@ -266,7 +279,9 @@ export default function Login() {
               onChange={(event) => setEmail(event.target.value)}
               aria-invalid={Boolean(fieldErrors.email)}
             />
-            {fieldErrors.email && <span className="text-sm font-normal text-red-600">{fieldErrors.email}</span>}
+            {fieldErrors.email && (
+              <span className="text-sm font-normal text-red-600">{fieldErrors.email}</span>
+            )}
           </label>
 
           <label className="flex flex-col gap-2 text-sm font-medium text-foreground">
@@ -282,29 +297,29 @@ export default function Login() {
                 aria-invalid={Boolean(fieldErrors.password)}
               />
               <button
-                type="button"
-                className="absolute right-2 top-1/2 rounded-full p-2 text-muted-foreground transition hover:bg-accent hover:text-foreground"
-                onClick={() => setShowPassword((current) => !current)}
-                aria-label={showPassword ? 'Passwort ausblenden' : 'Passwort anzeigen'}
-              >
-                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
+  type="button"
+  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground transition hover:text-foreground"
+  onClick={() => setShowPassword((current) => !current)}
+  aria-label={showPassword ? 'Passwort ausblenden' : 'Passwort anzeigen'}
+>
+  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+</button>
             </div>
+
             {fieldErrors.password && (
               <span className="text-sm font-normal text-red-600">{fieldErrors.password}</span>
             )}
+
             {mode === 'register' && (
-              <span className="text-xs font-normal leading-5 text-muted-foreground">
-                Das Passwort muss mindestens 8 Zeichen lang sein,
-                <br />
-                einen Großbuchstaben,
-                <br />
-                einen Kleinbuchstaben,
-                <br />
-                eine Zahl
-                <br />
-                und ein Sonderzeichen wie !, @, #, $ oder % enthalten.
-              </span>
+              <div className="mt-1 rounded-xl border border-[#E8D5C0] bg-[#FDF7F0] p-3 space-y-2">
+                {passwordRequirements.map((requirement) => (
+                  <PasswordRequirement
+                    key={requirement.text}
+                    fulfilled={requirement.fulfilled}
+                    text={requirement.text}
+                  />
+                ))}
+              </div>
             )}
           </label>
 
@@ -322,13 +337,13 @@ export default function Login() {
                   aria-invalid={Boolean(fieldErrors.confirmPassword)}
                 />
                 <button
-                  type="button"
-                  className="absolute right-2 top-1/2 rounded-full p-2 text-muted-foreground transition hover:bg-accent hover:text-foreground"
-                  onClick={() => setShowConfirmPassword((current) => !current)}
-                  aria-label={showConfirmPassword ? 'Passwortbestätigung ausblenden' : 'Passwortbestätigung anzeigen'}
-                >
-                  {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
+  type="button"
+  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground transition hover:text-foreground"
+  onClick={() => setShowConfirmPassword((current) => !current)}
+  aria-label={showConfirmPassword ? 'Passwortbestätigung ausblenden' : 'Passwortbestätigung anzeigen'}
+>
+  {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+</button>
               </div>
               {fieldErrors.confirmPassword && (
                 <span className="text-sm font-normal text-red-600">{fieldErrors.confirmPassword}</span>
@@ -348,7 +363,11 @@ export default function Login() {
             </label>
           )}
 
-          {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
+          {error && (
+            <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">
+              {error}
+            </p>
+          )}
 
           {success && (
             <p className="flex items-center gap-2 rounded-md bg-green-50 px-3 py-2 text-sm text-green-700">
