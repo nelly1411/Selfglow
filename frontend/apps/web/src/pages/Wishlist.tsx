@@ -133,8 +133,7 @@ export default function Wishlist() {
           return (
             <div
               key={item.id}
-              className="group bg-background rounded-xl border overflow-hidden hover:shadow-lg transition"
-            >
+className="group flex h-full flex-col bg-background rounded-xl border overflow-hidden hover:shadow-lg transition"            >
 
               {/* IMAGE */}
               <div className="relative aspect-square bg-[#F5F5F5]">
@@ -156,15 +155,13 @@ export default function Wishlist() {
               </div>
 
               {/* CONTENT */}
-              <div className="p-4">
-
+<div className="flex flex-1 flex-col p-4">
                 <p className="text-xs text-muted-foreground mb-1">
                   {item.category}
                 </p>
 
                 <Link to={`/product/${item.id}`}>
-                  <h3 className="text-sm font-medium mb-2 hover:text-[#D4A574]">
-                    {item.name}
+<h3 className="min-h-[56px] text-sm font-medium mb-2 hover:text-[#D4A574]">                    {item.name}
                   </h3>
                 </Link>
 
@@ -190,11 +187,11 @@ export default function Wishlist() {
                 </div>
 
                 {/* PRICE */}
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="font-bold">
-                    €{item.price.toFixed(2)}
-                  </span>
-                </div>
+                <div className="mt-auto flex items-center gap-2 mb-3">
+  <span className="font-bold">
+    {item.price.toFixed(2).replace('.', ',')} €
+  </span>
+</div>
 
                 {/* CART BUTTON */}
                 <Button

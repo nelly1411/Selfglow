@@ -11,10 +11,10 @@ export default function Layout() {
   const isChatbotPage = location.pathname === '/chatbot'
 
   return (
-    <>
+    <div className="min-h-screen flex flex-col">
       <Header />
 
-      <main className={isHome ? '' : 'pt-[78px]'}>
+      <main className={`${isHome ? '' : 'pt-[78px]'} flex-1`}>
         <Outlet />
       </main>
 
@@ -31,6 +31,6 @@ export default function Layout() {
       )}
 
       <Footer />
-    </>
+    </div>
   )
 }
