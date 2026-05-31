@@ -17,6 +17,7 @@ import Checkout from './pages/Checkout'
 import Profile from './pages/Profile'
 import { useAuth } from './context/AuthContext'
 import ThankYou from './pages/ThankYou'
+import OrderDetail from './pages/OrderDetail.tsx'
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
   const { isLoggedIn } = useAuth()
@@ -55,6 +56,14 @@ function App() {
                   </ProtectedRoute>
                 }
               />
+              <Route
+  path="/profile/orders/:orderId"
+  element={
+    <ProtectedRoute>
+      <OrderDetail />
+    </ProtectedRoute>
+  }
+/>
             </Route>
           </Routes>
         </ReviewsProvider>

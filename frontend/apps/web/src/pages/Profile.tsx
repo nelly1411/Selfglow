@@ -65,13 +65,16 @@ const CSS = `
   .p-card { background:#fff; border:1px solid #F0DCC8; border-radius:20px; transition:box-shadow 0.2s; }
   .p-card:hover { box-shadow: 0 8px 32px rgba(212,165,116,0.12); }
   .p-tab { cursor:pointer; padding:10px 20px; border-radius:100px; font-size:14px; font-weight:500; transition:all 0.2s; border:none; background:transparent; font-family:'Outfit',sans-serif; }
-  .p-tab.active { background:#1c1209; color:#fff; }
+.p-tab.active { background:#D4A574; color:#fff; }
   .p-tab:not(.active) { color:#9a7a5a; }
   .p-tab:not(.active):hover { background:#FDF6EE; color:#1c1209; }
-  .p-stat { background:linear-gradient(135deg,#fff 0%,#FDF6EE 100%); border:1px solid #F0DCC8; border-radius:20px; padding:24px; }
+.p-stat { background:linear-gradient(135deg,#fff 0%,#FFF8F1 100%);
+  border:1px solid #F0DCC8; border-radius:20px; padding:24px; }
   .p-review-card { background:#FDFAF6; border:1px solid #F0DCC8; border-radius:16px; padding:18px; transition:all 0.2s; }
   .p-review-card:hover { border-color:#D4A574; box-shadow:0 4px 16px rgba(212,165,116,0.12); }
-  .p-order-card { border:1px solid #F0DCC8; border-radius:16px; padding:20px; transition:all 0.2s; }
+.p-order-card {
+  background:#fff;
+  border:1px solid #E8D5C0; border-radius:16px; padding:20px; transition:all 0.2s; }
   .p-order-card:hover { border-color:#D4A574; box-shadow:0 4px 16px rgba(212,165,116,0.1); }
   .p-delete-btn { background:none; border:none; cursor:pointer; color:#c4a882; transition:color 0.2s; padding:4px; border-radius:8px; }
   .p-delete-btn:hover { color:#c47a5a; background:#fff0f0; }
@@ -158,7 +161,7 @@ export default function Profile() {
     <div className="profile-root" style={{ background: '#FDFAF6', minHeight: '100vh', padding: '0 0 60px' }}>
 
       {/* ── Hero Banner ── */}
-      <div style={{ background: 'linear-gradient(135deg, #1c1209 0%, #3a2410 100%)', padding: '72px 0 96px', marginBottom: -48 }}>
+      <div style={{ background: 'linear-gradient(135deg, #3A2416 0%, #6F4E37 100%)', padding: '72px 0 96px', marginBottom: -48 }}>
         <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 24px' }}>
           <div className="p-fade" style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
             <div style={{ width: 72, height: 72, borderRadius: '50%', background: 'rgba(212,165,116,0.2)', border: '2px solid rgba(212,165,116,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -175,7 +178,8 @@ export default function Profile() {
               </h1>
               <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', margin: '4px 0 0', fontWeight: 300 }}>{user?.email}</p>
             </div>
-            <Link to="/shop" style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 8, background: '#D4A574', color: '#fff', padding: '12px 24px', borderRadius: 100, fontSize: 13, fontWeight: 600, textDecoration: 'none', transition: 'background 0.2s' }}>
+            <Link to="/shop" style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 8,background: 'linear-gradient(135deg, #D4A574 0%, #C49464 100%)',
+boxShadow: '0 6px 16px rgba(212,165,116,0.25)', color: '#fff', padding: '12px 24px', borderRadius: 100, fontSize: 13, fontWeight: 600, textDecoration: 'none', transition: 'background 0.2s' }}>
               <Sparkles size={14} /> Produkte
             </Link>
           </div>
@@ -247,9 +251,29 @@ export default function Profile() {
                       {order.address}, {order.postal} {order.city}, {order.country}
                     </div>
                     <div style={{ borderTop: '1px solid #F0DCC8', paddingTop: 12 }}>
-                      <p style={{ fontSize: 12, fontWeight: 600, color: '#7a5c42', margin: '0 0 8px' }}>{itemCount} Artikel</p>
-                      <ExpandableItems items={items} orderId={order.id} />
-                    </div>
+  <p style={{ fontSize: 12, fontWeight: 600, color: '#7a5c42', margin: '0 0 8px' }}>
+    {itemCount} Artikel
+  </p>
+
+  <ExpandableItems items={items} orderId={order.id} />
+
+  <Link
+    to={`/profile/orders/${order.id}`}
+    style={{
+      display: 'inline-flex',
+      marginTop: 12,
+      padding: '8px 14px',
+      borderRadius: 999,
+      background: '#D4A574',
+      color: '#fff',
+      fontSize: 12,
+      fontWeight: 600,
+      textDecoration: 'none',
+    }}
+  >
+    Details anzeigen
+  </Link>
+</div>
                   </div>
                 )
               })}
