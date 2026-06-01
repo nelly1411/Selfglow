@@ -126,23 +126,20 @@ export default function Wishlist() {
         {items.length} Produkt{items.length !== 1 && 'e'} gespeichert
       </p>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {items.map((item) => {
+<div className="grid grid-cols-1 gap-5">
+          {items.map((item) => {
           const rating = item.rating ?? 0
 
           return (
             <div
               key={item.id}
-className="group flex h-full flex-col bg-background rounded-xl border overflow-hidden hover:shadow-lg transition"            >
-
+className="group flex gap-6 rounded-[28px] border border-[#F0DCC8] bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-xl">
               {/* IMAGE */}
-              <div className="relative aspect-square bg-[#F5F5F5]">
-                <Link to={`/product/${item.id}`}>
+<div className="relative h-40 w-40 shrink-0 rounded-2xl bg-[#F8F2EC] overflow-hidden">                <Link to={`/product/${item.id}`}>
                   <img
                     src={item.image}
                     alt={item.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition"
-                  />
+className="w-full h-full object-contain p-4 group-hover:scale-105 transition"                  />
                 </Link>
 
                 {/* REMOVE */}
