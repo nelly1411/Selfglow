@@ -103,7 +103,7 @@ function ExpandableItems({ items, orderId }: { items: OrderItem[], orderId: numb
 }
 
 export default function Profile() {
-  const { user, token } = useAuth()
+  const { user, token, updateUser } = useAuth()
   const { totalItems: wishlistTotal } = useWishlist()
   const { deleteReview } = useReviews()
 
@@ -113,6 +113,8 @@ export default function Profile() {
   const [reviewsLoad,  setReviewsLoad]  = useState(true)
   const [error,        setError]        = useState('')
   const [activeTab,    setActiveTab]    = useState<'orders' | 'reviews' | 'account'>('orders')
+  const [showEditProfile, setShowEditProfile] = useState(false)
+  const [editName, setEditName] = useState(user?.name || '')
 
   // Inject CSS
   const styleInjected = useState(false)
@@ -154,6 +156,31 @@ export default function Profile() {
     const ok = await deleteReview(reviewId, token)
     if (ok) setUserReviews(prev => prev.filter(r => r.id !== reviewId))
   }
+
+const handleSaveProfile = async () => {
+  try {
+    const res = await fetch(apiUrl('/api/auth/profile'), {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        name: editName,
+      }),
+    })
+
+    const data = await res.json()
+
+    if (res.ok && data.user) {
+      updateUser(data.user)
+    }
+
+    setShowEditProfile(false)
+  } catch (error) {
+    console.error(error)
+  }
+}
 
   const firstName = user?.name?.split(' ')[0] || user?.email?.split('@')[0] || 'Nutzer'
 
@@ -348,6 +375,23 @@ boxShadow: '0 6px 16px rgba(212,165,116,0.25)', color: '#fff', padding: '12px 24
                   </div>
                 ))}
               </div>
+              <button
+  onClick={() => setShowEditProfile(true)}
+  style={{
+    marginTop: 24,
+    width: '100%',
+    padding: '12px',
+    borderRadius: 12,
+    border: 'none',
+    background: '#D4A574',
+    color: '#fff',
+    fontWeight: 600,
+    cursor: 'pointer',
+    fontFamily: "'Outfit',sans-serif",
+  }}
+>
+  Profil bearbeiten
+</button>
             </div>
 
             <div className="p-card" style={{ padding: 24 }}>
@@ -370,6 +414,57 @@ boxShadow: '0 6px 16px rgba(212,165,116,0.25)', color: '#fff', padding: '12px 24
                 <p style={{ fontSize: 13, color: '#9a7a5a', fontWeight: 300 }}>Noch keine Bestellungen.</p>
               )}
             </div>
+
+            {showEditProfile && (
+  <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 px-4">
+    <div className="w-full max-w-md rounded-[28px] bg-white p-8 shadow-2xl">
+      <h2 className="mb-6 text-2xl font-bold text-[#1c1209]">
+        Profil bearbeiten
+      </h2>
+
+      <input
+  placeholder="Name"
+  value={editName}
+  onChange={(e) => setEditName(e.target.value)}
+  className="mb-4 w-full rounded-xl border border-[#F0DCC8] px-4 py-3"
+/>
+
+      <input
+        value={user?.email || ''}
+        disabled
+        className="mb-4 w-full rounded-xl border border-[#F0DCC8] bg-gray-100 px-4 py-3"
+      />
+
+      <input
+        type="password"
+        placeholder="Aktuelles Passwort"
+        className="mb-4 w-full rounded-xl border border-[#F0DCC8] px-4 py-3"
+      />
+
+      <input
+        type="password"
+        placeholder="Neues Passwort"
+        className="mb-6 w-full rounded-xl border border-[#F0DCC8] px-4 py-3"
+      />
+
+      <div className="flex gap-3">
+        <button
+          onClick={() => setShowEditProfile(false)}
+          className="flex-1 rounded-xl border border-[#F0DCC8] py-3 font-semibold"
+        >
+          Abbrechen
+        </button>
+
+       <button
+  onClick={handleSaveProfile}
+  className="flex-1 rounded-xl bg-[#D4A574] py-3 font-semibold text-white"
+>
+  Speichern
+</button>
+      </div>
+    </div>
+  </div>
+)}
 
             <div className="p-card" style={{ padding: 24 }}>
               <h2 style={{ fontFamily: "'Outfit',sans-serif", fontSize: 16, fontWeight: 700, color: '#1c1209', margin: '0 0 12px' }}>Merkliste</h2>

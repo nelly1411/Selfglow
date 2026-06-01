@@ -333,5 +333,26 @@ async function checkWelcomeCode(req, res) {
   return res.json({ used: user?.usedWelcomeCode ?? false })
 }
 
+async function updateProfile(req, res) {
+  try {
+    const { name } = req.body
 
-module.exports = { register, login, getAddress, updateAddress, updateSkinType, deleteSkinType, checkWelcomeCode, confirmEmail }
+    const updatedUser = await prisma.user.update({
+      where: { id: req.user.userId },
+      data: {
+        name: name || null,
+      },
+    })
+
+    return res.json({
+      message: "Profil aktualisiert",
+      user: toAuthUser(updatedUser),
+    })
+  } catch (error) {
+    console.error(error)
+    return res.status(500).json({ message: "Serverfehler" })
+  }
+}
+
+
+module.exports = { register, login, getAddress, updateAddress, updateSkinType, deleteSkinType, checkWelcomeCode, confirmEmail, updateProfile }
