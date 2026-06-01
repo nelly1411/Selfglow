@@ -87,6 +87,7 @@ interface AnalysisResult {
 
 interface SkinAnalysisProps {
   onClose?: () => void
+  onAnalysisComplete?: (result: AnalysisResult) => void
 }
 
 function loadSavedAnalysis(): { imageData: string | null; result: AnalysisResult | null } | null {
@@ -98,8 +99,7 @@ function loadSavedAnalysis(): { imageData: string | null; result: AnalysisResult
   }
 }
 
-export default function SkinAnalysis({ onClose }: SkinAnalysisProps) {
-  const savedAnalysis = loadSavedAnalysis()
+export default function SkinAnalysis({ onClose, onAnalysisComplete }: SkinAnalysisProps) {  const savedAnalysis = loadSavedAnalysis()
 
   const [mode, setMode] = useState<'choose' | 'camera' | 'preview' | 'loading' | 'result'>(
     savedAnalysis?.result ? 'result' : 'choose'
@@ -232,6 +232,7 @@ export default function SkinAnalysis({ onClose }: SkinAnalysisProps) {
 
       setResult(parsed)
       setMode('result')
+      onAnalysisComplete?.(parsed)
 
       sessionStorage.setItem(
         skinAnalysisStorageKey,

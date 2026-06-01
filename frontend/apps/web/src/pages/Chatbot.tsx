@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect,  useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { Bot, Camera, MessageCircle, Plus, Send, Sparkles, Trash2, User, X } from 'lucide-react'
@@ -189,7 +189,10 @@ export default function Chatbot() {
   const [isLoading, setIsLoading] = useState(false)
   const [explainingMessageId, setExplainingMessageId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [showAnalysis, setShowAnalysis] = useState(false)   // ← NEU
+  const [showAnalysis, setShowAnalysis] = useState(false) 
+  const messagesEndRef = useRef<HTMLDivElement | null>(null)
+  const messagesContainerRef = useRef<HTMLDivElement | null>(null)
+  const [conversationToDelete, setConversationToDelete] = useState<string | null>(null)
 
   const activeConversation =
     chatState.conversations.find((c) => c.id === chatState.activeConversationId) ||
@@ -199,6 +202,13 @@ export default function Chatbot() {
   useEffect(() => {
     sessionStorage.setItem(chatStorageKey, JSON.stringify(chatState))
   }, [chatState])
+
+useEffect(() => {
+  if (messagesContainerRef.current) {
+    messagesContainerRef.current.scrollTop =
+      messagesContainerRef.current.scrollHeight
+  }
+}, [messages, isLoading, explainingMessageId])
 
   function updateActiveConversation(updater: (messages: Message[]) => Message[]) {
     setChatState((currentState) => ({
@@ -375,6 +385,41 @@ export default function Chatbot() {
 
   return (
     <div className="min-h-[calc(100vh-160px)] bg-[#FBFAF7]">
+      {conversationToDelete && (
+  <div className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/40 px-4">
+    <div className="w-full max-w-lg rounded-[28px] bg-white p-8 shadow-2xl">
+      <h2 className="mb-4 text-2xl font-bold text-foreground">
+        Chat löschen?
+      </h2>
+
+      <p className="mb-8 text-muted-foreground">
+        Möchtest du diesen Chatverlauf wirklich löschen?
+      </p>
+
+      <div className="flex gap-4">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => setConversationToDelete(null)}
+          className="flex-1 rounded-full border-border py-3 text-muted-foreground hover:bg-gray-50"
+        >
+          Abbrechen
+        </Button>
+
+        <Button
+          type="button"
+          onClick={() => {
+            deleteConversation(conversationToDelete)
+            setConversationToDelete(null)
+          }}
+          className="flex-1 rounded-full bg-[#D4A574] py-3 text-white hover:bg-[#C49464]"
+        >
+          Löschen
+        </Button>
+      </div>
+    </div>
+  </div>
+)}
 
       {/* ── Haut-Analyse Modal ── */}
       {showAnalysis && (
@@ -383,8 +428,41 @@ export default function Chatbot() {
           onClick={(e) => { if (e.target === e.currentTarget) setShowAnalysis(false) }}
         >
           <div style={{ width: '100%', maxWidth: 500, maxHeight: '90vh', overflowY: 'auto', borderRadius: 20, boxShadow: '0 24px 60px rgba(0,0,0,0.2)' }}>
-            <SkinAnalysis onClose={() => setShowAnalysis(false)} />
-          </div>
+<SkinAnalysis
+  onClose={() => setShowAnalysis(false)}
+  onAnalysisComplete={(result) => {
+    const content = `Deine Hautanalyse ist abgeschlossen.
+
+Hauttyp: ${result.skinType}
+
+Trockenheit: ${result.dryness}%
+Rötungen: ${result.redness}%
+Unreinheiten: ${result.blemishes}%
+Sensibilität: ${result.sensitivity}%
+
+${result.overall}
+
+Du kannst mir jetzt Fragen zu deiner Hautanalyse, den Empfehlungen oder passenden Produkten stellen.`
+
+    const conversation: Conversation = {
+      id: crypto.randomUUID(),
+      title: 'Hautanalyse',
+      updatedAt: new Date().toISOString(),
+      messages: [
+        {
+          id: crypto.randomUUID(),
+          role: 'assistant',
+          content,
+        },
+      ],
+    }
+
+    setChatState((currentState) => ({
+      conversations: [conversation, ...currentState.conversations],
+      activeConversationId: conversation.id,
+    }))
+  }}
+/>          </div>
         </div>
       )}
 
@@ -450,7 +528,7 @@ export default function Chatbot() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => deleteConversation(conversation.id)}
+onClick={() => setConversationToDelete(conversation.id)}
                       disabled={isLoading}
                       className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground opacity-70 transition-colors hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40 lg:opacity-0 lg:group-hover:opacity-100"
                       aria-label="Chat löschen"
@@ -464,9 +542,11 @@ export default function Chatbot() {
           </aside>
 
           <main className="space-y-4">
-            <section className="flex min-h-[520px] flex-col rounded-lg border border-border bg-background">
-              <div className="flex-1 space-y-3 overflow-y-auto p-3 md:p-4">
-                {messages.map((message) => (
+<section className="flex h-[75vh] flex-col rounded-lg border border-border bg-background">             
+<div
+  ref={messagesContainerRef}
+  className="flex-1 space-y-3 overflow-y-auto p-3 md:p-4"
+>                {messages.map((message) => (
                   <div key={message.id} className="space-y-2">
                     <div className={cn('flex gap-2', message.role === 'user' ? 'justify-end' : 'justify-start')}>
                       {message.role === 'assistant' && (
@@ -545,6 +625,7 @@ export default function Chatbot() {
                     <div className="rounded-lg bg-[#F5F5F5] px-3 py-2 text-sm text-muted-foreground">KI erklärt das Produkt...</div>
                   </div>
                 )}
+                <div ref={messagesEndRef} />
               </div>
 
               {error && (
