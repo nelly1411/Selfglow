@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link,  useNavigate } from 'react-router-dom'
 import {
   CalendarDays, Mail, MapPin, Package, ShoppingBag,
   UserRound, Star, Trash2, ExternalLink, Heart, Sparkles
@@ -55,29 +55,125 @@ function StarRow({ rating, size = 14 }: { rating: number; size?: number }) {
     </div>
   )
 }
-
 const CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
-  .profile-root * { box-sizing: border-box; }
-  .profile-root { font-family: 'Outfit', sans-serif; }
-  @keyframes fadeUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
-  .p-fade { animation: fadeUp 0.45s ease forwards; }
-  .p-card { background:#fff; border:1px solid #F0DCC8; border-radius:20px; transition:box-shadow 0.2s; }
-  .p-card:hover { box-shadow: 0 8px 32px rgba(212,165,116,0.12); }
-  .p-tab { cursor:pointer; padding:10px 20px; border-radius:100px; font-size:14px; font-weight:500; transition:all 0.2s; border:none; background:transparent; font-family:'Outfit',sans-serif; }
-.p-tab.active { background:#D4A574; color:#fff; }
-  .p-tab:not(.active) { color:#9a7a5a; }
-  .p-tab:not(.active):hover { background:#FDF6EE; color:#1c1209; }
-.p-stat { background:linear-gradient(135deg,#fff 0%,#FFF8F1 100%);
-  border:1px solid #F0DCC8; border-radius:20px; padding:24px; }
-  .p-review-card { background:#FDFAF6; border:1px solid #F0DCC8; border-radius:16px; padding:18px; transition:all 0.2s; }
-  .p-review-card:hover { border-color:#D4A574; box-shadow:0 4px 16px rgba(212,165,116,0.12); }
-.p-order-card {
-  background:#fff;
-  border:1px solid #E8D5C0; border-radius:16px; padding:20px; transition:all 0.2s; }
-  .p-order-card:hover { border-color:#D4A574; box-shadow:0 4px 16px rgba(212,165,116,0.1); }
-  .p-delete-btn { background:none; border:none; cursor:pointer; color:#c4a882; transition:color 0.2s; padding:4px; border-radius:8px; }
-  .p-delete-btn:hover { color:#c47a5a; background:#fff0f0; }
+
+  .profile-root * {
+    box-sizing: border-box;
+  }
+
+  .profile-root {
+    font-family: 'Outfit', sans-serif;
+  }
+
+  @keyframes fadeUp {
+    from {
+      opacity: 0;
+      transform: translateY(16px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .p-fade {
+    animation: fadeUp 0.45s ease forwards;
+  }
+
+  .p-card {
+    background: #fff;
+    border: 1px solid #F0DCC8;
+    border-radius: 20px;
+    transition: all 0.2s ease;
+  }
+
+  .p-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(212,165,116,0.12);
+  }
+
+  .p-tab {
+    cursor: pointer;
+    padding: 10px 20px;
+    border-radius: 100px;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s;
+    border: none;
+    background: transparent;
+    font-family: 'Outfit', sans-serif;
+  }
+
+  .p-tab.active {
+    background: #D4A574;
+    color: #fff;
+  }
+
+  .p-tab:not(.active) {
+    color: #9a7a5a;
+  }
+
+  .p-tab:not(.active):hover {
+    background: #FDF6EE;
+    color: #1c1209;
+  }
+
+  .p-stat {
+    background: linear-gradient(135deg, #fff 0%, #FFF9F3 100%);
+    border: 1.5px solid #E2B98F;
+    border-radius: 22px;
+    padding: 26px;
+    box-shadow: 0 10px 28px rgba(111,78,55,0.08);
+    transition: all 0.2s ease;
+  }
+
+  .p-stat:hover {
+    border-color: #D4A574;
+    box-shadow: 0 14px 36px rgba(111,78,55,0.14);
+    transform: translateY(-2px);
+  }
+
+  .p-review-card {
+    background: #FDFAF6;
+    border: 1px solid #F0DCC8;
+    border-radius: 16px;
+    padding: 18px;
+    transition: all 0.2s;
+  }
+
+  .p-review-card:hover {
+    border-color: #D4A574;
+    box-shadow: 0 4px 16px rgba(212,165,116,0.12);
+  }
+
+  .p-order-card {
+    background: #fff;
+    border: 1px solid #E8D5C0;
+    border-radius: 16px;
+    padding: 20px;
+    transition: all 0.2s;
+  }
+
+  .p-order-card:hover {
+    border-color: #D4A574;
+    box-shadow: 0 4px 16px rgba(212,165,116,0.1);
+  }
+
+  .p-delete-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #c4a882;
+    transition: color 0.2s;
+    padding: 4px;
+    border-radius: 8px;
+  }
+
+  .p-delete-btn:hover {
+    color: #c47a5a;
+    background: #fff0f0;
+  }
 `
 
 function ExpandableItems({ items, orderId }: { items: OrderItem[], orderId: number }) {
@@ -104,6 +200,7 @@ function ExpandableItems({ items, orderId }: { items: OrderItem[], orderId: numb
 
 export default function Profile() {
   const { user, token, updateUser } = useAuth()
+  const navigate = useNavigate()
   const { totalItems: wishlistTotal } = useWishlist()
   const { deleteReview } = useReviews()
 
@@ -219,12 +316,20 @@ boxShadow: '0 6px 16px rgba(212,165,116,0.25)', color: '#fff', padding: '12px 24
         <div className="p-fade" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 14, marginBottom: 32 }}>
           {[
             { icon: ShoppingBag, label: 'Bestellungen', value: orders.length },
-            { icon: Package,     label: 'Ausgegeben',   value: formatCurrency(totalSpent) },
+            // { icon: Package,     label: 'Ausgegeben',   value: formatCurrency(totalSpent) },
             { icon: Heart,       label: 'Merkliste',    value: wishlistTotal },
             { icon: Star,        label: 'Ø Bewertung',  value: avgRating },
           ].map(s => (
-            <div key={s.label} className="p-stat">
-              <div style={{ width: 36, height: 36, borderRadius: 10, background: '#fff', border: '1px solid #e8c9a0', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
+<div
+  key={s.label}
+  className="p-stat"
+  onClick={() => {
+    if (s.label === 'Merkliste') navigate('/wishlist')
+  }}
+  style={{
+    cursor: s.label === 'Merkliste' ? 'pointer' : 'default',
+  }}
+>              <div style={{ width: 36, height: 36, borderRadius: 10, background: '#fff',border: '1.5px solid #D4A574', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
                 <s.icon size={16} color="#D4A574" />
               </div>
               <p style={{ fontSize: 22, fontWeight: 800, color: '#1c1209', margin: '0 0 2px', letterSpacing: '-0.02em' }}>{s.value}</p>
@@ -357,8 +462,8 @@ boxShadow: '0 6px 16px rgba(212,165,116,0.25)', color: '#fff', padding: '12px 24
         {activeTab === 'account' && (
           <div className="p-fade" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(280px,1fr))', gap: 14 }}>
 
-            <div className="p-card" style={{ padding: 24 }}>
-              <h2 style={{ fontFamily: "'Outfit',sans-serif", fontSize: 16, fontWeight: 700, color: '#1c1209', margin: '0 0 20px' }}>Kontodaten</h2>
+<div className="p-card" style={{ padding: 24 }}>
+             <h2 style={{ fontFamily: "'Outfit',sans-serif", fontSize: 16, fontWeight: 700, color: '#1c1209', margin: '0 0 20px' }}>Kontodaten</h2>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 {[
                   { icon: UserRound, label: 'Name', value: user?.name || 'Nicht angegeben' },
@@ -466,15 +571,6 @@ boxShadow: '0 6px 16px rgba(212,165,116,0.25)', color: '#fff', padding: '12px 24
   </div>
 )}
 
-            <div className="p-card" style={{ padding: 24 }}>
-              <h2 style={{ fontFamily: "'Outfit',sans-serif", fontSize: 16, fontWeight: 700, color: '#1c1209', margin: '0 0 12px' }}>Merkliste</h2>
-              <p style={{ fontSize: 13, color: '#9a7a5a', fontWeight: 300, margin: '0 0 16px', lineHeight: 1.6 }}>
-                Du hast <strong style={{ color: '#1c1209' }}>{wishlistTotal}</strong> {wishlistTotal === 1 ? 'Produkt' : 'Produkte'} auf deiner Merkliste gespeichert.
-              </p>
-              <Link to="/wishlist" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: '#D4A574', textDecoration: 'none' }}>
-                <Heart size={13} /> Merkliste anzeigen
-              </Link>
-            </div>
           </div>
         )}
       </div>
