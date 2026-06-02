@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Link,  useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import {
-  CalendarDays, Mail, MapPin, Package, ShoppingBag,
+  CalendarDays, Mail, MapPin, ShoppingBag, X,
   UserRound, Star, Trash2, ExternalLink, Heart, Sparkles
 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
@@ -9,171 +9,55 @@ import { useWishlist } from '@/context/WishlistContext'
 import { useReviews, type Review } from '@/context/ReviewsContext'
 import { apiUrl } from '@/lib/api'
 
-type OrderItem = {
-  id: number
-  name: string
-  price: number
-  quantity?: number
-  image?: string
-}
+type OrderItem = { id: number; name: string; price: number; quantity?: number; image?: string }
+type Order = { id: number; totalPrice: number; paymentMethod: string; address: string; city: string; postal: string; country: string; items: string; createdAt: string }
 
-type Order = {
-  id: number
-  totalPrice: number
-  paymentMethod: string
-  address: string
-  city: string
-  postal: string
-  country: string
-  items: string
-  createdAt: string
-}
-
-function formatCurrency(value: number) {
-  return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(value)
-}
-
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat('de-DE', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(value))
-}
-
-function formatPaymentMethod(value: string) {
-  return ({ klarna: 'Klarna', paypal: 'PayPal' })[value.toLowerCase()] || value
-}
-
-function parseOrderItems(items: string): OrderItem[] {
-  try { const p = JSON.parse(items); return Array.isArray(p) ? p : [] } catch { return [] }
-}
+function formatCurrency(value: number) { return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(value) }
+function formatDate(value: string) { return new Intl.DateTimeFormat('de-DE', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(value)) }
+function formatPaymentMethod(value: string) { return ({ klarna: 'Klarna', paypal: 'PayPal' })[value.toLowerCase()] || value }
+function parseOrderItems(items: string): OrderItem[] { try { const p = JSON.parse(items); return Array.isArray(p) ? p : [] } catch { return [] } }
 
 function StarRow({ rating, size = 14 }: { rating: number; size?: number }) {
   return (
     <div style={{ display: 'flex', gap: 2 }}>
-      {[1, 2, 3, 4, 5].map(i => (
-        <Star key={i} size={size}
-          style={{ fill: i <= rating ? '#D4A574' : '#F0DCC8', color: i <= rating ? '#D4A574' : '#F0DCC8' }} />
-      ))}
+      {[1,2,3,4,5].map(i => <Star key={i} size={size} style={{ fill: i <= rating ? '#D4A574' : '#F0DCC8', color: i <= rating ? '#D4A574' : '#F0DCC8' }} />)}
     </div>
   )
 }
+
 const CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
-
-  .profile-root * {
-    box-sizing: border-box;
-  }
-
-  .profile-root {
-    font-family: 'Outfit', sans-serif;
-  }
-
-  @keyframes fadeUp {
-    from {
-      opacity: 0;
-      transform: translateY(16px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  .p-fade {
-    animation: fadeUp 0.45s ease forwards;
-  }
-
-  .p-card {
-    background: #fff;
-    border: 1px solid #F0DCC8;
-    border-radius: 20px;
-    transition: all 0.2s ease;
-  }
-
-  .p-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(212,165,116,0.12);
-  }
-
-  .p-tab {
-    cursor: pointer;
-    padding: 10px 20px;
-    border-radius: 100px;
-    font-size: 14px;
-    font-weight: 500;
-    transition: all 0.2s;
-    border: none;
-    background: transparent;
-    font-family: 'Outfit', sans-serif;
-  }
-
-  .p-tab.active {
-    background: #D4A574;
-    color: #fff;
-  }
-
-  .p-tab:not(.active) {
-    color: #9a7a5a;
-  }
-
-  .p-tab:not(.active):hover {
-    background: #FDF6EE;
-    color: #1c1209;
-  }
-
-  .p-stat {
-    background: linear-gradient(135deg, #fff 0%, #FFF9F3 100%);
-    border: 1.5px solid #E2B98F;
-    border-radius: 22px;
-    padding: 26px;
-    box-shadow: 0 10px 28px rgba(111,78,55,0.08);
-    transition: all 0.2s ease;
-  }
-
-  .p-stat:hover {
-    border-color: #D4A574;
-    box-shadow: 0 14px 36px rgba(111,78,55,0.14);
-    transform: translateY(-2px);
-  }
-
-  .p-review-card {
-    background: #FDFAF6;
-    border: 1px solid #F0DCC8;
-    border-radius: 16px;
-    padding: 18px;
-    transition: all 0.2s;
-  }
-
-  .p-review-card:hover {
-    border-color: #D4A574;
-    box-shadow: 0 4px 16px rgba(212,165,116,0.12);
-  }
-
-  .p-order-card {
-    background: #fff;
-    border: 1px solid #E8D5C0;
-    border-radius: 16px;
-    padding: 20px;
-    transition: all 0.2s;
-  }
-
-  .p-order-card:hover {
-    border-color: #D4A574;
-    box-shadow: 0 4px 16px rgba(212,165,116,0.1);
-  }
-
-  .p-delete-btn {
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: #c4a882;
-    transition: color 0.2s;
-    padding: 4px;
-    border-radius: 8px;
-  }
-
-  .p-delete-btn:hover {
-    color: #c47a5a;
-    background: #fff0f0;
-  }
+  .profile-root * { box-sizing: border-box; }
+  .profile-root { font-family: 'Outfit', sans-serif; }
+  @keyframes fadeUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
+  .p-fade { animation: fadeUp 0.45s ease forwards; }
+  .p-card { background:#fff; border:1px solid #F0DCC8; border-radius:20px; transition:all 0.2s ease; }
+  .p-card:hover { transform:translateY(-2px); box-shadow:0 8px 24px rgba(212,165,116,0.12); }
+  .p-tab { cursor:pointer; padding:10px 20px; border-radius:100px; font-size:14px; font-weight:500; transition:all 0.2s; border:none; background:transparent; font-family:'Outfit',sans-serif; }
+  .p-tab.active { background:#D4A574; color:#fff; }
+  .p-tab:not(.active) { color:#9a7a5a; }
+  .p-tab:not(.active):hover { background:#FDF6EE; color:#1c1209; }
+  .p-stat { background:linear-gradient(135deg,#fff 0%,#FFF9F3 100%); border:1.5px solid #E2B98F; border-radius:22px; padding:26px; box-shadow:0 10px 28px rgba(111,78,55,0.08); transition:all 0.2s ease; }
+  .p-stat:hover { border-color:#D4A574; box-shadow:0 14px 36px rgba(111,78,55,0.14); transform:translateY(-2px); }
+  .p-review-card { background:#FDFAF6; border:1px solid #F0DCC8; border-radius:16px; padding:18px; transition:all 0.2s; }
+  .p-review-card:hover { border-color:#D4A574; box-shadow:0 4px 16px rgba(212,165,116,0.12); }
+  .p-order-card { background:#fff; border:1px solid #E8D5C0; border-radius:16px; padding:20px; transition:all 0.2s; }
+  .p-order-card:hover { border-color:#D4A574; box-shadow:0 4px 16px rgba(212,165,116,0.1); }
+  .p-delete-btn { background:none; border:none; cursor:pointer; color:#c4a882; transition:color 0.2s; padding:4px; border-radius:8px; }
+  .p-delete-btn:hover { color:#c47a5a; background:#fff0f0; }
+  .p-input { width:100%; border:1px solid #F0DCC8; border-radius:12px; padding:12px 16px; font-size:14px; font-family:'Outfit',sans-serif; outline:none; transition:border-color 0.2s; }
+  .p-input:focus { border-color:#D4A574; }
+  .p-input:disabled { background:#f9f9f9; color:#aaa; cursor:not-allowed; }
+  .p-btn-primary { width:100%; padding:13px; border-radius:12px; border:none; background:#D4A574; color:#fff; font-weight:600; font-size:14px; cursor:pointer; font-family:'Outfit',sans-serif; transition:background 0.2s; }
+  .p-btn-primary:hover { background:#C49464; }
+  .p-btn-dark { width:100%; padding:13px; border-radius:12px; border:none; background:#1c1209; color:#fff; font-weight:600; font-size:14px; cursor:pointer; font-family:'Outfit',sans-serif; transition:background 0.2s; }
+  .p-btn-dark:hover { background:#2e1e0e; }
+  .p-btn-outline { width:100%; padding:13px; border-radius:12px; border:1px solid #F0DCC8; background:transparent; color:#9a7a5a; font-weight:600; font-size:14px; cursor:pointer; font-family:'Outfit',sans-serif; transition:all 0.2s; }
+  .p-btn-outline:hover { background:#FDF6EE; color:#1c1209; }
+  .p-btn-danger { width:100%; padding:13px; border-radius:12px; border:none; background:#c47a5a; color:#fff; font-weight:600; font-size:14px; cursor:pointer; font-family:'Outfit',sans-serif; transition:background 0.2s; }
+  .p-btn-danger:hover { background:#b56848; }
+  .p-close-btn { background:none; border:none; cursor:pointer; color:#9a7a5a; padding:6px; border-radius:8px; display:flex; align-items:center; transition:all 0.2s; }
+  .p-close-btn:hover { color:#1c1209; background:#F0DCC8; }
 `
 
 function ExpandableItems({ items, orderId }: { items: OrderItem[], orderId: number }) {
@@ -188,12 +72,38 @@ function ExpandableItems({ items, orderId }: { items: OrderItem[], orderId: numb
         </div>
       ))}
       {items.length > 3 && (
-        <button
-          onClick={() => setExpanded(e => !e)}
+        <button onClick={() => setExpanded(e => !e)}
           style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: '#D4A574', fontWeight: 600, textAlign: 'left', padding: '4px 0', fontFamily: "'Outfit',sans-serif" }}>
           {expanded ? '▲ Weniger anzeigen' : `▼ +${items.length - 3} weitere anzeigen`}
         </button>
       )}
+    </div>
+  )
+}
+
+function ConfirmModal({ title, message, onConfirm, onCancel, confirmLabel = 'Ja, bestätigen', danger = false }: {
+  title: string; message: string; onConfirm: () => void; onCancel: () => void; confirmLabel?: string; danger?: boolean
+}) {
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+      onClick={(e) => { if (e.target === e.currentTarget) onCancel() }}>
+      <div style={{ width: '100%', maxWidth: 380, background: '#fff', borderRadius: 24, padding: 32, boxShadow: '0 24px 60px rgba(0,0,0,0.18)' }}>
+        <div style={{ width: 48, height: 48, borderRadius: 12, background: danger ? '#fff0f0' : '#FDF6EE', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+          <span style={{ fontSize: 22 }}>{danger ? '🗑️' : '✏️'}</span>
+        </div>
+        <h3 style={{ fontFamily: "'Outfit',sans-serif", fontSize: 18, fontWeight: 700, color: '#1c1209', textAlign: 'center', margin: '0 0 8px' }}>{title}</h3>
+        <p style={{ fontSize: 13, color: '#9a7a5a', textAlign: 'center', margin: '0 0 24px', fontWeight: 300, lineHeight: 1.6 }}>{message}</p>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button onClick={onCancel}
+            style={{ flex: 1, padding: '12px', borderRadius: 12, border: '1px solid #F0DCC8', background: 'transparent', color: '#9a7a5a', fontWeight: 600, fontSize: 14, cursor: 'pointer', fontFamily: "'Outfit',sans-serif" }}>
+            Abbrechen
+          </button>
+          <button onClick={onConfirm}
+            style={{ flex: 1, padding: '12px', borderRadius: 12, border: 'none', background: danger ? '#c47a5a' : '#D4A574', color: '#fff', fontWeight: 600, fontSize: 14, cursor: 'pointer', fontFamily: "'Outfit',sans-serif" }}>
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
@@ -204,16 +114,26 @@ export default function Profile() {
   const { totalItems: wishlistTotal } = useWishlist()
   const { deleteReview } = useReviews()
 
-  const [orders,       setOrders]       = useState<Order[]>([])
-  const [userReviews,  setUserReviews]  = useState<Review[]>([])
-  const [isLoading,    setIsLoading]    = useState(true)
-  const [reviewsLoad,  setReviewsLoad]  = useState(true)
-  const [error,        setError]        = useState('')
-  const [activeTab,    setActiveTab]    = useState<'orders' | 'reviews' | 'account'>('orders')
+  const [orders,          setOrders]         = useState<Order[]>([])
+  const [userReviews,     setUserReviews]     = useState<Review[]>([])
+  const [isLoading,       setIsLoading]       = useState(true)
+  const [reviewsLoad,     setReviewsLoad]     = useState(true)
+  const [error,           setError]           = useState('')
+  const [activeTab,       setActiveTab]       = useState<'orders' | 'reviews' | 'account'>('orders')
   const [showEditProfile, setShowEditProfile] = useState(false)
-  const [editName, setEditName] = useState(user?.name || '')
 
-  // Inject CSS
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
+  const [confirmSaveName, setConfirmSaveName] = useState(false)
+  const [confirmSavePw,   setConfirmSavePw]   = useState(false)
+
+  const [editName,    setEditName]    = useState(user?.name || '')
+  const [currentPw,   setCurrentPw]   = useState('')
+  const [newPw,       setNewPw]       = useState('')
+  const [nameMsg,     setNameMsg]     = useState('')
+  const [pwMsg,       setPwMsg]       = useState('')
+  const [pwSuccess,   setPwSuccess]   = useState('')
+  const [nameSuccess, setNameSuccess] = useState('')
+
   const styleInjected = useState(false)
   if (!styleInjected[0]) {
     styleInjected[1](true)
@@ -222,62 +142,65 @@ export default function Profile() {
     document.head.appendChild(el)
   }
 
-  // Load orders
   useEffect(() => {
     if (!token) { setIsLoading(false); return }
     fetch(apiUrl('/api/checkout/orders'), { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.json())
-      .then(data => setOrders(data.orders || []))
+      .then(r => r.json()).then(data => setOrders(data.orders || []))
       .catch(() => setError('Bestellungen konnten nicht geladen werden.'))
       .finally(() => setIsLoading(false))
   }, [token])
 
-  // Load user reviews
   useEffect(() => {
     if (!token) { setReviewsLoad(false); return }
     fetch(apiUrl('/api/reviews/user/my-reviews'), { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.ok ? r.json() : [])
-      .then(data => setUserReviews(Array.isArray(data) ? data : []))
-      .catch(() => {})
-      .finally(() => setReviewsLoad(false))
+      .then(r => r.ok ? r.json() : []).then(data => setUserReviews(Array.isArray(data) ? data : []))
+      .catch(() => {}).finally(() => setReviewsLoad(false))
   }, [token])
 
-  const totalSpent  = useMemo(() => orders.reduce((s, o) => s + o.totalPrice, 0), [orders])
   const latestOrder = orders[0]
   const avgRating   = userReviews.length
-    ? (userReviews.reduce((s, r) => s + r.rating, 0) / userReviews.length).toFixed(1)
-    : '—'
+    ? (userReviews.reduce((s, r) => s + r.rating, 0) / userReviews.length).toFixed(1) : '—'
 
   const handleDeleteReview = async (reviewId: number) => {
     if (!token) return
     const ok = await deleteReview(reviewId, token)
     if (ok) setUserReviews(prev => prev.filter(r => r.id !== reviewId))
+    setConfirmDeleteId(null)
   }
 
-const handleSaveProfile = async () => {
-  try {
-    const res = await fetch(apiUrl('/api/auth/profile'), {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        name: editName,
-      }),
-    })
+  const handleSaveName = async () => {
+    setNameMsg(''); setNameSuccess(''); setConfirmSaveName(false)
+    try {
+      const res  = await fetch(apiUrl('/api/auth/profile'), {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ name: editName }),
+      })
+      const data = await res.json()
+      if (res.ok && data.user) { updateUser({ ...data.user, token }); setNameSuccess('✓ Name gespeichert') }
+      else setNameMsg(data.message || 'Fehler beim Speichern')
+    } catch { setNameMsg('Netzwerkfehler') }
+  }
 
-    const data = await res.json()
+  const handleUpdatePassword = async () => {
+    setPwMsg(''); setPwSuccess(''); setConfirmSavePw(false)
+    if (!currentPw || !newPw) { setPwMsg('Beide Felder ausfüllen'); return }
+    try {
+      const res  = await fetch(apiUrl('/api/auth/update-password'), {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ currentPassword: currentPw, newPassword: newPw }),
+      })
+      const data = await res.json()
+      if (res.ok) { setPwSuccess('✓ Passwort erfolgreich geändert'); setCurrentPw(''); setNewPw('') }
+      else setPwMsg(data.message || 'Fehler beim Ändern')
+    } catch { setPwMsg('Netzwerkfehler') }
+  }
 
-    if (res.ok && data.user) {
-      updateUser(data.user)
-    }
-
+  const closeModal = () => {
     setShowEditProfile(false)
-  } catch (error) {
-    console.error(error)
+    setNameMsg(''); setNameSuccess(''); setPwMsg(''); setPwSuccess('')
   }
-}
 
   const firstName = user?.name?.split(' ')[0] || user?.email?.split('@')[0] || 'Nutzer'
 
@@ -289,21 +212,15 @@ const handleSaveProfile = async () => {
         <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 24px' }}>
           <div className="p-fade" style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
             <div style={{ width: 72, height: 72, borderRadius: '50%', background: 'rgba(212,165,116,0.2)', border: '2px solid rgba(212,165,116,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <span style={{ fontSize: 28, fontWeight: 800, color: '#D4A574' }}>
-                {firstName.charAt(0).toUpperCase()}
-              </span>
+              <span style={{ fontSize: 28, fontWeight: 800, color: '#D4A574' }}>{firstName.charAt(0).toUpperCase()}</span>
             </div>
             <div>
-              <p style={{ fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#D4A574', margin: '0 0 4px', fontWeight: 600 }}>
-               
-              </p>
               <h1 style={{ fontFamily: "'Outfit',sans-serif", fontSize: 'clamp(24px,4vw,36px)', fontWeight: 800, color: '#fff', margin: 0, letterSpacing: '-0.02em' }}>
                 Willkommen, {firstName}
               </h1>
               <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', margin: '4px 0 0', fontWeight: 300 }}>{user?.email}</p>
             </div>
-            <Link to="/shop" style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 8,background: 'linear-gradient(135deg, #D4A574 0%, #C49464 100%)',
-boxShadow: '0 6px 16px rgba(212,165,116,0.25)', color: '#fff', padding: '12px 24px', borderRadius: 100, fontSize: 13, fontWeight: 600, textDecoration: 'none', transition: 'background 0.2s' }}>
+            <Link to="/shop" style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 8, background: 'linear-gradient(135deg, #D4A574 0%, #C49464 100%)', boxShadow: '0 6px 16px rgba(212,165,116,0.25)', color: '#fff', padding: '12px 24px', borderRadius: 100, fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>
               <Sparkles size={14} /> Produkte
             </Link>
           </div>
@@ -315,21 +232,12 @@ boxShadow: '0 6px 16px rgba(212,165,116,0.25)', color: '#fff', padding: '12px 24
         {/* ── Stats ── */}
         <div className="p-fade" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 14, marginBottom: 32 }}>
           {[
-            { icon: ShoppingBag, label: 'Bestellungen', value: orders.length },
-            // { icon: Package,     label: 'Ausgegeben',   value: formatCurrency(totalSpent) },
-            { icon: Heart,       label: 'Merkliste',    value: wishlistTotal },
-            { icon: Star,        label: 'Ø Bewertung',  value: avgRating },
+            { icon: ShoppingBag, label: 'Bestellungen', value: orders.length,  onClick: () => setActiveTab('orders') },
+            { icon: Heart,       label: 'Merkliste',    value: wishlistTotal,   onClick: () => navigate('/wishlist') },
+            { icon: Star,        label: 'Ø Bewertung',  value: avgRating,       onClick: () => setActiveTab('reviews') },
           ].map(s => (
-<div
-  key={s.label}
-  className="p-stat"
-  onClick={() => {
-    if (s.label === 'Merkliste') navigate('/wishlist')
-  }}
-  style={{
-    cursor: s.label === 'Merkliste' ? 'pointer' : 'default',
-  }}
->              <div style={{ width: 36, height: 36, borderRadius: 10, background: '#fff',border: '1.5px solid #D4A574', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
+            <div key={s.label} className="p-stat" onClick={s.onClick} style={{ cursor: 'pointer' }}>
+              <div style={{ width: 36, height: 36, borderRadius: 10, background: '#fff', border: '1.5px solid #D4A574', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
                 <s.icon size={16} color="#D4A574" />
               </div>
               <p style={{ fontSize: 22, fontWeight: 800, color: '#1c1209', margin: '0 0 2px', letterSpacing: '-0.02em' }}>{s.value}</p>
@@ -341,8 +249,7 @@ boxShadow: '0 6px 16px rgba(212,165,116,0.25)', color: '#fff', padding: '12px 24
         {/* ── Tabs ── */}
         <div style={{ display: 'flex', gap: 8, marginBottom: 24, background: '#fff', borderRadius: 100, padding: 4, border: '1px solid #F0DCC8', width: 'fit-content' }}>
           {(['orders', 'reviews', 'account'] as const).map(tab => (
-            <button key={tab} className={`p-tab ${activeTab === tab ? 'active' : ''}`}
-              onClick={() => setActiveTab(tab)}>
+            <button key={tab} className={`p-tab ${activeTab === tab ? 'active' : ''}`} onClick={() => setActiveTab(tab)}>
               {tab === 'orders' ? `Bestellungen (${orders.length})` : tab === 'reviews' ? `Bewertungen (${userReviews.length})` : 'Konto'}
             </button>
           ))}
@@ -362,7 +269,7 @@ boxShadow: '0 6px 16px rgba(212,165,116,0.25)', color: '#fff', padding: '12px 24
             )}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               {orders.map(order => {
-                const items    = parseOrderItems(order.items)
+                const items     = parseOrderItems(order.items)
                 const itemCount = items.reduce((s, i) => s + (i.quantity || 1), 0)
                 return (
                   <div key={order.id} className="p-order-card">
@@ -379,33 +286,12 @@ boxShadow: '0 6px 16px rgba(212,165,116,0.25)', color: '#fff', padding: '12px 24
                       </div>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#9a7a5a', marginBottom: 12 }}>
-                      <MapPin size={12} />
-                      {order.address}, {order.postal} {order.city}, {order.country}
+                      <MapPin size={12} />{order.address}, {order.postal} {order.city}, {order.country}
                     </div>
                     <div style={{ borderTop: '1px solid #F0DCC8', paddingTop: 12 }}>
-  <p style={{ fontSize: 12, fontWeight: 600, color: '#7a5c42', margin: '0 0 8px' }}>
-    {itemCount} Artikel
-  </p>
-
-  <ExpandableItems items={items} orderId={order.id} />
-
-  <Link
-    to={`/profile/orders/${order.id}`}
-    style={{
-      display: 'inline-flex',
-      marginTop: 12,
-      padding: '8px 14px',
-      borderRadius: 999,
-      background: '#D4A574',
-      color: '#fff',
-      fontSize: 12,
-      fontWeight: 600,
-      textDecoration: 'none',
-    }}
-  >
-    Details anzeigen
-  </Link>
-</div>
+                      <p style={{ fontSize: 12, fontWeight: 600, color: '#7a5c42', margin: '0 0 8px' }}>{itemCount} Artikel</p>
+                      <ExpandableItems items={items} orderId={order.id} />
+                    </div>
                   </div>
                 )
               })}
@@ -434,19 +320,16 @@ boxShadow: '0 6px 16px rgba(212,165,116,0.25)', color: '#fff', padding: '12px 24
                       <p style={{ fontSize: 11, color: '#c4a882', margin: '6px 0 0', fontWeight: 300 }}>{formatDate(review.createdAt)}</p>
                     </div>
                     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                      <Link to={`/product/${review.productId}`}
-                        style={{ color: '#c4a882', display: 'flex', alignItems: 'center' }}>
+                      <Link to={`/product/${review.productId}`} style={{ color: '#c4a882', display: 'flex', alignItems: 'center' }}>
                         <ExternalLink size={14} />
                       </Link>
-                      <button className="p-delete-btn" onClick={() => handleDeleteReview(review.id)} title="Bewertung löschen">
+                      <button className="p-delete-btn" onClick={() => setConfirmDeleteId(review.id)} title="Bewertung löschen">
                         <Trash2 size={14} />
                       </button>
                     </div>
                   </div>
                   {review.reviewText && (
-                    <p style={{ fontSize: 13, color: '#7a5c42', margin: 0, lineHeight: 1.6, fontWeight: 300 }}>
-                      "{review.reviewText}"
-                    </p>
+                    <p style={{ fontSize: 13, color: '#7a5c42', margin: 0, lineHeight: 1.6, fontWeight: 300 }}>"{review.reviewText}"</p>
                   )}
                   <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid #F0DCC8', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ fontSize: 11, color: '#c4a882', fontWeight: 300 }}>Produkt #{review.productId}</span>
@@ -461,12 +344,11 @@ boxShadow: '0 6px 16px rgba(212,165,116,0.25)', color: '#fff', padding: '12px 24
         {/* ── ACCOUNT TAB ── */}
         {activeTab === 'account' && (
           <div className="p-fade" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(280px,1fr))', gap: 14 }}>
-
-<div className="p-card" style={{ padding: 24 }}>
-             <h2 style={{ fontFamily: "'Outfit',sans-serif", fontSize: 16, fontWeight: 700, color: '#1c1209', margin: '0 0 20px' }}>Kontodaten</h2>
+            <div className="p-card" style={{ padding: 24 }}>
+              <h2 style={{ fontFamily: "'Outfit',sans-serif", fontSize: 16, fontWeight: 700, color: '#1c1209', margin: '0 0 20px' }}>Kontodaten</h2>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 {[
-                  { icon: UserRound, label: 'Name', value: user?.name || 'Nicht angegeben' },
+                  { icon: UserRound, label: 'Name',   value: user?.name || 'Nicht angegeben' },
                   { icon: Mail,      label: 'E-Mail', value: user?.email || '' },
                 ].map(row => (
                   <div key={row.label} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
@@ -480,23 +362,10 @@ boxShadow: '0 6px 16px rgba(212,165,116,0.25)', color: '#fff', padding: '12px 24
                   </div>
                 ))}
               </div>
-              <button
-  onClick={() => setShowEditProfile(true)}
-  style={{
-    marginTop: 24,
-    width: '100%',
-    padding: '12px',
-    borderRadius: 12,
-    border: 'none',
-    background: '#D4A574',
-    color: '#fff',
-    fontWeight: 600,
-    cursor: 'pointer',
-    fontFamily: "'Outfit',sans-serif",
-  }}
->
-  Profil bearbeiten
-</button>
+              <button onClick={() => { setEditName(user?.name || ''); setShowEditProfile(true) }}
+                style={{ marginTop: 24, width: '100%', padding: '12px', borderRadius: 12, border: 'none', background: '#D4A574', color: '#fff', fontWeight: 600, cursor: 'pointer', fontFamily: "'Outfit',sans-serif", fontSize: 14 }}>
+                Profil bearbeiten
+              </button>
             </div>
 
             <div className="p-card" style={{ padding: 24 }}>
@@ -511,69 +380,102 @@ boxShadow: '0 6px 16px rgba(212,165,116,0.25)', color: '#fff', padding: '12px 24
                     <MapPin size={14} color="#D4A574" />
                     <span style={{ fontSize: 13, color: '#7a5c42' }}>{latestOrder.city}, {latestOrder.country}</span>
                   </div>
-                  <p style={{ fontSize: 20, fontWeight: 800, color: '#D4A574', margin: '12px 0 0', letterSpacing: '-0.02em' }}>
-                    {formatCurrency(latestOrder.totalPrice)}
-                  </p>
+                  <p style={{ fontSize: 20, fontWeight: 800, color: '#D4A574', margin: '12px 0 0', letterSpacing: '-0.02em' }}>{formatCurrency(latestOrder.totalPrice)}</p>
                 </div>
               ) : (
                 <p style={{ fontSize: 13, color: '#9a7a5a', fontWeight: 300 }}>Noch keine Bestellungen.</p>
               )}
             </div>
 
-            {showEditProfile && (
-  <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 px-4">
-    <div className="w-full max-w-md rounded-[28px] bg-white p-8 shadow-2xl">
-      <h2 className="mb-6 text-2xl font-bold text-[#1c1209]">
-        Profil bearbeiten
-      </h2>
-
-      <input
-  placeholder="Name"
-  value={editName}
-  onChange={(e) => setEditName(e.target.value)}
-  className="mb-4 w-full rounded-xl border border-[#F0DCC8] px-4 py-3"
-/>
-
-      <input
-        value={user?.email || ''}
-        disabled
-        className="mb-4 w-full rounded-xl border border-[#F0DCC8] bg-gray-100 px-4 py-3"
-      />
-
-      <input
-        type="password"
-        placeholder="Aktuelles Passwort"
-        className="mb-4 w-full rounded-xl border border-[#F0DCC8] px-4 py-3"
-      />
-
-      <input
-        type="password"
-        placeholder="Neues Passwort"
-        className="mb-6 w-full rounded-xl border border-[#F0DCC8] px-4 py-3"
-      />
-
-      <div className="flex gap-3">
-        <button
-          onClick={() => setShowEditProfile(false)}
-          className="flex-1 rounded-xl border border-[#F0DCC8] py-3 font-semibold"
-        >
-          Abbrechen
-        </button>
-
-       <button
-  onClick={handleSaveProfile}
-  className="flex-1 rounded-xl bg-[#D4A574] py-3 font-semibold text-white"
->
-  Speichern
-</button>
-      </div>
-    </div>
-  </div>
-)}
-
+            <div className="p-card" style={{ padding: 24 }}>
+              <h2 style={{ fontFamily: "'Outfit',sans-serif", fontSize: 16, fontWeight: 700, color: '#1c1209', margin: '0 0 12px' }}>Merkliste</h2>
+              <p style={{ fontSize: 13, color: '#9a7a5a', fontWeight: 300, margin: '0 0 16px', lineHeight: 1.6 }}>
+                Du hast <strong style={{ color: '#1c1209' }}>{wishlistTotal}</strong> {wishlistTotal === 1 ? 'Produkt' : 'Produkte'} auf deiner Merkliste.
+              </p>
+              <Link to="/wishlist" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: '#D4A574', textDecoration: 'none' }}>
+                <Heart size={13} /> Merkliste anzeigen
+              </Link>
+            </div>
           </div>
         )}
       </div>
+
+      {/* ── Confirm: Bewertung löschen ── */}
+      {confirmDeleteId !== null && (
+        <ConfirmModal title="Bewertung löschen?" message="Diese Aktion kann nicht rückgängig gemacht werden."
+          confirmLabel="Ja, löschen" danger={true}
+          onConfirm={() => handleDeleteReview(confirmDeleteId)}
+          onCancel={() => setConfirmDeleteId(null)} />
+      )}
+
+      {/* ── Confirm: Name speichern ── */}
+      {confirmSaveName && (
+        <ConfirmModal title="Name ändern?" message={`Möchtest du deinen Namen wirklich zu "${editName}" ändern?`}
+          confirmLabel="Ja, ändern"
+          onConfirm={handleSaveName}
+          onCancel={() => setConfirmSaveName(false)} />
+      )}
+
+      {/* ── Confirm: Passwort ändern ── */}
+      {confirmSavePw && (
+        <ConfirmModal title="Passwort ändern?" message="Möchtest du dein Passwort wirklich ändern? Du wirst weiterhin eingeloggt bleiben."
+          confirmLabel="Ja, ändern"
+          onConfirm={handleUpdatePassword}
+          onCancel={() => setConfirmSavePw(false)} />
+      )}
+
+      {/* ── Edit Profile Modal ── */}
+      {showEditProfile && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+          onClick={(e) => { if (e.target === e.currentTarget) closeModal() }}>
+          <div style={{ width: '100%', maxWidth: 460, background: '#fff', borderRadius: 28, padding: 36, boxShadow: '0 24px 60px rgba(0,0,0,0.18)', maxHeight: '90vh', overflowY: 'auto' }}>
+
+            {/* Header mit X */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28 }}>
+              <h2 style={{ fontFamily: "'Outfit',sans-serif", fontSize: 22, fontWeight: 800, color: '#1c1209', margin: 0 }}>Profil bearbeiten</h2>
+              <button className="p-close-btn" onClick={closeModal} title="Schließen">
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* ── Name ── */}
+            <p style={{ fontSize: 12, color: '#9a7a5a', margin: '0 0 6px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Name</p>
+            <input className="p-input" placeholder="Name eingeben" value={editName}
+              onChange={(e) => setEditName(e.target.value)} style={{ marginBottom: 8 }} />
+            {nameMsg     && <p style={{ fontSize: 12, color: '#c47a5a', margin: '0 0 8px' }}>{nameMsg}</p>}
+            {nameSuccess && <p style={{ fontSize: 12, color: '#7ab87a', margin: '0 0 8px' }}>{nameSuccess}</p>}
+            <button className="p-btn-primary" onClick={() => {
+              if (!editName.trim()) { setNameMsg('Name darf nicht leer sein'); return }
+              if (editName.trim() === (user?.name || '').trim()) { setNameMsg('Bitte einen anderen Namen eingeben'); return }
+              setNameMsg('')
+              setConfirmSaveName(true)
+            }} style={{ marginBottom: 28 }}>
+              Name speichern
+            </button>
+
+            {/* ── E-Mail (readonly) ── */}
+            <p style={{ fontSize: 12, color: '#9a7a5a', margin: '0 0 6px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>E-Mail</p>
+            <input className="p-input" value={user?.email || ''} disabled style={{ marginBottom: 28 }} />
+
+            {/* ── Passwort ── */}
+            <p style={{ fontSize: 12, color: '#9a7a5a', margin: '0 0 6px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Passwort ändern</p>
+            <input className="p-input" type="password" placeholder="Aktuelles Passwort" value={currentPw}
+              onChange={(e) => setCurrentPw(e.target.value)} style={{ marginBottom: 10 }} />
+            <input className="p-input" type="password" placeholder="Neues Passwort (mind. 8 Zeichen, Groß, Zahl, Sonderzeichen)" value={newPw}
+              onChange={(e) => setNewPw(e.target.value)} style={{ marginBottom: 8 }} />
+            {pwMsg     && <p style={{ fontSize: 12, color: '#c47a5a', margin: '0 0 8px' }}>{pwMsg}</p>}
+            {pwSuccess && <p style={{ fontSize: 12, color: '#7ab87a', margin: '0 0 8px' }}>{pwSuccess}</p>}
+            <button className="p-btn-dark" onClick={() => {
+              if (!currentPw || !newPw) { setPwMsg('Beide Felder ausfüllen'); return }
+              if (currentPw === newPw) { setPwMsg('Neues Passwort muss sich vom aktuellen unterscheiden'); return }
+              setPwMsg('')
+              setConfirmSavePw(true)
+            }}>
+              Passwort ändern
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -353,6 +353,34 @@ async function updateProfile(req, res) {
     return res.status(500).json({ message: "Serverfehler" })
   }
 }
+async function updatePassword(req, res) {
+  try {
+    const { currentPassword, newPassword } = req.body
+    if (!currentPassword || !newPassword)
+      return res.status(400).json({ message: 'Beide Felder sind erforderlich' })
+
+    const passwordMsg = getPasswordValidationMessage(newPassword)
+    if (passwordMsg) return res.status(400).json({ message: passwordMsg })
+
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.userId },
+      select: { password: true }
+    })
+    const valid = await bcrypt.compare(currentPassword, user.password)
+    if (!valid) return res.status(401).json({ message: 'Aktuelles Passwort ist falsch' })
+
+    const hashed = await bcrypt.hash(newPassword, 10)
+    await prisma.user.update({
+      where: { id: req.user.userId },
+      data:  { password: hashed }
+    })
+    return res.json({ message: 'Passwort erfolgreich geändert' })
+  } catch (error) {
+    console.error(error)
+    return res.status(500).json({ message: 'Serverfehler' })
+  }
+}
+
+module.exports = { register, login, getAddress, updateAddress, updateSkinType, deleteSkinType, checkWelcomeCode, confirmEmail, updateProfile, updatePassword }
 
 
-module.exports = { register, login, getAddress, updateAddress, updateSkinType, deleteSkinType, checkWelcomeCode, confirmEmail, updateProfile }
