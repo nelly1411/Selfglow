@@ -1052,6 +1052,52 @@ ${message}
 `;
 }
 
+function buildProductFollowUpPrompt(message, history = [], contextProducts = []) {
+  const conversationHistory = history
+    .slice(-MAX_FOLLOW_UP_HISTORY)
+    .map((item) => `${item.role === "assistant" ? "Assistant" : "Customer"}: ${item.content}`)
+    .join("\n");
+  const productContext = contextProducts
+    .map(
+      (product, index) => `
+${index + 1}. ${product.name}
+Brand: ${product.brand}
+Category: ${product.category}
+Price: ${product.price}
+Rating: ${product.rating ?? "not available"}
+Skin types: ${product.skinTypes || "not available"}
+Concerns: ${product.concerns || "not available"}
+Flags: ${product.vegan ? "vegan" : "not vegan"}, ${
+        product.alcoholFree ? "alcohol free" : "contains/unknown alcohol"
+      }, ${product.fragranceFree ? "fragrance free" : "contains/unknown fragrance"}
+Description: ${truncatePromptText(product.description, MAX_PROMPT_DESCRIPTION_LENGTH)}
+Ingredients: ${truncatePromptText(product.ingredients, MAX_PROMPT_INGREDIENTS_LENGTH)}`
+    )
+    .join("\n");
+
+  return `
+You are SelfGlow's concise, careful skincare shopping assistant.
+Answer in the same language as the customer.
+The customer is asking a follow-up about products that were already recommended.
+Use only the previous product context below and the recent conversation.
+Do not search for or invent new SelfGlow products.
+Explain fit, ingredients, tradeoffs, or comparisons only when supported by the product context.
+If the previous product context is not enough, say what is missing and ask one concise clarifying question.
+Do not diagnose medical conditions or promise treatment results.
+If the question requires medical advice, suggest consulting a dermatologist.
+${AI_RESPONSE_FORMAT_INSTRUCTIONS}
+
+Recent conversation:
+${conversationHistory || "No previous conversation."}
+
+Previous product context:
+${productContext || "No previous product context."}
+
+Customer follow-up:
+${message}
+`;
+}
+
 function buildSkincareChatPrompt(message, history = [], intent = "skincare_general") {
   const conversationHistory = history
     .slice(-MAX_FOLLOW_UP_HISTORY)
@@ -1329,6 +1375,7 @@ function parseChatDecision(rawDecision, message) {
     const parsedDecision = JSON.parse(jsonText);
     const allowedIntents = new Set([
       "product_search",
+      "product_follow_up",
       "skincare_general",
       "greeting",
       "off_topic",
@@ -1346,10 +1393,27 @@ function parseChatDecision(rawDecision, message) {
   return inferChatIntentLocally(message);
 }
 
-async function decideChatIntent(message, history = []) {
+function buildDecisionProductContext(products = []) {
+  if (!products.length) {
+    return "No previous product context.";
+  }
+
+  return products
+    .map(
+      (product, index) =>
+        `${index + 1}. ${product.name} (${product.brand}, ${product.category})`
+    )
+    .join("\n");
+}
+
+async function decideChatIntent(message, history = [], options = {}) {
+  const contextProducts = Array.isArray(options.contextProducts)
+    ? options.contextProducts
+    : [];
+  const hasProductContext = contextProducts.length > 0;
   const localDecision = inferChatIntentLocally(message);
 
-  if (localDecision.intent === "product_search") {
+  if (localDecision.intent === "product_search" && !hasProductContext) {
     return localDecision;
   }
 
@@ -1373,10 +1437,17 @@ async function decideChatIntent(message, history = []) {
         role: "user",
         content: `
 Choose exactly one intent:
-- product_search: customer wants suitable products, recommendations, shopping help, a routine with products, or asks which product to buy/use.
+- product_follow_up: customer asks about previous recommended products, such as why they fit, how to use them, ingredients, differences, comparison, or whether they suit the customer. Choose this for implicit follow-ups like "why is it suitable for me?" when previous product context is available.
+- product_search: customer wants new suitable products, recommendations, shopping help, a routine with products, or asks which new product to buy/use.
 - skincare_general: customer asks a general skincare, ingredient, skin type, routine, or cosmetic-use question without asking for concrete products.
 - greeting: customer only greets, thanks, or starts small talk in a skincare assistant context.
 - off_topic: customer asks about anything outside skincare, beauty routines, cosmetic ingredients, or SelfGlow shopping support.
+
+Previous product context available:
+${hasProductContext ? "yes" : "no"}
+
+Previous product context:
+${buildDecisionProductContext(contextProducts)}
 
 Recent conversation:
 ${conversationHistory || "No previous conversation."}
@@ -1466,7 +1537,13 @@ async function getContextProducts(productIds) {
 }
 
 async function createChatResponse(message, history = [], contextProductIds = []) {
-  const decision = await decideChatIntent(message, history);
+  const previousContextProducts =
+    contextProductIds.length > 0 && process.env.OPENAI_API_KEY
+      ? await getContextProducts(contextProductIds)
+      : [];
+  const decision = await decideChatIntent(message, history, {
+    contextProducts: previousContextProducts,
+  });
 
   if (decision.intent === "off_topic") {
     return {
@@ -1474,6 +1551,32 @@ async function createChatResponse(message, history = [], contextProductIds = [])
       products: [],
       canExplainProducts: false,
       usedFallback: false,
+    };
+  }
+
+  if (decision.intent === "product_follow_up") {
+    const fallbackAnswer =
+      "Ich kann die vorherigen Produkte gerade nicht zuverlässig erklären, weil mir der Produktkontext fehlt.";
+    const answer = await requestOpenAI(
+      [
+        {
+          role: "system",
+          content:
+            "You are a concise, careful skincare shopping assistant for an ecommerce site.",
+        },
+        {
+          role: "user",
+          content: buildProductFollowUpPrompt(message, history, previousContextProducts),
+        },
+      ],
+      fallbackAnswer
+    );
+
+    return {
+      answer,
+      products: [],
+      canExplainProducts: previousContextProducts.length > 0,
+      usedFallback: answer === fallbackAnswer,
     };
   }
 
@@ -1504,7 +1607,7 @@ async function createChatResponse(message, history = [], contextProductIds = [])
   const products = await retrieveProducts(message);
   const contextProducts =
     products.length === 0 && process.env.OPENAI_API_KEY
-      ? await getContextProducts(contextProductIds)
+      ? previousContextProducts
       : [];
   const answer = await createOpenAIAnswer(message, products, history, contextProducts);
 
@@ -1522,7 +1625,13 @@ async function createChatResponseStream(
   contextProductIds = [],
   onDelta = () => {}
 ) {
-  const decision = await decideChatIntent(message, history);
+  const previousContextProducts =
+    contextProductIds.length > 0 && process.env.OPENAI_API_KEY
+      ? await getContextProducts(contextProductIds)
+      : [];
+  const decision = await decideChatIntent(message, history, {
+    contextProducts: previousContextProducts,
+  });
 
   if (decision.intent === "off_topic") {
     return {
@@ -1530,6 +1639,33 @@ async function createChatResponseStream(
       products: [],
       canExplainProducts: false,
       usedFallback: false,
+    };
+  }
+
+  if (decision.intent === "product_follow_up") {
+    const fallbackAnswer =
+      "Ich kann die vorherigen Produkte gerade nicht zuverlässig erklären, weil mir der Produktkontext fehlt.";
+    const answer = await streamOpenAI(
+      [
+        {
+          role: "system",
+          content:
+            "You are a concise, careful skincare shopping assistant for an ecommerce site.",
+        },
+        {
+          role: "user",
+          content: buildProductFollowUpPrompt(message, history, previousContextProducts),
+        },
+      ],
+      fallbackAnswer,
+      onDelta
+    );
+
+    return {
+      answer,
+      products: [],
+      canExplainProducts: previousContextProducts.length > 0,
+      usedFallback: answer === fallbackAnswer,
     };
   }
 
@@ -1562,7 +1698,7 @@ async function createChatResponseStream(
   const products = await retrieveProducts(message);
   const contextProducts =
     products.length === 0 && process.env.OPENAI_API_KEY
-      ? await getContextProducts(contextProductIds)
+      ? previousContextProducts
       : [];
 
   if (products.length > 0 || !process.env.OPENAI_API_KEY) {

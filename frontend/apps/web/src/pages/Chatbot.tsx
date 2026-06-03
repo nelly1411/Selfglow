@@ -183,6 +183,18 @@ function parseSseEvent(eventText: string) {
   }
 }
 
+function getLatestRecommendedProductIds(messages: Message[]) {
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const message = messages[index]
+
+    if (message.role === 'assistant' && message.products?.length) {
+      return message.products.slice(0, 3).map((product) => product.id)
+    }
+  }
+
+  return []
+}
+
 export default function Chatbot() {
   const [chatState, setChatState] = useState<ChatState>(loadStoredChatState)
   const [input, setInput] = useState('')
@@ -273,7 +285,7 @@ useEffect(() => {
     const assistantMessageId = crypto.randomUUID()
     const assistantMessage: Message = { id: assistantMessageId, role: 'assistant', content: '' }
     const chatHistory = [...messages, userMessage].slice(-4).map((message) => ({ role: message.role, content: message.content }))
-    const contextProductIds = Array.from(new Set(messages.flatMap((message) => message.products || []).map((product) => product.id))).slice(-3)
+    const contextProductIds = getLatestRecommendedProductIds(messages)
 
     updateActiveConversation((currentMessages) => [...currentMessages, userMessage, assistantMessage])
     setInput('')
