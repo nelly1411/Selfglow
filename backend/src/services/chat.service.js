@@ -1,4 +1,5 @@
 const prisma = require("../config/prisma");
+const { createEmbedding } = require("./embedding.service");
 
 const OPENAI_API_URL = "https://api.openai.com/v1/responses";
 const DEFAULT_MODEL = "gpt-5-mini";
@@ -760,16 +761,46 @@ async function retrieveSunscreenProducts(filters) {
     .map(({ product }) => toChatProduct(product));
 }
 
-// Keyword RAG retrieval step. Instead of vector search, this uses Prisma
-// contains queries over the current Product table, then reranks candidates in JS.
-async function retrieveProducts(message) {
+function toPgVector(embedding) {
+  return `[${embedding.map(Number).join(",")}]`;
+}
+
+function productMatchesFilters(product, filters) {
+  if (filters.vegan && !product.vegan) return false;
+  if (filters.alcoholFree && !product.alcoholFree) return false;
+  if (filters.fragranceFree && !product.fragranceFree) return false;
+
+  if (filters.spf && !extractProductSpfValues(product).has(filters.spf)) {
+    return false;
+  }
+
+  if (
+    filters.sunscreen &&
+    !normalizeText(product.category || "").includes("sonnenschutz")
+  ) {
+    return false;
+  }
+
+  return true;
+}
+
+function sortRetrievedProducts(a, b, filters) {
+  if (filters.pricePreference === "cheap") {
+    const priceDifference = a.price - b.price;
+
+    if (priceDifference !== 0) {
+      return priceDifference;
+    }
+  }
+
+  return Number(a.distance || 0) - Number(b.distance || 0);
+}
+
+// Fallback retrieval for local setup and freshly imported products. Product
+// embeddings are deleted when products are re-imported, so keyword search keeps
+// recommendations working until npm run embed:products is run again.
+async function retrieveProductsByKeyword(message, filters) {
   const terms = extractTerms(message);
-  const filters = {
-    ...detectBooleanFilters(message),
-    spf: detectSpfFilter(message),
-    sunscreen: detectSunscreenIntent(message),
-    pricePreference: detectPricePreference(message),
-  };
   const hasFilters = Object.values(filters).some((value) => value !== undefined);
 
   if (terms.length === 0 && !hasFilters) {
@@ -782,30 +813,28 @@ async function retrieveProducts(message) {
 
   const where = {};
 
-  // Add exact boolean filters first. Example: "parfumfrei" should prefer only
-  // products where fragranceFree is true.
   for (const [key, value] of Object.entries(filters)) {
     if (["spf", "sunscreen", "pricePreference"].includes(key)) continue;
 
-    if (value !== undefined && key !== "category") {
+    if (value !== undefined) {
       where[key] = value;
     }
   }
 
-  // Search the most useful product text fields. Prisma combines this OR block
-  // with any exact boolean filters above.
   const searchClauses = [];
 
-  if (terms.length > 0 && !filters.sunscreen) {
-    searchClauses.push(...terms.flatMap((term) => [
-      { name: { contains: term, mode: "insensitive" } },
-      { brand: { contains: term, mode: "insensitive" } },
-      { category: { contains: term, mode: "insensitive" } },
-      { description: { contains: term, mode: "insensitive" } },
-      { ingredients: { contains: term, mode: "insensitive" } },
-      { skinTypes: { contains: term, mode: "insensitive" } },
-      { concerns: { contains: term, mode: "insensitive" } },
-    ]));
+  if (terms.length > 0) {
+    searchClauses.push(
+      ...terms.flatMap((term) => [
+        { name: { contains: term, mode: "insensitive" } },
+        { brand: { contains: term, mode: "insensitive" } },
+        { category: { contains: term, mode: "insensitive" } },
+        { description: { contains: term, mode: "insensitive" } },
+        { ingredients: { contains: term, mode: "insensitive" } },
+        { skinTypes: { contains: term, mode: "insensitive" } },
+        { concerns: { contains: term, mode: "insensitive" } },
+      ])
+    );
   }
 
   if (filters.spf) {
@@ -839,10 +868,7 @@ async function retrieveProducts(message) {
     orderBy,
   });
 
-  // Fallback retrieval: SQL contains search can miss terms because of accents,
-  // spelling variants, or language differences. If it finds too few rows, fetch
-  // a broader filtered set and let the local scoring function rank it.
-  if (products.length < 3 && (terms.length > 0 || filters.spf)) {
+  if (products.length < 3 && (terms.length > 0 || filters.spf || hasFilters)) {
     const broadWhere = {};
 
     if (filters.sunscreen) {
@@ -864,29 +890,8 @@ async function retrieveProducts(message) {
     });
   }
 
-  if (filters.spf) {
-    const exactSpfProducts = products.filter((product) =>
-      extractProductSpfValues(product).has(filters.spf)
-    );
-
-    if (exactSpfProducts.length > 0) {
-      products = exactSpfProducts;
-    }
-  }
-
-  if (filters.sunscreen) {
-    const sunscreenProducts = products.filter((product) =>
-      normalizeText(product.category).includes("sonnenschutz")
-    );
-
-    if (sunscreenProducts.length > 0) {
-      products = sunscreenProducts;
-    }
-  }
-
-  // Score, sort, limit, and shape the retrieved products before sending them to
-  // the model or frontend. These products are the "context" in keyword RAG.
   return products
+    .filter((product) => productMatchesFilters(product, filters))
     .map((product) => ({
       product,
       score: scoreProduct(product, terms, filters),
@@ -905,6 +910,57 @@ async function retrieveProducts(message) {
     })
     .slice(0, MAX_CONTEXT_PRODUCTS)
     .map(({ product }) => toChatProduct(product));
+}
+
+// Embedding RAG retrieval step. The embedding search finds semantically similar
+// products, then code applies hard filters like vegan, parfumfrei, LSF, and price.
+async function retrieveProducts(message) {
+  const filters = {
+    ...detectBooleanFilters(message),
+    spf: detectSpfFilter(message),
+    sunscreen: detectSunscreenIntent(message),
+    pricePreference: detectPricePreference(message),
+  };
+  const hasFilters = Object.values(filters).some((value) => value !== undefined);
+
+  if (!message.trim() && !hasFilters) {
+    return [];
+  }
+
+  if (!process.env.OPENAI_API_KEY) {
+    return retrieveProductsByKeyword(message, filters);
+  }
+
+  try {
+    const queryVector = toPgVector(await createEmbedding(message));
+
+    const products = await prisma.$queryRawUnsafe(
+      `
+        SELECT
+          p.*,
+          pe.embedding <=> $1::vector AS distance
+        FROM "ProductEmbedding" pe
+        JOIN "Product" p ON p.id = pe."productId"
+        ORDER BY pe.embedding <=> $1::vector
+        LIMIT 80
+      `,
+      queryVector
+    );
+
+    const retrievedProducts = products
+      .filter((product) => productMatchesFilters(product, filters))
+      .sort((a, b) => sortRetrievedProducts(a, b, filters))
+      .slice(0, MAX_CONTEXT_PRODUCTS)
+      .map((product) => toChatProduct(product));
+
+    if (retrievedProducts.length > 0) {
+      return retrievedProducts;
+    }
+  } catch (error) {
+    console.error("Failed to retrieve products by embedding:", error);
+  }
+
+  return retrieveProductsByKeyword(message, filters);
 }
 
 // If there is no OpenAI key, no matching context, or the model request fails,
@@ -1291,8 +1347,14 @@ function parseChatDecision(rawDecision, message) {
 }
 
 async function decideChatIntent(message, history = []) {
+  const localDecision = inferChatIntentLocally(message);
+
+  if (localDecision.intent === "product_search") {
+    return localDecision;
+  }
+
   if (!process.env.OPENAI_API_KEY) {
-    return inferChatIntentLocally(message);
+    return localDecision;
   }
 
   const conversationHistory = history

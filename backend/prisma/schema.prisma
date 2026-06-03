@@ -8,58 +8,60 @@ datasource db {
 }
 
 model Product {
-  id               Int      @id @default(autoincrement())
-  name             String
-  brand            String
-  category         String
-  price            Float
-  imageUrl         String?
-  description      String?
-  ingredients      String?
-  application      String?
+  id          Int     @id @default(autoincrement())
+  name        String
+  brand       String
+  category    String
+  price       Float
+  imageUrl    String?
+  description String?
+  ingredients String?
+  application String?
 
-  alcoholFree      Boolean  @default(false)
-  fragranceFree    Boolean  @default(false)
-  vegan            Boolean  @default(false)
-  
-  rating           Float?   @default(0)
-  skinTypes        String? 
-  concerns         String?
+  alcoholFree   Boolean @default(false)
+  fragranceFree Boolean @default(false)
+  vegan         Boolean @default(false)
+
+  rating    Float?  @default(0)
+  skinTypes String?
+  concerns  String?
 
   wishlistItems WishlistItem[]
-  cartItems CartItem[]
+  cartItems     CartItem[]
   reviews       Review[]
-  
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  productEmbedding ProductEmbedding?
 }
 
 model User {
-  id            Int      @id @default(autoincrement())
-  email         String   @unique
+  id              Int     @id @default(autoincrement())
+  email           String  @unique
   //passwordHash  String
-  name          String?
-  emailVerified Boolean  @default(false)
-  savedAddress String?
-  savedPostal  String?
-  savedCity    String?
-  savedCountry String?
-  savedPhone   String?
-  skinType     String?  
-  password String
+  name            String?
+  emailVerified   Boolean @default(false)
+  savedAddress    String?
+  savedPostal     String?
+  savedCity       String?
+  savedCountry    String?
+  savedPhone      String?
+  skinType        String?
+  password        String
   usedWelcomeCode Boolean @default(false)
 
   wishlistItems WishlistItem[]
   orders        Order[]
-  reviews       Review[]      
-  cart Cart?
+  reviews       Review[]
+  cart          Cart?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
 model Order {
-  id            Int      @id @default(autoincrement())
-  orderNumber  String  @unique
+  id            Int    @id @default(autoincrement())
+  orderNumber   String @unique
   totalPrice    Float
   paymentMethod String
   address       String
@@ -67,7 +69,6 @@ model Order {
   postal        String
   country       String
   items         String
-
 
   userId Int?
   user   User? @relation(fields: [userId], references: [id])
@@ -81,20 +82,20 @@ model WishlistItem {
   productId Int
   createdAt DateTime @default(now())
 
-  user      User     @relation(fields: [userId], references: [id])
-  product   Product  @relation(fields: [productId], references: [id])
+  user    User    @relation(fields: [userId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
 
   @@unique([userId, productId])
 }
 
 model Cart {
-  id        Int        @id @default(autoincrement())
-  userId    Int        @unique
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
+  id        Int      @id @default(autoincrement())
+  userId    Int      @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  user      User       @relation(fields: [userId], references: [id])
-  items     CartItem[]
+  user  User       @relation(fields: [userId], references: [id])
+  items CartItem[]
 }
 
 model CartItem {
@@ -106,22 +107,33 @@ model CartItem {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  cart      Cart     @relation(fields: [cartId], references: [id])
-  product   Product  @relation(fields: [productId], references: [id])
+  cart    Cart    @relation(fields: [cartId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
 
   @@unique([cartId, productId])
 }
 
 model Review {
-  id        Int       @id @default(autoincrement())
-  userId    Int
-  productId Int
-  rating    Int
+  id         Int      @id @default(autoincrement())
+  userId     Int
+  productId  Int
+  rating     Int
   reviewText String
-  createdAt   DateTime @default(now())
+  createdAt  DateTime @default(now())
 
-  user      User       @relation(fields: [userId], references: [id])
-  product   Product    @relation(fields: [productId], references: [id])
+  user    User    @relation(fields: [userId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
 
   @@unique([userId, productId])
+}
+
+model ProductEmbedding {
+  productId Int                   @id
+  content   String
+  model     String
+  embedding Unsupported("vector")
+  createdAt DateTime              @default(now())
+  updatedAt DateTime              @updatedAt
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 }

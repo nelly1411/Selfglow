@@ -5,7 +5,10 @@
   "scripts": {
     "dev": "nodemon src/app.js",
     "start": "node src/app.js",
-    "seed": "node prisma/seed.js"
+    "seed": "node prisma/seed.js",
+    "embed:products": "node prisma/embed-products.js",
+    "export:product-embeddings": "node prisma/export-product-embeddings.js",
+    "import:product-embeddings": "node prisma/import-product-embeddings.js"
   },
   "keywords": [],
   "author": "",
