@@ -133,21 +133,30 @@ export default function Header() {
 
           {/* NAVIGATION */}
           <nav className="hidden lg:flex flex-1 items-center justify-center gap-10">
-            {[
-              { to: '/', label: 'Startseite', end: true },
-              { to: '/shop', label: 'Produkte', end: false },
-              { to: '/about', label: 'Über uns', end: false },
-              { to: '/chatbot', label: 'KI-Beratung', end: false },
-            ].map(({ to, label, end }) => (
-              <NavLink
-                key={to}
-                to={to}
-                end={end}
-                className={({ isActive }) => navLink(isActive)}
-              >
-                {label}
-              </NavLink>
-            ))}
+           {[
+  { to: '/', label: 'Startseite', end: true },
+  { to: '/shop', label: 'Produkte', end: false },
+  { to: '/about', label: 'Über uns', end: false },
+  { to: '/chatbot', label: 'KI-Beratung', end: false },
+].map(({ to, label, end }) => (
+  <NavLink
+    key={to}
+    to={to}
+    end={end}
+    className={({ isActive }) =>
+  to === '/chatbot'
+    ? cn(
+        'text-base font-semibold whitespace-nowrap rounded-full px-4 py-2 transition-all duration-200 border border-[#D4A574]',
+        isActive
+          ? 'text-[#D4A574] bg-transparent'
+          : 'text-[#2a1c10] hover:bg-[#D4A574] hover:text-white'
+      )
+    : navLink(isActive)
+}
+  >
+    {label}
+  </NavLink>
+))}
           </nav>
 
           {/* RIGHT SIDE */}
