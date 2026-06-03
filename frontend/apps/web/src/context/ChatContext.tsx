@@ -13,6 +13,8 @@ export type ChatProduct = {
   vegan?: boolean
   alcoholFree?: boolean
   fragranceFree?: boolean
+  recommendationReason?: string | null
+  recommendationBullets?: string[]
 }
 
 export type Message = {

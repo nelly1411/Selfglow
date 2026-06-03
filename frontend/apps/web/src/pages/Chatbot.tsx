@@ -19,6 +19,8 @@ type ChatProduct = {
   vegan?: boolean
   alcoholFree?: boolean
   fragranceFree?: boolean
+  recommendationReason?: string | null
+  recommendationBullets?: string[]
 }
 
 type Message = {
@@ -55,7 +57,8 @@ const starterQuestions = [
 
 const chatStorageKey = 'selfglow-chatbot-conversations'
 const legacyChatStorageKey = 'selfglow-chatbot-messages'
-const medicalDisclaimer =
+const medicalDisclaimer = 'hinweis: dies ist keine medizinische diagnose.'
+const legacyMedicalDisclaimer =
   'Das ist keine medizinische Diagnose, sondern eine Produktempfehlung auf Basis deiner Anfrage.'
 const initialMessages: Message[] = [
   {
@@ -121,15 +124,26 @@ function loadStoredChatState(): ChatState {
 }
 
 function renderMessageContent(message: Message) {
-  if (message.role !== 'assistant' || !message.content.includes(medicalDisclaimer)) {
+  if (message.role !== 'assistant') {
     return renderStructuredText(message.content)
   }
-  const mainContent = message.content.replace(medicalDisclaimer, '').trim()
+  const hasNewDisclaimer = message.content.toLowerCase().includes(medicalDisclaimer)
+  const hasLegacyDisclaimer = message.content.includes(legacyMedicalDisclaimer)
+
+  if (!hasNewDisclaimer && !hasLegacyDisclaimer) {
+    return renderStructuredText(message.content)
+  }
+
+  const mainContent = message.content
+    .replace(new RegExp(medicalDisclaimer, 'i'), '')
+    .replace(legacyMedicalDisclaimer, '')
+    .trim()
+
   return (
     <>
       {mainContent && renderStructuredText(mainContent)}
       <p className="mt-2 text-xs leading-snug text-muted-foreground">
-        <span className="font-medium">Hinweis:</span> {medicalDisclaimer}
+        {medicalDisclaimer}
       </p>
     </>
   )
@@ -596,6 +610,18 @@ onClick={() => setConversationToDelete(conversation.id)}
                                   <h3 className="line-clamp-2 text-sm font-medium group-hover:text-[#D4A574]">{product.name}</h3>
                                   <p className="mt-0.5 text-xs text-muted-foreground">{product.brand}</p>
                                   <p className="mt-1 text-sm font-semibold">€{product.price.toFixed(2)}</p>
+                                  {product.recommendationBullets && product.recommendationBullets.length > 0 && (
+                                    <div className="mt-1.5 flex flex-wrap gap-1">
+                                      {product.recommendationBullets.slice(0, 4).map((bullet) => (
+                                        <span
+                                          key={bullet}
+                                          className="rounded-full bg-[#FDF7F0] px-2 py-0.5 text-[11px] leading-4 text-[#7A5A3A]"
+                                        >
+                                          {bullet}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                             </Link>
