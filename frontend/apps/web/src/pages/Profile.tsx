@@ -289,9 +289,29 @@ export default function Profile() {
                       <MapPin size={12} />{order.address}, {order.postal} {order.city}, {order.country}
                     </div>
                     <div style={{ borderTop: '1px solid #F0DCC8', paddingTop: 12 }}>
-                      <p style={{ fontSize: 12, fontWeight: 600, color: '#7a5c42', margin: '0 0 8px' }}>{itemCount} Artikel</p>
-                      <ExpandableItems items={items} orderId={order.id} />
-                    </div>
+  <p style={{ fontSize: 12, fontWeight: 600, color: '#7a5c42', margin: '0 0 8px' }}>
+    {itemCount} Artikel
+  </p>
+
+  <ExpandableItems items={items} orderId={order.id} />
+
+  <Link
+    to={`/profile/orders/${order.id}`}
+    style={{
+      display: 'inline-flex',
+      marginTop: 12,
+      padding: '8px 14px',
+      borderRadius: 999,
+      background: '#D4A574',
+      color: '#fff',
+      fontSize: 12,
+      fontWeight: 600,
+      textDecoration: 'none',
+    }}
+  >
+    Details anzeigen
+  </Link>
+</div>
                   </div>
                 )
               })}
