@@ -6,6 +6,7 @@ import {
   Trash2,
   Star,
   ArrowLeft,
+  Check,
 } from 'lucide-react'
 
 import { Button } from '@workspace/ui/components/button'
@@ -21,8 +22,10 @@ export default function Wishlist() {
 
   const navigate = useNavigate()
 
-  const [itemToDelete, setItemToDelete] =
-    useState<WishlistItem | null>(null)
+  const [itemToDelete, setItemToDelete] = useState<WishlistItem | null>(null)
+  const [cartToastVisible, setCartToastVisible] = useState(false)
+  const [cartToastLeaving, setCartToastLeaving] = useState(false)
+  const [cartToastEntered, setCartToastEntered] = useState(false)
 
   const handleAddToCart = (item: WishlistItem) => {
     addToCart({
@@ -32,13 +35,19 @@ export default function Wishlist() {
       price: item.price,
       image: item.image,
     })
+
+    setCartToastVisible(true)
+    setCartToastLeaving(false)
+    setCartToastEntered(false)
+
+    setTimeout(() => setCartToastEntered(true), 100)
+    setTimeout(() => setCartToastLeaving(true), 2200)
+    setTimeout(() => setCartToastVisible(false), 2800)
   }
 
   if (!isLoggedIn) {
     return (
       <div className="container mx-auto px-4 py-8">
-
-        {/* BACK BUTTON */}
         <button
           onClick={() => navigate(-1)}
           className="flex items-center gap-2 text-[#5F5F5F] hover:text-[#D4A574] mb-10 transition"
@@ -52,9 +61,7 @@ export default function Wishlist() {
             <Heart className="h-12 w-12 text-[#D4A574]" />
           </div>
 
-          <h1 className="text-2xl font-bold mb-4">
-            Bitte einloggen
-          </h1>
+          <h1 className="text-2xl font-bold mb-4">Bitte einloggen</h1>
 
           <p className="text-muted-foreground mb-8">
             Melde dich an, um deine Merkliste zu sehen und Produkte zu speichern.
@@ -73,8 +80,6 @@ export default function Wishlist() {
   if (items.length === 0) {
     return (
       <div className="container mx-auto px-4 py-8">
-
-        {/* BACK BUTTON */}
         <button
           onClick={() => navigate(-1)}
           className="flex items-center gap-2 text-[#5F5F5F] hover:text-[#D4A574] mb-10 transition"
@@ -108,8 +113,27 @@ export default function Wishlist() {
 
   return (
     <div className="container mx-auto px-4 py-8">
+      {cartToastVisible && (
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[100] pointer-events-none">
+          <div
+            className={cn(
+              'flex items-center gap-3 rounded-2xl bg-[#D4A574] px-6 py-4 text-white shadow-2xl transition-all duration-500 ease-out',
+              !cartToastEntered && 'opacity-0 -translate-y-4 scale-95',
+              cartToastEntered &&
+                !cartToastLeaving &&
+                'opacity-100 translate-y-0 scale-100',
+              cartToastLeaving && 'opacity-0 -translate-y-3 scale-95'
+            )}
+          >
+            <Check className="h-5 w-5" />
 
-      {/* BACK BUTTON */}
+            <span className="text-sm font-medium">
+              Produkt wurde zum Warenkorb hinzugefügt
+            </span>
+          </div>
+        </div>
+      )}
+
       <button
         onClick={() => navigate(-1)}
         className="flex items-center gap-2 text-[#5F5F5F] hover:text-[#D4A574] mb-6 transition"
@@ -118,31 +142,30 @@ export default function Wishlist() {
         <span>Zurück</span>
       </button>
 
-      <h1 className="text-2xl font-bold mb-2">
-        Meine Merkliste
-      </h1>
+      <h1 className="text-2xl font-bold mb-2">Meine Merkliste</h1>
 
       <p className="text-muted-foreground mb-8">
         {items.length} Produkt{items.length !== 1 && 'e'} gespeichert
       </p>
 
-<div className="grid grid-cols-1 gap-5">
-          {items.map((item) => {
+      <div className="grid grid-cols-1 gap-5">
+        {items.map((item) => {
           const rating = item.rating ?? 0
 
           return (
             <div
               key={item.id}
-className="group flex gap-6 rounded-[28px] border border-[#F0DCC8] bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-xl">
-              {/* IMAGE */}
-<div className="relative h-40 w-40 shrink-0 rounded-2xl bg-[#F8F2EC] overflow-hidden">                <Link to={`/product/${item.id}`}>
+              className="group flex gap-6 rounded-[28px] border border-[#F0DCC8] bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
+            >
+              <div className="relative h-40 w-40 shrink-0 rounded-2xl bg-[#F8F2EC] overflow-hidden">
+                <Link to={`/product/${item.id}`}>
                   <img
                     src={item.image}
                     alt={item.name}
-className="w-full h-full object-contain p-4 group-hover:scale-105 transition"                  />
+                    className="w-full h-full object-contain p-4 group-hover:scale-105 transition"
+                  />
                 </Link>
 
-                {/* REMOVE */}
                 <button
                   onClick={() => setItemToDelete(item)}
                   className="absolute top-3 right-3 p-2 bg-white rounded-full shadow hover:bg-red-50"
@@ -151,18 +174,17 @@ className="w-full h-full object-contain p-4 group-hover:scale-105 transition"   
                 </button>
               </div>
 
-              {/* CONTENT */}
-<div className="flex flex-1 flex-col p-4">
+              <div className="flex flex-1 flex-col p-4">
                 <p className="text-xs text-muted-foreground mb-1">
                   {item.category}
                 </p>
 
                 <Link to={`/product/${item.id}`}>
-<h3 className="min-h-[56px] text-sm font-medium mb-2 hover:text-[#D4A574]">                    {item.name}
+                  <h3 className="min-h-[56px] text-sm font-medium mb-2 hover:text-[#D4A574]">
+                    {item.name}
                   </h3>
                 </Link>
 
-                {/* RATING */}
                 <div className="flex items-center gap-1 mb-2">
                   <div className="flex">
                     {[...Array(5)].map((_, i) => (
@@ -183,14 +205,12 @@ className="w-full h-full object-contain p-4 group-hover:scale-105 transition"   
                   </span>
                 </div>
 
-                {/* PRICE */}
                 <div className="mt-auto flex items-center gap-2 mb-3">
-  <span className="font-bold">
-    {item.price.toFixed(2).replace('.', ',')} €
-  </span>
-</div>
+                  <span className="font-bold">
+                    {item.price.toFixed(2).replace('.', ',')} €
+                  </span>
+                </div>
 
-                {/* CART BUTTON */}
                 <Button
                   onClick={() => handleAddToCart(item)}
                   className="w-full bg-[#F5E6D3] hover:bg-[#E8D5C0] rounded-full"
@@ -204,11 +224,9 @@ className="w-full h-full object-contain p-4 group-hover:scale-105 transition"   
         })}
       </div>
 
-      {/* DELETE MODAL */}
       {itemToDelete && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl p-6 w-[90%] max-w-sm text-center shadow-lg">
-
             <h2 className="text-xl font-bold mb-3">
               Produkt entfernen?
             </h2>
@@ -218,7 +236,6 @@ className="w-full h-full object-contain p-4 group-hover:scale-105 transition"   
             </p>
 
             <div className="flex gap-3 justify-center">
-
               <Button
                 onClick={() => setItemToDelete(null)}
                 className="bg-gray-100 text-black hover:bg-gray-200 rounded-full px-6"
@@ -235,7 +252,6 @@ className="w-full h-full object-contain p-4 group-hover:scale-105 transition"   
               >
                 Entfernen
               </Button>
-
             </div>
           </div>
         </div>
