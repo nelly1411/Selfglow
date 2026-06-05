@@ -12,7 +12,8 @@ const {
   deleteSkinType,
   checkWelcomeCode,
    updateProfile,
-   updatePassword
+   updatePassword,
+   updateGender,
 } = require("../controllers/authController");
 
 router.post  ("/register",       register);
@@ -25,5 +26,6 @@ router.delete("/skin-type", authMiddleware, deleteSkinType)
 router.get("/check-welcome-code", authMiddleware, checkWelcomeCode)
 router.patch("/profile", authMiddleware, updateProfile);
 router.patch("/update-password", authMiddleware, updatePassword)
+router.patch("/gender", authMiddleware, updateGender)
 
 module.exports = router;

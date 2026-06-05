@@ -33,6 +33,7 @@ function toAuthUser(user) {
     savedPhone:   user.savedPhone   ?? null,
     usedWelcomeCode: user.usedWelcomeCode ?? false, 
     emailVerified: user.emailVerified ?? false,
+    gender: user.gender ?? null,
   };
 }
 
@@ -108,6 +109,7 @@ async function register(req, res) {
         email:    normalizedEmail,
         password: hashedPassword,   // ← FIX: war passwordHash
         name:     trimmedName || null,
+        gender:   gender || null, 
         emailVerified: !REQUIRE_EMAIL_VERIFICATION,
       },
     });
@@ -193,6 +195,7 @@ async function login(req, res) {
         savedPhone:   true,
         usedWelcomeCode: true,
         emailVerified: true,
+         gender:       true, 
       },
     });
 
@@ -380,7 +383,21 @@ async function updatePassword(req, res) {
     return res.status(500).json({ message: 'Serverfehler' })
   }
 }
-
-module.exports = { register, login, getAddress, updateAddress, updateSkinType, deleteSkinType, checkWelcomeCode, confirmEmail, updateProfile, updatePassword }
+async function updateGender(req, res) {
+  try {
+    const { gender } = req.body
+    const allowed = ['male', 'female', 'diverse', null]
+    if (!allowed.includes(gender)) return res.status(400).json({ message: 'Ungültiges Geschlecht' })
+    const updated = await prisma.user.update({
+      where: { id: req.user.userId },
+      data:  { gender: gender ?? null }
+    })
+    return res.json({ message: 'Gespeichert', user: toAuthUser(updated) })
+  } catch (err) {
+    console.error(err)
+    return res.status(500).json({ message: 'Serverfehler' })
+  }
+}
+module.exports = { register, login, getAddress, updateAddress, updateSkinType, deleteSkinType, checkWelcomeCode, confirmEmail, updateProfile, updatePassword, updateGender}
 
 

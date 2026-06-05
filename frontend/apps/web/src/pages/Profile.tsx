@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   CalendarDays, Mail, MapPin, ShoppingBag, X,
-  UserRound, Star, Trash2, ExternalLink, Heart, Sparkles
+  UserRound, Star, Trash2, ExternalLink, Heart,
 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { useWishlist } from '@/context/WishlistContext'
@@ -11,11 +11,13 @@ import { apiUrl } from '@/lib/api'
 
 type OrderItem = { id: number; name: string; price: number; quantity?: number; image?: string }
 type Order = { id: number; totalPrice: number; paymentMethod: string; address: string; city: string; postal: string; country: string; items: string; createdAt: string }
+type Gender = 'male' | 'female' | 'diverse' | null
 
 function formatCurrency(value: number) { return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(value) }
 function formatDate(value: string) { return new Intl.DateTimeFormat('de-DE', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(value)) }
 function formatPaymentMethod(value: string) { return ({ klarna: 'Klarna', paypal: 'PayPal' })[value.toLowerCase()] || value }
 function parseOrderItems(items: string): OrderItem[] { try { const p = JSON.parse(items); return Array.isArray(p) ? p : [] } catch { return [] } }
+function genderLabel(g: Gender) { return g === 'female' ? '👩 Frau' : g === 'male' ? '👨 Mann' : g === 'diverse' ? '🧑 Divers' : 'Nicht angegeben' }
 
 function StarRow({ rating, size = 14 }: { rating: number; size?: number }) {
   return (
@@ -54,10 +56,9 @@ const CSS = `
   .p-btn-dark:hover { background:#2e1e0e; }
   .p-btn-outline { width:100%; padding:13px; border-radius:12px; border:1px solid #F0DCC8; background:transparent; color:#9a7a5a; font-weight:600; font-size:14px; cursor:pointer; font-family:'Outfit',sans-serif; transition:all 0.2s; }
   .p-btn-outline:hover { background:#FDF6EE; color:#1c1209; }
-  .p-btn-danger { width:100%; padding:13px; border-radius:12px; border:none; background:#c47a5a; color:#fff; font-weight:600; font-size:14px; cursor:pointer; font-family:'Outfit',sans-serif; transition:background 0.2s; }
-  .p-btn-danger:hover { background:#b56848; }
   .p-close-btn { background:none; border:none; cursor:pointer; color:#9a7a5a; padding:6px; border-radius:8px; display:flex; align-items:center; transition:all 0.2s; }
   .p-close-btn:hover { color:#1c1209; background:#F0DCC8; }
+  .p-gender-btn { flex:1; padding:10px 8px; border-radius:12px; cursor:pointer; transition:all 0.15s ease; display:flex; flex-direction:column; align-items:center; gap:4px; font-family:'Outfit',sans-serif; }
 `
 
 function ExpandableItems({ items, orderId }: { items: OrderItem[], orderId: number }) {
@@ -94,16 +95,39 @@ function ConfirmModal({ title, message, onConfirm, onCancel, confirmLabel = 'Ja,
         <h3 style={{ fontFamily: "'Outfit',sans-serif", fontSize: 18, fontWeight: 700, color: '#1c1209', textAlign: 'center', margin: '0 0 8px' }}>{title}</h3>
         <p style={{ fontSize: 13, color: '#9a7a5a', textAlign: 'center', margin: '0 0 24px', fontWeight: 300, lineHeight: 1.6 }}>{message}</p>
         <div style={{ display: 'flex', gap: 10 }}>
-          <button onClick={onCancel}
-            style={{ flex: 1, padding: '12px', borderRadius: 12, border: '1px solid #F0DCC8', background: 'transparent', color: '#9a7a5a', fontWeight: 600, fontSize: 14, cursor: 'pointer', fontFamily: "'Outfit',sans-serif" }}>
+          <button onClick={onCancel} style={{ flex: 1, padding: '12px', borderRadius: 12, border: '1px solid #F0DCC8', background: 'transparent', color: '#9a7a5a', fontWeight: 600, fontSize: 14, cursor: 'pointer', fontFamily: "'Outfit',sans-serif" }}>
             Abbrechen
           </button>
-          <button onClick={onConfirm}
-            style={{ flex: 1, padding: '12px', borderRadius: 12, border: 'none', background: danger ? '#c47a5a' : '#D4A574', color: '#fff', fontWeight: 600, fontSize: 14, cursor: 'pointer', fontFamily: "'Outfit',sans-serif" }}>
+          <button onClick={onConfirm} style={{ flex: 1, padding: '12px', borderRadius: 12, border: 'none', background: danger ? '#c47a5a' : '#D4A574', color: '#fff', fontWeight: 600, fontSize: 14, cursor: 'pointer', fontFamily: "'Outfit',sans-serif" }}>
             {confirmLabel}
           </button>
         </div>
       </div>
+    </div>
+  )
+}
+
+function GenderPicker({ value, onChange }: { value: Gender; onChange: (g: Gender) => void }) {
+  const options: { val: Gender; label: string; emoji: string }[] = [
+    { val: 'female',  label: 'Frau',   emoji: '👩' },
+    { val: 'male',    label: 'Mann',   emoji: '👨' },
+    { val: 'diverse', label: 'Divers', emoji: '🧑' },
+  ]
+  return (
+    <div style={{ display: 'flex', gap: 8 }}>
+      {options.map(o => (
+        <button key={o.val} type="button"
+          className="p-gender-btn"
+          onClick={() => onChange(value === o.val ? null : o.val)}
+          style={{
+            border: value === o.val ? '2px solid #D4A574' : '1.5px solid #e0c9a8',
+            background: value === o.val ? '#FDF6EE' : '#fff',
+          }}>
+          <span style={{ fontSize: 20 }}>{o.emoji}</span>
+          <span style={{ fontSize: 12, fontWeight: value === o.val ? 600 : 400, color: value === o.val ? '#D4A574' : '#7a5c42' }}>{o.label}</span>
+          {value === o.val && <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#D4A574' }} />}
+        </button>
+      ))}
     </div>
   )
 }
@@ -125,14 +149,19 @@ export default function Profile() {
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
   const [confirmSaveName, setConfirmSaveName] = useState(false)
   const [confirmSavePw,   setConfirmSavePw]   = useState(false)
+  const [confirmSaveGender, setConfirmSaveGender] = useState(false)
 
-  const [editName,    setEditName]    = useState(user?.name || '')
-  const [currentPw,   setCurrentPw]   = useState('')
-  const [newPw,       setNewPw]       = useState('')
-  const [nameMsg,     setNameMsg]     = useState('')
-  const [pwMsg,       setPwMsg]       = useState('')
-  const [pwSuccess,   setPwSuccess]   = useState('')
-  const [nameSuccess, setNameSuccess] = useState('')
+  const [editName,     setEditName]     = useState(user?.name || '')
+  const [editGender,   setEditGender]   = useState<Gender>((user?.gender as Gender) ?? null)
+  const [currentPw,    setCurrentPw]    = useState('')
+  const [newPw,        setNewPw]        = useState('')
+  const [nameMsg,      setNameMsg]      = useState('')
+  const [pwMsg,        setPwMsg]        = useState('')
+  const [pwSuccess,    setPwSuccess]    = useState('')
+  const [nameSuccess,  setNameSuccess]  = useState('')
+  const [genderMsg,    setGenderMsg]    = useState('')
+  const [genderSuccess,setGenderSuccess]= useState('')
+  const [genderSaved,  setGenderSaved]  = useState(true)  // starts true = already saved
 
   const styleInjected = useState(false)
   if (!styleInjected[0]) {
@@ -182,6 +211,20 @@ export default function Profile() {
     } catch { setNameMsg('Netzwerkfehler') }
   }
 
+  const handleSaveGender = async () => {
+    setGenderMsg(''); setGenderSuccess(''); setConfirmSaveGender(false)
+    try {
+      const res  = await fetch(apiUrl('/api/auth/gender'), {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ gender: editGender }),
+      })
+      const data = await res.json()
+      if (res.ok && data.user) { updateUser({ ...data.user, token }); setGenderSuccess('✓ Gespeichert'); setGenderSaved(true) }
+      else setGenderMsg(data.message || 'Fehler beim Speichern')
+    } catch { setGenderMsg('Netzwerkfehler') }
+  }
+
   const handleUpdatePassword = async () => {
     setPwMsg(''); setPwSuccess(''); setConfirmSavePw(false)
     if (!currentPw || !newPw) { setPwMsg('Beide Felder ausfüllen'); return }
@@ -200,6 +243,7 @@ export default function Profile() {
   const closeModal = () => {
     setShowEditProfile(false)
     setNameMsg(''); setNameSuccess(''); setPwMsg(''); setPwSuccess('')
+    setGenderMsg(''); setGenderSuccess('')
   }
 
   const firstName = user?.name?.split(' ')[0] || user?.email?.split('@')[0] || 'Nutzer'
@@ -220,9 +264,7 @@ export default function Profile() {
               </h1>
               <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', margin: '4px 0 0', fontWeight: 300 }}>{user?.email}</p>
             </div>
-            <Link to="/shop" style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 8, background: 'linear-gradient(135deg, #D4A574 0%, #C49464 100%)', boxShadow: '0 6px 16px rgba(212,165,116,0.25)', color: '#fff', padding: '12px 24px', borderRadius: 100, fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>
-              <Sparkles size={14} /> Produkte
-            </Link>
+           
           </div>
         </div>
       </div>
@@ -289,29 +331,9 @@ export default function Profile() {
                       <MapPin size={12} />{order.address}, {order.postal} {order.city}, {order.country}
                     </div>
                     <div style={{ borderTop: '1px solid #F0DCC8', paddingTop: 12 }}>
-  <p style={{ fontSize: 12, fontWeight: 600, color: '#7a5c42', margin: '0 0 8px' }}>
-    {itemCount} Artikel
-  </p>
-
-  <ExpandableItems items={items} orderId={order.id} />
-
-  <Link
-    to={`/profile/orders/${order.id}`}
-    style={{
-      display: 'inline-flex',
-      marginTop: 12,
-      padding: '8px 14px',
-      borderRadius: 999,
-      background: '#D4A574',
-      color: '#fff',
-      fontSize: 12,
-      fontWeight: 600,
-      textDecoration: 'none',
-    }}
-  >
-    Details anzeigen
-  </Link>
-</div>
+                      <p style={{ fontSize: 12, fontWeight: 600, color: '#7a5c42', margin: '0 0 8px' }}>{itemCount} Artikel</p>
+                      <ExpandableItems items={items} orderId={order.id} />
+                    </div>
                   </div>
                 )
               })}
@@ -368,8 +390,9 @@ export default function Profile() {
               <h2 style={{ fontFamily: "'Outfit',sans-serif", fontSize: 16, fontWeight: 700, color: '#1c1209', margin: '0 0 20px' }}>Kontodaten</h2>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 {[
-                  { icon: UserRound, label: 'Name',   value: user?.name || 'Nicht angegeben' },
-                  { icon: Mail,      label: 'E-Mail', value: user?.email || '' },
+                  { icon: UserRound, label: 'Name',      value: user?.name   || 'Nicht angegeben' },
+                  { icon: Mail,      label: 'E-Mail',    value: user?.email  || '' },
+                  { icon: UserRound, label: 'Geschlecht', value: genderLabel((user?.gender as Gender) ?? null) },
                 ].map(row => (
                   <div key={row.label} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
                     <div style={{ width: 32, height: 32, borderRadius: 8, background: '#FDF6EE', border: '1px solid #e8c9a0', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -382,7 +405,7 @@ export default function Profile() {
                   </div>
                 ))}
               </div>
-              <button onClick={() => { setEditName(user?.name || ''); setShowEditProfile(true) }}
+              <button onClick={() => { setEditName(user?.name || ''); setEditGender((user?.gender as Gender) ?? null); setGenderSaved(true); setGenderSuccess(''); setShowEditProfile(true) }}
                 style={{ marginTop: 24, width: '100%', padding: '12px', borderRadius: 12, border: 'none', background: '#D4A574', color: '#fff', fontWeight: 600, cursor: 'pointer', fontFamily: "'Outfit',sans-serif", fontSize: 14 }}>
                 Profil bearbeiten
               </button>
@@ -420,28 +443,24 @@ export default function Profile() {
         )}
       </div>
 
-      {/* ── Confirm: Bewertung löschen ── */}
+      {/* ── Confirm Modals ── */}
       {confirmDeleteId !== null && (
         <ConfirmModal title="Bewertung löschen?" message="Diese Aktion kann nicht rückgängig gemacht werden."
           confirmLabel="Ja, löschen" danger={true}
           onConfirm={() => handleDeleteReview(confirmDeleteId)}
           onCancel={() => setConfirmDeleteId(null)} />
       )}
-
-      {/* ── Confirm: Name speichern ── */}
       {confirmSaveName && (
         <ConfirmModal title="Name ändern?" message={`Möchtest du deinen Namen wirklich zu "${editName}" ändern?`}
-          confirmLabel="Ja, ändern"
-          onConfirm={handleSaveName}
-          onCancel={() => setConfirmSaveName(false)} />
+          confirmLabel="Ja, ändern" onConfirm={handleSaveName} onCancel={() => setConfirmSaveName(false)} />
       )}
-
-      {/* ── Confirm: Passwort ändern ── */}
       {confirmSavePw && (
-        <ConfirmModal title="Passwort ändern?" message="Möchtest du dein Passwort wirklich ändern? Du wirst weiterhin eingeloggt bleiben."
-          confirmLabel="Ja, ändern"
-          onConfirm={handleUpdatePassword}
-          onCancel={() => setConfirmSavePw(false)} />
+        <ConfirmModal title="Passwort ändern?" message="Möchtest du dein Passwort wirklich ändern?"
+          confirmLabel="Ja, ändern" onConfirm={handleUpdatePassword} onCancel={() => setConfirmSavePw(false)} />
+      )}
+      {confirmSaveGender && (
+        <ConfirmModal title="Geschlecht ändern?" message={`Möchtest du dein Geschlecht wirklich auf "${genderLabel(editGender)}" ändern?`}
+          confirmLabel="Ja, ändern" onConfirm={handleSaveGender} onCancel={() => setConfirmSaveGender(false)} />
       )}
 
       {/* ── Edit Profile Modal ── */}
@@ -450,12 +469,9 @@ export default function Profile() {
           onClick={(e) => { if (e.target === e.currentTarget) closeModal() }}>
           <div style={{ width: '100%', maxWidth: 460, background: '#fff', borderRadius: 28, padding: 36, boxShadow: '0 24px 60px rgba(0,0,0,0.18)', maxHeight: '90vh', overflowY: 'auto' }}>
 
-            {/* Header mit X */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28 }}>
               <h2 style={{ fontFamily: "'Outfit',sans-serif", fontSize: 22, fontWeight: 800, color: '#1c1209', margin: 0 }}>Profil bearbeiten</h2>
-              <button className="p-close-btn" onClick={closeModal} title="Schließen">
-                <X size={20} />
-              </button>
+              <button className="p-close-btn" onClick={closeModal} title="Schließen"><X size={20} /></button>
             </div>
 
             {/* ── Name ── */}
@@ -467,11 +483,24 @@ export default function Profile() {
             <button className="p-btn-primary" onClick={() => {
               if (!editName.trim()) { setNameMsg('Name darf nicht leer sein'); return }
               if (editName.trim() === (user?.name || '').trim()) { setNameMsg('Bitte einen anderen Namen eingeben'); return }
-              setNameMsg('')
-              setConfirmSaveName(true)
+              setNameMsg(''); setConfirmSaveName(true)
             }} style={{ marginBottom: 28 }}>
               Name speichern
             </button>
+
+            {/* ── Geschlecht ── */}
+            <p style={{ fontSize: 12, color: '#9a7a5a', margin: '0 0 8px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Geschlecht</p>
+            <GenderPicker value={editGender} onChange={(g) => { setEditGender(g); setGenderSaved(false); setGenderSuccess('') }} />
+            <div style={{ marginTop: 12, marginBottom: 28 }}>
+              {genderMsg && <p style={{ fontSize: 12, color: '#c47a5a', margin: '0 0 8px' }}>{genderMsg}</p>}
+              {genderSaved ? (
+                <p style={{ fontSize: 12, color: '#7ab87a', margin: 0, fontWeight: 600 }}>✓ Gespeichert</p>
+              ) : (
+                <button className="p-btn-primary" onClick={() => setConfirmSaveGender(true)}>
+                  Geschlecht speichern
+                </button>
+              )}
+            </div>
 
             {/* ── E-Mail (readonly) ── */}
             <p style={{ fontSize: 12, color: '#9a7a5a', margin: '0 0 6px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>E-Mail</p>
@@ -488,8 +517,7 @@ export default function Profile() {
             <button className="p-btn-dark" onClick={() => {
               if (!currentPw || !newPw) { setPwMsg('Beide Felder ausfüllen'); return }
               if (currentPw === newPw) { setPwMsg('Neues Passwort muss sich vom aktuellen unterscheiden'); return }
-              setPwMsg('')
-              setConfirmSavePw(true)
+              setPwMsg(''); setConfirmSavePw(true)
             }}>
               Passwort ändern
             </button>
