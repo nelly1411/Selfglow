@@ -10,9 +10,10 @@ export type User = {
   savedCity?:    string | null
   savedCountry?: string | null
   savedPhone?:   string | null
-   skinType?: string | null
-   usedWelcomeCode?: boolean | null 
-   emailVerified?: boolean | null
+  skinType?:     string | null
+  usedWelcomeCode?: boolean | null
+  emailVerified?:   boolean | null
+  gender?:          'male' | 'female' | 'diverse' | null
 }
 
 type AuthContextType = {
@@ -36,8 +37,7 @@ function isTokenExpired(token: string) {
     const payload = token.split('.')[1]
     const normalizedPayload = payload.replace(/-/g, '+').replace(/_/g, '/')
     const paddedPayload = normalizedPayload.padEnd(
-      normalizedPayload.length + ((4 - (normalizedPayload.length % 4)) % 4),
-      '='
+      normalizedPayload.length + ((4 - (normalizedPayload.length % 4)) % 4), '='
     )
     const decodedPayload = JSON.parse(atob(paddedPayload))
     if (typeof decodedPayload.exp !== 'number') return false
@@ -70,16 +70,11 @@ function getStoredAuth(): AuthState {
 
     const parsed: User = JSON.parse(storedUser)
 
-    // ── FIX: immer token ins user-Objekt setzen ──────────────────────────
-    // Damit user.token überall verfügbar ist (Checkout, etc.)
-    // Auch wenn alter user ohne token-Feld gespeichert war → sofort gefixt
     if (!parsed.token) {
       parsed.token = storedToken
-      // Zurückschreiben damit nächster Reload auch funktioniert
       const storage = localStorage.getItem('token') ? localStorage : sessionStorage
       storage.setItem('user', JSON.stringify(parsed))
     }
-    // ────────────────────────────────────────────────────────────────────
 
     return { token: storedToken, user: parsed }
   } catch {
@@ -93,7 +88,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback((token: string, user: User, remember = true) => {
     clearStoredAuth()
-    // Sicherstellen dass token auch im user-Objekt ist
     const userWithToken: User = { ...user, token }
     const storage = remember ? localStorage : sessionStorage
     storage.setItem('token', token)
@@ -108,7 +102,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const updateUser = useCallback((updatedUser: User) => {
     setAuth(prev => {
-      // token aus prev erhalten falls updatedUser kein token hat
       const userWithToken: User = {
         ...updatedUser,
         token: updatedUser.token || prev.user?.token,
@@ -120,16 +113,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   return (
-    <AuthContext.Provider
-      value={{
-        token:      auth.token,
-        user:       auth.user,
-        isLoggedIn: Boolean(auth.token),
-        login,
-        logout,
-        updateUser,
-      }}
-    >
+    <AuthContext.Provider value={{ token: auth.token, user: auth.user, isLoggedIn: Boolean(auth.token), login, logout, updateUser }}>
       {children}
     </AuthContext.Provider>
   )

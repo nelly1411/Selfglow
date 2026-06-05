@@ -8,6 +8,20 @@ import tonerBild        from '@/images/toner.jpg'
 import sonnenschutzBild from '@/images/sonnenschutz.jpg'
 import cleanserBild     from '@/images/cleanser.jpg'
 import HomeBild         from '@/images/face.jpg'
+import ManBild          from '@/images/man1.jpg'
+import man2             from '@/images/man2.jpg'
+import man3             from '@/images/man3.jpg'
+import man4             from '@/images/man4.jpg'
+import man5             from '@/images/man5.jpg'
+import man6             from '@/images/man6.jpg'
+import man7             from '@/images/man7.jpg'
+import dev1             from '@/images/dev1.jpg'
+import dev2             from '@/images/dev2.jpg'
+import dev3             from '@/images/dev3.jpg'
+import dev4             from '@/images/dev4.jpg'
+import dev5             from '@/images/dev5.jpg'
+import dev6             from '@/images/dev6.jpg'
+import dev7             from '@/images/dev7.jpg'
 import skin1            from '@/images/1.jpg'
 import skin2            from '@/images/2.jpg'
 import skin3            from '@/images/3.jpg'
@@ -51,13 +65,45 @@ const skinTypes = [
   { name: 'Trockene Haut', value: 'Dry',         img: skin1 },
 ]
 
-const categories = [
+const skinTypesDiverse = [
+  { name: 'Normale Haut',  value: 'Normal',      img: dev2 },
+  { name: 'Fettige Haut',  value: 'Oily',        img: dev3 },
+  { name: 'Mischhaut',     value: 'Combination', img: dev4 },
+  { name: 'Sensible Haut', value: 'Sensitive',   img: dev5 },
+  { name: 'Trockene Haut', value: 'Dry',         img: dev6 },
+]
+
+const skinTypesMale = [
+  { name: 'Sensible Haut', value: 'Sensitive',   img: man2 },
+  { name: 'Trockene Haut', value: 'Dry',         img: man3 },
+  { name: 'Mischhaut',     value: 'Combination', img: man4 },
+  { name: 'Normale Haut',  value: 'Normal',      img: man5 },
+  { name: 'Fettige Haut',  value: 'Oily',        img: man6 },
+]
+
+// Kategorien je nach Geschlecht sortiert
+const allCategories = [
   { name: 'Feuchtigkeitspflege', value: 'Feuchtigkeitspflege', img: feuchtigkeitBild },
   { name: 'Serum',               value: 'Serum',               img: serumBild },
   { name: 'Toner',               value: 'Toner',               img: tonerBild },
   { name: 'Sonnenschutz',        value: 'Sonnenschutz',        img: sonnenschutzBild },
-  { name: 'Reinigung',           value: 'Gesichtsreinigung',  img: cleanserBild },
+  { name: 'Reinigung',           value: 'Gesichtsreinigung',   img: cleanserBild },
 ]
+
+function getCategoriesForGender(gender: string | null | undefined) {
+  if (gender === 'male') {
+    // Männer: Reinigung zuerst, dann Feuchtigkeitspflege, Sonnenschutz
+    return [
+      allCategories[4], // Reinigung
+      allCategories[0], // Feuchtigkeitspflege
+      allCategories[3], // Sonnenschutz
+      allCategories[1], // Serum
+      allCategories[2], // Toner
+    ]
+  }
+  // Frauen & Divers & kein: Standard
+  return allCategories
+}
 
 const features = [
   { icon: Bot,               title: 'KI-Beratung',     desc: 'Personalisierte Empfehlungen basierend auf deinem Hauttyp.' },
@@ -65,11 +111,41 @@ const features = [
   { icon: SlidersHorizontal, title: 'Einfache Filter',  desc: 'Finde dein Produkt – nach Hauttyp, Anliegen oder Kategorie.' },
 ]
 
-function getGreeting() {
+function getGreeting(gender: string | null | undefined) {
   const h = new Date().getHours()
-  if (h < 12) return 'Guten Morgen'
-  if (h < 17) return 'Guten Tag'
-  return 'Guten Abend'
+  const time = h < 12 ? 'Morgen' : h < 17 ? 'Tag' : 'Abend'
+  if (gender === 'male')    return `Guten ${time}`
+  if (gender === 'female')  return `Guten ${time}`
+  if (gender === 'diverse') return `Guten ${time}`
+  return `Guten ${time}`
+}
+
+function getHeroTagline(gender: string | null | undefined) {
+  if (gender === 'male')    return 'Einfache Hautpflege die wirklich funktioniert.'
+  if (gender === 'female')  return 'Deine perfekte Skincare-Routine — für strahlende Haut.'
+  if (gender === 'diverse') return 'Hautpflege ohne Kompromisse — für jeden.'
+  return 'Entdecke kuratierte Hautpflege — abgestimmt auf deinen Hauttyp und deine Bedürfnisse.'
+}
+
+function getHeroTitle(gender: string | null | undefined) {
+  if (gender === 'male')    return <>Pflege,<br />die <span style={{ color: '#D4A574' }}>wirkt</span>.</>
+  if (gender === 'female')  return <>Pflege,<br />die <span style={{ color: '#D4A574' }}>leuchtet</span>.</>
+  if (gender === 'diverse') return <>Pflege,<br />die <span style={{ color: '#D4A574' }}>passt</span>.</>
+  return <>Pflege,<br />die <span style={{ color: '#D4A574' }}>wirklich</span><br />zu dir passt.</>
+}
+
+function getPersonalizedGreeting(firstName: string, gender: string | null | undefined) {
+  if (gender === 'male')    return `Hey, ${firstName}! 👋`
+  if (gender === 'female')  return `Hey, ${firstName}! ✨`
+  if (gender === 'diverse') return `Hey, ${firstName}! 🌟`
+  return `Hey, ${firstName}! 👋`
+}
+
+function getCategoriesLabel(gender: string | null | undefined) {
+  if (gender === 'male')    return 'Einfach & effektiv für Männer'
+  if (gender === 'female')  return 'Beliebt bei Frauen'
+  if (gender === 'diverse') return 'Unsere Top-Kategorien'
+  return 'Nach Kategorie einkaufen'
 }
 
 const optionStyle = {
@@ -90,9 +166,11 @@ export default function Home() {
   const { user, updateUser } = useAuth()
   const navigate = useNavigate()
 
-  const firstName = user?.name?.split(' ')[0] || user?.email?.split('@')[0] || null
-  const skinType  = user?.skinType || null
-  const greeting  = getGreeting()
+  const firstName  = user?.name?.split(' ')[0] || user?.email?.split('@')[0] || null
+  const skinType   = user?.skinType || null
+  const gender     = user?.gender ?? null
+  const greeting   = getGreeting(gender)
+  const categories = getCategoriesForGender(gender)
 
   useEffect(() => {
     const el = document.createElement('style')
@@ -105,32 +183,23 @@ export default function Home() {
   return (
     <div className="home-root overflow-x-hidden">
 
-      {/* ── HERO ──────────────────────────────────────────────────────── */}
+      {/* ── HERO ── */}
       <section style={{ position: 'relative', minHeight: '92vh', overflow: 'hidden', display: 'flex', alignItems: 'center' }}>
         <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
-          <img src={HomeBild} alt="Skincare" className="img-hover" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+          <img src={gender === 'male' ? ManBild : gender === 'diverse' ? dev1 : HomeBild} alt="Skincare" className="img-hover" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
           <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(90deg, rgba(20,12,4,0.78) 0%, rgba(20,12,4,0.42) 55%, rgba(20,12,4,0.08) 100%)' }} />
         </div>
 
-        <div style={{ position: 'relative', zIndex: 1, maxWidth: 1200, margin: '0 auto', padding: '80px 48px', width: '100%' }}>
+        <div style={{ position: 'relative', zIndex: 1, maxWidth: 1200, margin: '0 auto', padding: '50px 48px', width: '100%' }}>
 
           {/* ── Willkommenscode Banner ── */}
           {(!firstName || !user?.usedWelcomeCode) && (
-            <div style={{
-              position: 'absolute', bottom: 32, left: 0, right: 0,
-              zIndex: 2, padding: '0 48px',
-              display: 'flex', alignItems: 'center', gap: 12,
-            }}>
-              <span style={{ fontSize: 14 }}></span>
+            <div style={{ position: 'absolute', bottom: 20, left: 0, right: 0, zIndex: 2, padding: '0 48px', display: 'flex', alignItems: 'center', gap: 12 }}>
+              
               <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', margin: 0, fontWeight: 300 }}>
                 {firstName ? 'Dein Willkommenscode:' : 'Registriere dich und spare 10% —'}
               </p>
-              <span style={{
-                fontFamily: 'monospace', fontSize: 13, fontWeight: 700,
-                color: '#D4A574', letterSpacing: '0.1em',
-              }}>
-                WELCOME10
-              </span>
+              <span style={{ fontFamily: 'monospace', fontSize: 13, fontWeight: 700, color: '#D4A574', letterSpacing: '0.1em' }}>WELCOME10</span>
               <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)' }}>· einmalig</span>
             </div>
           )}
@@ -141,15 +210,12 @@ export default function Home() {
                 ✦ &nbsp;{greeting}
               </p>
               <h1 style={{ fontFamily: "'Outfit', sans-serif", fontSize: 'clamp(32px, 5vw, 58px)', fontWeight: 800, lineHeight: 1.08, letterSpacing: '-0.03em', color: '#fff', margin: '0 0 8px' }}>
-                Hey, {firstName}! 👋
+                {getPersonalizedGreeting(firstName, gender)}
               </h1>
 
-              {/* ── Hauttyp bekannt ── */}
               {skinType ? (
                 <>
-                  <p style={{ fontSize: 16, color: 'rgba(255,255,255,0.65)', margin: '0 0 6px', fontWeight: 300 }}>
-                    Dein Hauttyp:
-                  </p>
+                  <p style={{ fontSize: 16, color: 'rgba(255,255,255,0.65)', margin: '0 0 6px', fontWeight: 300 }}>Dein Hauttyp:</p>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '0 0 24px' }}>
                     <p style={{ fontSize: 18, color: '#D4A574', fontWeight: 700, margin: 0, letterSpacing: '-0.01em' }}>
                       {skinLabels[skinType] || skinType}
@@ -162,8 +228,7 @@ export default function Home() {
                         if (!t) return
                         try {
                           const res = await fetch('http://localhost:5050/api/auth/skin-type', {
-                            method: 'DELETE',
-                            headers: { Authorization: `Bearer ${t}` },
+                            method: 'DELETE', headers: { Authorization: `Bearer ${t}` },
                           })
                           const data = await res.json()
                           if (data.user) updateUser({ ...user!, ...data.user, token: t })
@@ -186,7 +251,6 @@ export default function Home() {
                       </div>
                       <ArrowRight size={16} style={{ marginLeft: 'auto', color: '#D4A574', flexShrink: 0 }} />
                     </button>
-
                     <button onClick={() => navigate('/quiz')} className="greet-option" style={optionStyle}>
                       <span style={{ fontSize: 22, flexShrink: 0 }}></span>
                       <div>
@@ -195,7 +259,6 @@ export default function Home() {
                       </div>
                       <ArrowRight size={16} style={{ marginLeft: 'auto', color: '#D4A574', flexShrink: 0 }} />
                     </button>
-
                     <button onClick={() => navigate('/chatbot')} className="greet-option" style={optionStyle}>
                       <span style={{ fontSize: 22, flexShrink: 0 }}></span>
                       <div>
@@ -207,10 +270,9 @@ export default function Home() {
                   </div>
                 </>
               ) : (
-                /* ── Hauttyp unbekannt ── */
                 <>
                   <p style={{ fontSize: 16, color: 'rgba(255,255,255,0.65)', margin: '0 0 28px', fontWeight: 300, lineHeight: 1.6 }}>
-                    Ich kenne deine Haut noch nicht.<br />Möchtest du…
+                    {getHeroTagline(gender)}<br />Möchtest du…
                   </p>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                     <button onClick={() => navigate('/quiz')} className="greet-option" style={optionStyle}>
@@ -221,7 +283,6 @@ export default function Home() {
                       </div>
                       <ArrowRight size={16} style={{ marginLeft: 'auto', color: '#D4A574', flexShrink: 0 }} />
                     </button>
-
                     <button onClick={() => navigate('/shop')} className="greet-option" style={optionStyle}>
                       <span style={{ fontSize: 22, flexShrink: 0 }}></span>
                       <div>
@@ -230,7 +291,6 @@ export default function Home() {
                       </div>
                       <ArrowRight size={16} style={{ marginLeft: 'auto', color: '#D4A574', flexShrink: 0 }} />
                     </button>
-
                     <button onClick={() => navigate('/chatbot')} className="greet-option" style={optionStyle}>
                       <span style={{ fontSize: 22, flexShrink: 0 }}></span>
                       <div>
@@ -247,19 +307,22 @@ export default function Home() {
           ) : (
             /* ── Nicht eingeloggt ── */
             <div style={{ maxWidth: 560 }}>
-              <span style={{ display: 'block', fontSize: 11, letterSpacing: '0.22em', textTransform: 'uppercase', color: '#D4A574', fontWeight: 500, marginBottom: 24 }}>
-                <span style={{ display: 'inline-block', width: 24, height: 1, background: '#D4A574', verticalAlign: 'middle', marginRight: 8 }} />
-                Deine Hautpflege-Destination
-              </span>
+             
               <h1 style={{ fontFamily: "'Outfit', sans-serif", fontSize: 'clamp(42px, 6vw, 78px)', fontWeight: 800, lineHeight: 1.05, letterSpacing: '-0.03em', color: '#fff', margin: '0 0 24px' }}>
-                Pflege,<br />die <span style={{ color: '#D4A574' }}>wirklich</span><br />zu dir passt.
+                {getHeroTitle(null)}
               </h1>
-              <p style={{ fontSize: 16, color: 'rgba(255,255,255,0.72)', lineHeight: 1.75, margin: '0 0 36px', fontWeight: 300, maxWidth: 400 }}>
-                Entdecke kuratierte Hautpflege — abgestimmt auf deinen Hauttyp und deine Bedürfnisse.
+              <p style={{ fontSize: 16, color: 'rgba(255,255,255,0.72)', lineHeight: 1.75, margin: '0 0 20px', fontWeight: 300, maxWidth: 420 }}>
+                Registriere dich und erhalte eine <span style={{ color: '#D4A574', fontWeight: 500 }}>vollständig personalisierte Erfahrung</span> — basierend auf deinem Geschlecht, Hauttyp und deinen Bedürfnissen.
               </p>
-              <Link to="/shop" className="pill-btn" style={{ display: 'inline-flex', alignItems: 'center', gap: 10, background: '#D4A574', color: '#fff', padding: '15px 32px', borderRadius: 100, fontSize: 13, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', textDecoration: 'none' }}>
-                Produkte entdecken <ArrowRight size={15} />
-              </Link>
+             
+              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                <Link to="/login" className="pill-btn" style={{ display: 'inline-flex', alignItems: 'center', gap: 10, background: '#D4A574', color: '#fff', padding: '15px 32px', borderRadius: 100, fontSize: 13, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', textDecoration: 'none' }}>
+                  Jetzt registrieren <ArrowRight size={15} />
+                </Link>
+                <Link to="/shop" style={{ display: 'inline-flex', alignItems: 'center', gap: 10, background: 'rgba(255,255,255,0.1)', color: '#fff', padding: '15px 32px', borderRadius: 100, fontSize: 13, fontWeight: 600, textDecoration: 'none', border: '1.5px solid rgba(255,255,255,0.25)', backdropFilter: 'blur(8px)' }}>
+                  Produkte entdecken
+                </Link>
+              </div>
             </div>
           )}
         </div>
@@ -273,7 +336,7 @@ export default function Home() {
             <h2 style={{ fontFamily: "'Outfit', sans-serif", fontSize: 'clamp(22px, 2.8vw, 34px)', fontWeight: 700, margin: 0, letterSpacing: '-0.02em' }}>Welcher Hauttyp bist du?</h2>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
-            {skinTypes.map((t) => (
+            {(gender === 'male' ? skinTypesMale : gender === 'diverse' ? skinTypesDiverse : skinTypes).map((t) => (
               <Link to={`/shop?skinType=${encodeURIComponent(t.value)}`} key={t.value} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, textDecoration: 'none', flex: '1 1 100px' }}>
                 <div className="skin-circle" style={{ width: 100, height: 100, borderRadius: '50%', overflow: 'hidden' }}>
                   <img src={t.img} alt={t.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -290,7 +353,9 @@ export default function Home() {
         <div style={{ maxWidth: 1200, margin: '0 auto' }}>
           <div style={{ textAlign: 'center', marginBottom: 48 }}>
             <p style={{ fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#C4925A', marginBottom: 8, fontWeight: 500 }}>Stöbere & entdecke</p>
-            <h2 style={{ fontFamily: "'Outfit', sans-serif", fontSize: 'clamp(24px,3vw,38px)', fontWeight: 700, margin: 0, letterSpacing: '-0.02em' }}>Nach Kategorie einkaufen</h2>
+            <h2 style={{ fontFamily: "'Outfit', sans-serif", fontSize: 'clamp(24px,3vw,38px)', fontWeight: 700, margin: 0, letterSpacing: '-0.02em' }}>
+              {getCategoriesLabel(gender)}
+            </h2>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gridTemplateRows: '320px 320px', gap: 14 }}>
             <Link to={`/shop?category=${encodeURIComponent(categories[0].value)}`} className="cat-card" style={{ gridRow: 'span 2', borderRadius: 20, overflow: 'hidden', position: 'relative', display: 'block' }}>
@@ -298,7 +363,9 @@ export default function Home() {
               <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.55) 0%, transparent 50%)' }} />
               <div className="cat-overlay" style={{ position: 'absolute', inset: 0, background: 'rgba(212,165,116,0.18)' }} />
               <div style={{ position: 'absolute', bottom: 24, left: 24, right: 24 }}>
-                <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 10, letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: 4 }}>Bestseller</p>
+                <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 10, letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: 4 }}>
+                  {gender === 'male' ? 'Essentiell' : 'Bestseller'}
+                </p>
                 <p style={{ fontFamily: "'Outfit', sans-serif", color: '#fff', fontSize: 22, fontWeight: 700, margin: 0 }}>{categories[0].name}</p>
               </div>
             </Link>
@@ -342,7 +409,7 @@ export default function Home() {
       {/* ── NEWSLETTER ── */}
       <section style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', minHeight: 460 }}>
         <div style={{ position: 'relative', overflow: 'hidden' }}>
-          <img src="https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?w=900&h=700&fit=crop" alt="Newsletter" className="img-hover" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+          <img src={gender === 'male' ? man7 : gender === 'diverse' ? dev7 : "https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?w=900&h=700&fit=crop"} alt="Newsletter" className="img-hover" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
           <div style={{ position: 'absolute', inset: 0, background: 'rgba(28,18,9,0.22)' }} />
         </div>
         <div style={{ background: '#1c1209', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '60px clamp(28px,6vw,80px)', gap: 20 }}>
@@ -370,7 +437,6 @@ export default function Home() {
           )}
         </div>
       </section>
-
     </div>
   )
 }
