@@ -5,7 +5,7 @@ import { Camera, Upload, X, Loader2, ArrowRight, RotateCcw, Sparkles } from 'luc
 import fettigImg      from '@/images/fettig.jpg'
 import paleImg        from '@/images/pale.jpg'
 import unreinheitenImg from '@/images/unreinheiten.jpg'
-import porenImg       from '@/images/Poren.jpg'
+import porenImg       from '@/images/poren.jpg'
 import roetungenImg   from '@/images/rötungen.jpg'
 import normalImg      from '@/images/normal.jpg'
 
