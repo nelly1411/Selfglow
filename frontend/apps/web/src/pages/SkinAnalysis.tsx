@@ -1,13 +1,21 @@
 import { useState, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Camera, Upload, X, Loader2, ArrowRight, RotateCcw, Sparkles } from 'lucide-react'
+import { useAuth } from '@/context/AuthContext'
 
-import fettigImg      from '@/images/fettig.jpg'
-import paleImg        from '@/images/pale.jpg'
+import fettigImg       from '@/images/fettig.jpg'
+import paleImg         from '@/images/pale.jpg'
 import unreinheitenImg from '@/images/unreinheiten.jpg'
-import porenImg       from '@/images/Poren.jpg'
-import roetungenImg   from '@/images/rötungen.jpg'
-import normalImg      from '@/images/normal.jpg'
+import porenImg        from '@/images/poren.jpg'
+import roetungenImg    from '@/images/rötungen.jpg'
+import normalImg       from '@/images/normal.jpg'
+import trockeneImg     from '@/images/trocken.jpg'
+
+import porenManImg     from '@/images/porenMan.jpg.webp'
+import pickelManImg    from '@/images/pickelMan.jpg'
+import normalManImg    from '@/images/normalMan.jpg'
+import rasierPickelImg from '@/images/rassierPickel.jpg.webp'
+import fettigManImg    from '@/images/fettigMan.jpg'
 
 const API = 'http://localhost:5050'
 const skinAnalysisStorageKey = 'selfglow-skin-analysis-result'
@@ -95,8 +103,29 @@ const displaySkinType = (s: string) => ({
 const categoryEmoji = (c: string) =>
   c === 'Serum' ? '💧' : c === 'Feuchtigkeitspflege' ? '🌿' : c === 'Toner' ? '✨' : c === 'Sonnenschutz' ? '☀️' : '🧴'
 
+const sampleImagesFemale = [
+  { label: 'Fettige Haut',  img: fettigImg,       desc: 'Glänzt, vergrößerte Poren',           skinType: 'Oily',        dryness: 10, redness: 25, blemishes: 65, sensitivity: 20 },
+  { label: 'Blasse Haut',   img: paleImg,         desc: 'Blass, müde, braucht Auffrischung',    skinType: 'Dry',         dryness: 60, redness: 15, blemishes: 10, sensitivity: 50 },
+  { label: 'Unreinheiten',  img: unreinheitenImg, desc: 'Pickel, Mitesser, entzündete Stellen', skinType: 'Oily',        dryness: 20, redness: 55, blemishes: 80, sensitivity: 40 },
+  { label: 'Große Poren',   img: porenImg,        desc: 'Sichtbare Poren, fettige T-Zone',      skinType: 'Combination', dryness: 30, redness: 20, blemishes: 45, sensitivity: 25 },
+  { label: 'Rötungen',      img: roetungenImg,    desc: 'Gerötet, empfindlich, brennt',          skinType: 'Sensitive',   dryness: 35, redness: 75, blemishes: 15, sensitivity: 80 },
+  { label: 'Trockene Haut', img: trockeneImg,     desc: 'Spannt, schuppt, braucht Feuchtigkeit',  skinType: 'Dry',         dryness: 70, redness: 20, blemishes: 5,  sensitivity: 40 },
+]
+
+const sampleImagesMale = [
+  { label: 'Große Poren',   img: porenManImg,     desc: 'Sichtbare Poren, fettige T-Zone',      skinType: 'Combination', dryness: 30, redness: 20, blemishes: 45, sensitivity: 25 },
+  { label: 'Pickel',        img: pickelManImg,    desc: 'Pickel, Mitesser, entzündete Stellen', skinType: 'Oily',        dryness: 20, redness: 55, blemishes: 80, sensitivity: 40 },
+  { label: 'Normale Haut',  img: normalManImg,    desc: 'Ausgeglichen, gepflegt',                skinType: 'Normal',      dryness: 15, redness: 10, blemishes: 10, sensitivity: 15 },
+  { label: 'Rasierflecken', img: rasierPickelImg, desc: 'Rötungen durch Rasur, empfindlich',     skinType: 'Sensitive',   dryness: 35, redness: 70, blemishes: 30, sensitivity: 75 },
+  { label: 'Fettige Haut',  img: fettigManImg,    desc: 'Glänzt, vergrößerte Poren',             skinType: 'Oily',        dryness: 10, redness: 25, blemishes: 65, sensitivity: 20 },
+  { label: 'Große Poren',   img: porenManImg,     desc: 'Sichtbare Poren, Mischhaut',            skinType: 'Combination', dryness: 25, redness: 15, blemishes: 40, sensitivity: 20 },
+]
+
 export default function SkinAnalysis({ onClose, onAnalysisComplete }: SkinAnalysisProps) {
-  // Im Chat-Kontext (onAnalysisComplete vorhanden) immer frisch starten, kein gespeichertes Ergebnis laden
+  const { user } = useAuth()
+  const isMale = user?.gender === 'male'
+  const sampleImages = isMale ? sampleImagesMale : sampleImagesFemale
+
   const savedAnalysis = onAnalysisComplete ? null : loadSavedAnalysis()
 
   const [mode,      setMode]      = useState<'choose'|'camera'|'preview'|'loading'|'result'>(savedAnalysis?.result ? 'result' : 'choose')
@@ -180,13 +209,10 @@ export default function SkinAnalysis({ onClose, onAnalysisComplete }: SkinAnalys
 
       setResult(parsed)
       onAnalysisComplete?.(parsed, imageData)
-      // Nur result-Ansicht zeigen wenn kein externer Handler vorhanden
       if (!onAnalysisComplete) setMode('result')
 
-      // Session speichern
       sessionStorage.setItem(skinAnalysisStorageKey, JSON.stringify({ imageData, result: parsed }))
 
-      // ── Auto-Save in DB wenn eingeloggt ──
       const token = getToken()
       if (token) {
         setSaved(false)
@@ -280,16 +306,9 @@ export default function SkinAnalysis({ onClose, onAnalysisComplete }: SkinAnalys
                 Wähle ein passendes Bild für deine Analyse
               </p>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
-                {[
-                  { label: 'Fettige Haut',    img: fettigImg,       desc: 'Glänzt, vergrößerte Poren',          skinType: 'Oily',        dryness: 10, redness: 25, blemishes: 65, sensitivity: 20 },
-                  { label: 'Blasse Haut',     img: paleImg,         desc: 'Blass, müde, braucht Auffrischung',   skinType: 'Dry',         dryness: 60, redness: 15, blemishes: 10, sensitivity: 50 },
-                  { label: 'Unreinheiten',    img: unreinheitenImg, desc: 'Pickel, Mitesser, entzündete Stellen', skinType: 'Oily',       dryness: 20, redness: 55, blemishes: 80, sensitivity: 40 },
-                  { label: 'Große Poren',     img: porenImg,        desc: 'Sichtbare Poren, fettige T-Zone',      skinType: 'Combination', dryness: 30, redness: 20, blemishes: 45, sensitivity: 25 },
-                  { label: 'Rötungen',        img: roetungenImg,    desc: 'Gerötet, empfindlich, brennt',         skinType: 'Sensitive',   dryness: 35, redness: 75, blemishes: 15, sensitivity: 80 },
-                  { label: 'Normale Haut',    img: normalImg,       desc: 'Ausgeglichen, gepflegt',               skinType: 'Normal',      dryness: 15, redness: 10, blemishes: 10, sensitivity: 15 },
-                ].map(problem => (
+                {sampleImages.map(problem => (
                   <button
-                    key={problem.label}
+                    key={problem.label + problem.img}
                     type="button"
                     className="sa-btn"
                     onClick={() => {
@@ -320,18 +339,7 @@ export default function SkinAnalysis({ onClose, onAnalysisComplete }: SkinAnalys
                       setMode('result')
                       onAnalysisComplete?.(mockResult, problem.img)
                     }}
-                    style={{
-                      background: '#fff',
-                      border: '1.5px solid #F0DCC8',
-                      borderRadius: 14,
-                      overflow: 'hidden',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      gap: 0,
-                      textAlign: 'center',
-                      padding: 0,
-                    }}
+                    style={{ background: '#fff', border: '1.5px solid #F0DCC8', borderRadius: 14, overflow: 'hidden', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0, textAlign: 'center', padding: 0 }}
                   >
                     <div style={{ width: '100%', height: 90, overflow: 'hidden' }}>
                       <img src={problem.img} alt={problem.label} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
@@ -408,15 +416,11 @@ export default function SkinAnalysis({ onClose, onAnalysisComplete }: SkinAnalys
         {/* ── RESULT ── */}
         {mode === 'result' && result && (
           <div className="sa-fade-up">
-
-            {/* Gespeichert-Indikator */}
             {saved && (
               <div style={{ background: '#F0FFF4', border: '1px solid #7ab87a', borderRadius: 10, padding: '8px 14px', marginBottom: 16, fontSize: 12, color: '#4a7a4a', display: 'flex', alignItems: 'center', gap: 6 }}>
                 ✓ Analyse gespeichert — sichtbar in deinem Profil
               </div>
             )}
-
-            {/* Hauttyp */}
             <div style={{ display: 'flex', gap: 16, alignItems: 'center', marginBottom: 20 }}>
               {imageData && (
                 <div style={{ width: 64, height: 64, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, border: '3px solid #D4A574' }}>
@@ -430,7 +434,6 @@ export default function SkinAnalysis({ onClose, onAnalysisComplete }: SkinAnalys
               </div>
             </div>
 
-            {/* Scores */}
             <div style={{ background: '#fff', borderRadius: 16, padding: '16px 18px', marginBottom: 16, border: '1px solid #F0DCC8' }}>
               <p style={{ fontSize: 12, fontWeight: 700, color: '#1c1209', margin: '0 0 14px', letterSpacing: '0.04em', textTransform: 'uppercase' }}>Detailanalyse</p>
               {[
@@ -451,7 +454,6 @@ export default function SkinAnalysis({ onClose, onAnalysisComplete }: SkinAnalys
               ))}
             </div>
 
-            {/* Tipps */}
             {result.tips?.length > 0 && (
               <div style={{ background: '#FDF6EE', borderRadius: 16, padding: '16px 18px', marginBottom: 16, border: '1px solid #F0DCC8' }}>
                 <p style={{ fontSize: 12, fontWeight: 700, color: '#1c1209', margin: '0 0 10px', letterSpacing: '0.04em', textTransform: 'uppercase' }}>Tipps für dich</p>
@@ -464,7 +466,6 @@ export default function SkinAnalysis({ onClose, onAnalysisComplete }: SkinAnalys
               </div>
             )}
 
-            {/* Produkte */}
             {result.products?.length > 0 && (
               <div style={{ marginBottom: 16 }}>
                 <p style={{ fontSize: 12, fontWeight: 700, color: '#1c1209', margin: '0 0 10px', letterSpacing: '0.04em', textTransform: 'uppercase' }}>Empfohlene Produkte</p>
@@ -485,7 +486,6 @@ export default function SkinAnalysis({ onClose, onAnalysisComplete }: SkinAnalys
               </div>
             )}
 
-            {/* Actions */}
             <div style={{ display: 'flex', gap: 10 }}>
               <button onClick={reset} className="sa-btn" style={{ padding: '12px 16px', borderRadius: 100, background: 'transparent', border: '1.5px solid #e0c9a8', color: '#7a5c42', fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
                 <RotateCcw size={13} /> Neu
