@@ -71,6 +71,79 @@ Nur wenn überhaupt kein Mensch erkennbar ist, gib zurück: {"error": "Kein Gesi
   }
 })
 
+// ── POST /api/skin-analysis/glow ─────────────────────────────────────────────
+router.post('/glow', async (req, res) => {
+  try {
+    const { imageData } = req.body
+    if (!imageData) return res.status(400).json({ error: 'Kein Bild übermittelt' })
+
+    // Person beschreiben lassen
+    const descResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type':  'application/json',
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model:      'gpt-4o',
+        max_tokens: 150,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'image_url', image_url: { url: imageData } },
+            { type: 'text', text: 'Describe this person briefly for image generation: gender, approximate age, hair color and style, skin tone, eye color if visible. Only objective facts, max 2 sentences, do NOT mention any skin problems.' },
+          ],
+        }],
+      }),
+    })
+
+    let personDesc = 'a person'
+    if (descResponse.ok) {
+      const descData = await descResponse.json()
+      personDesc = descData.choices?.[0]?.message?.content?.trim() || 'a person'
+    }
+
+    console.log('[Glow] Person-Beschreibung:', personDesc)
+
+    // gpt-image-1 — kein response_format Parameter
+    const glowResponse = await fetch('https://api.openai.com/v1/images/generations', {
+      method: 'POST',
+      headers: {
+        'Content-Type':  'application/json',
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model:   'gpt-image-1',
+        prompt:  `Portrait photo of ${personDesc}, with perfectly clear, smooth, radiant, glowing skin. No blemishes, no acne, no redness, no dark spots. Natural healthy glow. Realistic photography, soft natural lighting.`,
+        n:       1,
+        size:    '1024x1024',
+        quality: 'medium',
+      }),
+    })
+
+    if (!glowResponse.ok) {
+      const errData = await glowResponse.json().catch(() => ({}))
+      console.error('[Glow] Fehler:', errData)
+      return res.status(500).json({ error: 'Bildgenerierung fehlgeschlagen: ' + (errData.error?.message || glowResponse.status) })
+    }
+
+    const glowData = await glowResponse.json()
+    console.log('[Glow] Response keys:', Object.keys(glowData))
+    
+    const b64 = glowData.data?.[0]?.b64_json
+    if (!b64) {
+      console.error('[Glow] Kein b64_json:', JSON.stringify(glowData).slice(0, 200))
+      return res.status(500).json({ error: 'Kein Bild erhalten' })
+    }
+
+    return res.json({ imageData: `data:image/png;base64,${b64}` })
+
+  } catch (err) {
+    console.error('[Glow] Fehler:', err)
+    return res.status(500).json({ error: 'Fehler bei der Bildgenerierung: ' + err.message })
+  }
+})
+
 // ── POST /api/skin-analysis/save ─────────────────────────────────────────────
 router.post('/save', authMiddleware, async (req, res) => {
   try {

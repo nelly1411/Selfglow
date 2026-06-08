@@ -102,6 +102,9 @@ export default function Chatbot() {
   const [error, setError] = useState<string | null>(null)
   const [showAnalysis, setShowAnalysis] = useState(false)
   const [conversationToDelete, setConversationToDelete] = useState<string | null>(null)
+  const [isGeneratingGlow, setIsGeneratingGlow] = useState(false)
+  const [glowLoadingForMsg, setGlowLoadingForMsg] = useState<string | null>(null)
+  const [glowSources, setGlowSources] = useState<Record<string, string>>({})
   const messagesContainerRef = useRef<HTMLDivElement | null>(null)
 
   const messages = activeConversation?.messages ?? initialMessages
@@ -110,7 +113,7 @@ export default function Chatbot() {
     if (messagesContainerRef.current) {
       messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight
     }
-  }, [messages, isLoading, explainingMessageId])
+  }, [messages, isLoading, explainingMessageId, isGeneratingGlow])
 
   function updateUiOnly(conversationId: string, updater: (msgs: Message[]) => Message[]) {
     setChatState((s) => ({
@@ -137,6 +140,33 @@ export default function Chatbot() {
     if (isLoading) return
     deleteConversationCtx(id)
     setError(null)
+  }
+
+  async function generateGlowImage(imageData: string, conversationId: string, triggerMsgId: string) {
+    setGlowLoadingForMsg(triggerMsgId)
+    try {
+      const res = await fetch(apiUrl('/api/skin-analysis/glow'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageData }),
+      })
+      if (!res.ok) return
+      const data = await res.json()
+      if (!data.imageData) return
+
+      const glowMsg: Message = {
+        id: crypto.randomUUID(),
+        role: 'assistant',
+        content: '✨ So könnte deine Haut aussehen, wenn du deine Pflegeroutine konsequent durchziehst — rein, strahlend und gesund. Du schaffst das! 💪',
+        imageUrl: data.imageData,
+      }
+      const updated = applyMessages(conversationId, (msgs) => [...msgs, glowMsg])
+      if (updated) saveConversationToDb(updated)
+    } catch {
+      // optional
+    } finally {
+      setGlowLoadingForMsg(null)
+    }
   }
 
   async function sendMessage(messageText: string) {
@@ -291,12 +321,24 @@ export default function Chatbot() {
                   ? '\n\n⚠️ Im Bild wurden mehrere Gesichter erkannt. Für eine genaue Analyse empfehle ich ein einzelnes Foto von dir.'
                   : ''
                 const assistantContent = `Hautanalyse abgeschlossen ✨\n\n**Hauttyp:** ${result.skinType}\n\nTrockenheit: ${result.dryness}% · Rötungen: ${result.redness}% · Unreinheiten: ${result.blemishes}% · Sensibilität: ${result.sensitivity}%\n\n${result.overall}${hint}\n\nDu kannst mir jetzt Fragen zu deiner Hautanalyse stellen oder ein weiteres Bild hochladen.`
+                const assistantMsgId = crypto.randomUUID()
+                const isRealPhoto = imageData && imageData.startsWith('data:image')
                 const userMsg: Message = { id: crypto.randomUUID(), role: 'user', content: '📸 Hautanalyse gestartet', imageUrl: imageData ?? null }
-                const assistantMsg: Message = { id: crypto.randomUUID(), role: 'assistant', content: assistantContent }
+                // glowSourceUrl in content verstecken damit Button es nutzen kann
+                const assistantMsg: Message = {
+                  id: assistantMsgId,
+                  role: 'assistant',
+                  content: assistantContent,
+                  // imageUrl missbrauchen wir nicht — stattdessen speichern wir das Quellbild separat
+                }
                 const conversationId = chatState.activeConversationId
                 const updated = applyMessages(conversationId, (msgs) => [...msgs, userMsg, assistantMsg])
                 if (updated) saveConversationToDb(updated)
                 setShowAnalysis(false)
+                // Quellbild für Glow-Button im State merken (msgId → imageData)
+                if (isRealPhoto) {
+                  setGlowSources(prev => ({ ...prev, [assistantMsgId]: imageData! }))
+                }
               }}
             />
           </div>
@@ -368,7 +410,7 @@ export default function Chatbot() {
                       <div className={cn('max-w-[min(620px,85%)] rounded-lg px-3 py-2 text-sm leading-relaxed',
                         message.role === 'user' ? 'bg-[#D4A574] text-white' : 'bg-[#F5F5F5] text-foreground')}>
                         {message.imageUrl && (
-                          <img src={message.imageUrl} alt="Hochgeladenes Bild" className="mb-2 max-h-48 w-auto rounded-md object-cover" />
+                          <img src={message.imageUrl} alt="Bild" className="mb-2 max-h-48 w-auto rounded-md object-cover" />
                         )}
                         {message.role === 'assistant' && message.content.trim().length === 0
                           ? <span className="text-muted-foreground">Denke nach...</span>
@@ -380,6 +422,28 @@ export default function Chatbot() {
                         </div>
                       )}
                     </div>
+
+                    {/* Glow-Button: erscheint nach Hautanalyse-Nachrichten */}
+                    {message.role === 'assistant' && glowSources[message.id] && (
+                      <div className="ml-9 mt-1">
+                        {glowLoadingForMsg === message.id ? (
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Sparkles className="h-3.5 w-3.5 animate-pulse text-[#A97745]" />
+                            ✨ Erstelle dein Glow-Bild...
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => generateGlowImage(glowSources[message.id], chatState.activeConversationId, message.id)}
+                            disabled={glowLoadingForMsg !== null}
+                            className="flex items-center gap-2 rounded-full border border-[#e0c9a8] bg-[#FDF6EE] px-4 py-2 text-sm font-medium text-[#A97745] transition-colors hover:bg-[#F5E6D3] disabled:opacity-50"
+                          >
+                            <Sparkles className="h-3.5 w-3.5" />
+                            ✨ Zeig mir meine Glow-Haut
+                          </button>
+                        )}
+                      </div>
+                    )}
 
                     {message.products && message.products.length > 0 && (
                       <div className="ml-9 grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-3">
@@ -430,6 +494,9 @@ export default function Chatbot() {
                     <div className="rounded-lg bg-[#F5F5F5] px-3 py-2 text-sm text-muted-foreground">Denke nach...</div>
                   </div>
                 )}
+
+
+
                 {explainingMessageId && !isLoading && (
                   <div className="flex gap-2">
                     <div className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#F5E6D3]">
