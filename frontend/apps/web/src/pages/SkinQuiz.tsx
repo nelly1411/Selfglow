@@ -2,8 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowRight, ArrowLeft, CheckCircle } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
-
-const API = 'http://localhost:5050'
+import { apiUrl } from '@/lib/api'
 
 const CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
@@ -240,8 +239,7 @@ export default function SkinQuiz() {
       if (user?.token) {
         setSaving(true)
         try {
-          const res  = await fetch(`${API}/api/auth/skin-type`, {
-            method: 'PATCH',
+          const res = await fetch(apiUrl('/api/auth/skin-type'), {            method: 'PATCH',
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${user.token}` },
             body: JSON.stringify({ skinType: skin }),
           })
