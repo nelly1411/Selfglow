@@ -1,5 +1,7 @@
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
+import { apiUrl } from '@/lib/api'
+import { useAuth } from '@/context/AuthContext'
 
 export type ChatProduct = {
   id: number
@@ -23,6 +25,7 @@ export type Message = {
   content: string
   products?: ChatProduct[]
   canExplainProducts?: boolean
+  imageUrl?: string | null
 }
 
 export type Conversation = {
@@ -45,152 +48,285 @@ type ChatContextType = {
   input: string
   setInput: React.Dispatch<React.SetStateAction<string>>
   startNewConversation: () => void
-  selectConversation: (conversationId: string) => void
-  deleteConversation: (conversationId: string) => void
+  selectConversation: (id: string) => void
+  deleteConversation: (id: string) => void
+  applyMessages: (conversationId: string, updater: (msgs: Message[]) => Message[]) => Conversation | null
+  saveConversationToDb: (conversation: Conversation) => void
+  deleteConversationFromDb: (id: string) => void
+  isLoadingHistory: boolean
 }
 
-const chatStorageKey = 'selfglow-chatbot-conversations'
-
-const initialMessages: Message[] = [
+export const initialMessages: Message[] = [
   {
     id: 'welcome',
     role: 'assistant',
-    content:
-      'Hi, ich bin deine SelfGlow KI-Beratung. Sag mir deinen Hauttyp, dein Anliegen oder welche Eigenschaften dir wichtig sind.',
+    content: 'Hi, ich bin deine SelfGlow KI-Beratung. Sag mir deinen Hauttyp, dein Anliegen oder welche Eigenschaften dir wichtig sind.',
   },
 ]
 
-function createConversation(messages: Message[] = initialMessages): Conversation {
-  return {
-    id: crypto.randomUUID(),
-    title: 'Neue Beratung',
-    updatedAt: new Date().toISOString(),
-    messages,
-  }
+export function createConversation(messages: Message[] = initialMessages): Conversation {
+  return { id: crypto.randomUUID(), title: 'Neue Beratung', updatedAt: new Date().toISOString(), messages }
 }
 
-function getConversationTitle(messages: Message[]) {
-  const firstUserMessage = messages.find((message) => message.role === 'user')
-
-  if (!firstUserMessage) return 'Neue Beratung'
-
-  return firstUserMessage.content.length > 42
-    ? `${firstUserMessage.content.slice(0, 42)}...`
-    : firstUserMessage.content
+export function getConversationTitle(messages: Message[]) {
+  const first = messages.find((m) => m.role === 'user')
+  if (!first) return 'Neue Beratung'
+  return first.content.length > 42 ? `${first.content.slice(0, 42)}...` : first.content
 }
 
-function loadStoredChatState(): ChatState {
-  try {
-    const storedState = sessionStorage.getItem(chatStorageKey)
+function freshState(): ChatState {
+  const c = createConversation()
+  return { conversations: [c], activeConversationId: c.id }
+}
 
-    if (storedState) {
-      const parsedState = JSON.parse(storedState) as ChatState
-
-      if (parsedState.conversations?.length && parsedState.activeConversationId) {
-        return parsedState
-      }
+async function compressImage(base64: string, maxWidth = 800): Promise<string> {
+  return new Promise((resolve) => {
+    const img = new Image()
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas')
+        const scale = Math.min(1, maxWidth / img.width)
+        canvas.width = Math.round(img.width * scale)
+        canvas.height = Math.round(img.height * scale)
+        const ctx = canvas.getContext('2d')
+        if (!ctx) { resolve(base64); return }
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+        resolve(canvas.toDataURL('image/jpeg', 0.7))
+      } catch { resolve(base64) }
     }
-  } catch {
-    // Falls etwas kaputt ist, starten wir sauber neu
-  }
-
-  const conversation = createConversation()
-
-  return {
-    conversations: [conversation],
-    activeConversationId: conversation.id,
-  }
+    img.onerror = () => resolve(base64)
+    img.src = base64
+  })
 }
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined)
 
 export function ChatProvider({ children }: { children: ReactNode }) {
-  const [chatState, setChatState] = useState<ChatState>(loadStoredChatState)
+  const { token, isLoggedIn } = useAuth()
+  const [chatState, setChatState] = useState<ChatState>(freshState)
   const [input, setInput] = useState('')
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false)
+
+  const loadedForToken = useRef<string | null>(null)
+  const saving = useRef<Record<string, boolean>>({})
+  const pending = useRef<Record<string, Conversation>>({})
+  const chatStateRef = useRef<ChatState>(chatState)
+  useEffect(() => { chatStateRef.current = chatState }, [chatState])
 
   const activeConversation =
-    chatState.conversations.find(
-      (conversation) => conversation.id === chatState.activeConversationId
-    ) || chatState.conversations[0]
+    chatState.conversations.find((c) => c.id === chatState.activeConversationId) ??
+    chatState.conversations[0]
 
-  const messages = activeConversation.messages
+  const messages = activeConversation?.messages ?? initialMessages
 
+  // ── DB laden wenn eingeloggt ──────────────────────────────────────────────
   useEffect(() => {
-    sessionStorage.setItem(chatStorageKey, JSON.stringify(chatState))
-  }, [chatState])
+    if (!token || !isLoggedIn) {
+      loadedForToken.current = null
+      saving.current = {}
+      pending.current = {}
+      setChatState(freshState)
+      return
+    }
 
-  function startNewConversation() {
-    const conversation = createConversation()
+    if (loadedForToken.current === token) return
+    loadedForToken.current = token
+    saving.current = {}
+    pending.current = {}
 
-    setChatState((currentState) => ({
-      conversations: [conversation, ...currentState.conversations],
-      activeConversationId: conversation.id,
-    }))
+    const controller = new AbortController()
+    setIsLoadingHistory(true)
 
-    setInput('')
-  }
-
-  function selectConversation(conversationId: string) {
-    setChatState((currentState) => ({
-      ...currentState,
-      activeConversationId: conversationId,
-    }))
-
-    setInput('')
-  }
-
-  function deleteConversation(conversationId: string) {
-    setChatState((currentState) => {
-      const remainingConversations = currentState.conversations.filter(
-        (conversation) => conversation.id !== conversationId
-      )
-
-      if (remainingConversations.length === 0) {
-        const conversation = createConversation()
-
-        return {
-          conversations: [conversation],
-          activeConversationId: conversation.id,
+    fetch(apiUrl('/api/chat-history'), {
+      headers: { Authorization: `Bearer ${token}` },
+      signal: controller.signal,
+    })
+      .then(async (r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`)
+        return r.json() as Promise<any[]>
+      })
+      .then((data) => {
+        if (!Array.isArray(data) || data.length === 0) {
+          setChatState(freshState)
+          return
         }
+
+        const welcomeContent = initialMessages[0].content
+
+        const dbConversations: Conversation[] = data.map((c) => {
+          // Nachrichten aus DB — createdAt ist bereits sortiert (orderBy asc im Backend)
+          // Welcome-Nachrichten filtern (werden frisch eingefügt)
+          const dbMessages: Message[] = (c.messages ?? [])
+            .filter((m: any) => m.content !== welcomeContent && m.id !== 'welcome')
+            .map((m: any) => ({
+              id:                m.id,
+              role:              m.role,
+              content:           m.content,
+              imageUrl:          m.imageData ?? null,
+              products:          Array.isArray(m.products) ? m.products : [],
+              canExplainProducts: Array.isArray(m.products) && m.products.length > 0,
+            }))
+
+          return {
+            id:        c.id,
+            title:     c.title,
+            updatedAt: c.updatedAt,
+            // Welcome immer als erste Nachricht einfügen
+            messages:  [initialMessages[0], ...dbMessages],
+          }
+        })
+
+        setChatState({
+          conversations:        dbConversations,
+          activeConversationId: dbConversations[0].id,
+        })
+      })
+      .catch((err) => {
+        if (err.name === 'AbortError') return
+        console.error('[Chat] DB laden fehlgeschlagen:', err)
+        loadedForToken.current = null
+      })
+      .finally(() => setIsLoadingHistory(false))
+
+    return () => { controller.abort(); loadedForToken.current = null }
+  }, [token, isLoggedIn])
+
+  // ── applyMessages: liest immer aktuellen Stand via Ref ───────────────────
+  const applyMessages = useCallback(
+    (conversationId: string, updater: (msgs: Message[]) => Message[]): Conversation | null => {
+      const current = chatStateRef.current
+      const conv = current.conversations.find((c) => c.id === conversationId)
+      if (!conv) return null
+
+      const nextMsgs = updater(conv.messages)
+      const updated: Conversation = {
+        ...conv,
+        title:     getConversationTitle(nextMsgs),
+        updatedAt: new Date().toISOString(),
+        messages:  nextMsgs,
       }
 
-      return {
-        conversations: remainingConversations,
-        activeConversationId:
-          currentState.activeConversationId === conversationId
-            ? remainingConversations[0].id
-            : currentState.activeConversationId,
-      }
+      setChatState((s) => ({
+        ...s,
+        conversations: s.conversations.map((c) => c.id === conversationId ? updated : c),
+      }))
+
+      return updated
+    },
+    []
+  )
+
+  // ── HTTP Save ─────────────────────────────────────────────────────────────
+  const execSave = useCallback(async (conv: Conversation, tok: string) => {
+    const welcomeContent = initialMessages[0].content
+    // Welcome-Nachricht niemals speichern
+    const messagesToSave = conv.messages.filter(
+      (m) => m.id !== 'welcome' && m.content !== welcomeContent
+    )
+
+    const processedMessages = await Promise.all(
+      messagesToSave.map(async (m) => {
+        let imageData: string | null = null
+        if (m.imageUrl) {
+          try {
+            const compressed = await compressImage(m.imageUrl)
+            imageData = compressed.length < 5_000_000 ? compressed : null
+          } catch { imageData = null }
+        }
+        return { role: m.role, content: m.content, imageData, products: m.products ?? [] }
+      })
+    )
+
+    const res = await fetch(apiUrl('/api/chat-history'), {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tok}` },
+      body:    JSON.stringify({ id: conv.id, title: conv.title, messages: processedMessages }),
     })
 
+    if (!res.ok) {
+      const body = await res.text().catch(() => '')
+      throw new Error(`Save fehlgeschlagen: ${res.status} ${body}`)
+    }
+  }, [])
+
+  // ── Save-Queue: neuester Stand gewinnt immer ──────────────────────────────
+  const saveConversationToDb = useCallback(async (conv: Conversation) => {
+    if (!token) return
+    const id = conv.id
+
+    if (saving.current[id]) {
+      pending.current[id] = conv
+      return
+    }
+
+    saving.current[id] = true
+    delete pending.current[id]
+
+    try {
+      await execSave(conv, token)
+    } catch (err) {
+      console.error('[Chat] Save fehlgeschlagen:', err)
+    } finally {
+      saving.current[id] = false
+      const next = pending.current[id]
+      if (next) {
+        delete pending.current[id]
+        saveConversationToDb(next)
+      }
+    }
+  }, [token, execSave])
+
+  // ── DB löschen ────────────────────────────────────────────────────────────
+  const deleteConversationFromDb = useCallback((id: string) => {
+    if (!token) return
+    fetch(apiUrl(`/api/chat-history/${id}`), {
+      method: 'DELETE', headers: { Authorization: `Bearer ${token}` },
+    }).catch((err) => console.error('[Chat] Löschen fehlgeschlagen:', err))
+  }, [token])
+
+  function startNewConversation() {
+    const c = createConversation()
+    setChatState((s) => ({ conversations: [c, ...s.conversations], activeConversationId: c.id }))
+    setInput('')
+  }
+
+  function selectConversation(id: string) {
+    setChatState((s) => ({ ...s, activeConversationId: id }))
+    setInput('')
+  }
+
+  function deleteConversation(id: string) {
+    deleteConversationFromDb(id)
+    setChatState((s) => {
+      const remaining = s.conversations.filter((c) => c.id !== id)
+      if (remaining.length === 0) {
+        const c = createConversation()
+        return { conversations: [c], activeConversationId: c.id }
+      }
+      return {
+        conversations:        remaining,
+        activeConversationId: s.activeConversationId === id ? remaining[0].id : s.activeConversationId,
+      }
+    })
     setInput('')
   }
 
   return (
-    <ChatContext.Provider
-      value={{
-        chatState,
-        setChatState,
-        activeConversation,
-        messages,
-        input,
-        setInput,
-        startNewConversation,
-        selectConversation,
-        deleteConversation,
-      }}
-    >
+    <ChatContext.Provider value={{
+      chatState, setChatState,
+      activeConversation, messages,
+      input, setInput,
+      startNewConversation, selectConversation, deleteConversation,
+      applyMessages, saveConversationToDb, deleteConversationFromDb,
+      isLoadingHistory,
+    }}>
       {children}
     </ChatContext.Provider>
   )
 }
 
 export function useChat() {
-  const context = useContext(ChatContext)
-
-  if (!context) {
-    throw new Error('useChat muss innerhalb von ChatProvider verwendet werden')
-  }
-
-  return context
+  const ctx = useContext(ChatContext)
+  if (!ctx) throw new Error('useChat muss innerhalb von ChatProvider verwendet werden')
+  return ctx
 }

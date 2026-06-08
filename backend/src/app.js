@@ -13,6 +13,7 @@ const skinAnalysisRoutes = require("./routes/skinAnalysis.routes");
 const wishlistRoutes = require("./routes/wishlist.routes");
 const cartRoutes = require("./routes/cart.routes");
 const app = express();
+const chatHistoryRoutes = require('./routes/chatHistory.routes.js')
 
 app.use(cors());
 app.use(express.json({ limit: '10mb' }))
@@ -26,6 +27,7 @@ app.use("/api/products",      productRoutes);
 app.use("/api/wishlist",      wishlistRoutes);
 app.use("/api/reviews",       reviewRoutes);
 app.use("/api/cart",          cartRoutes);
+app.use('/api/chat-history', chatHistoryRoutes)
 
 app.get("/", (req, res) => res.send("SelfGlow backend is running"));
 

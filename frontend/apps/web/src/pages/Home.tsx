@@ -186,7 +186,7 @@ export default function Home() {
       {/* ── HERO ── */}
       <section style={{ position: 'relative', minHeight: '92vh', overflow: 'hidden', display: 'flex', alignItems: 'center' }}>
         <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
-          <img src={gender === 'male' ? ManBild : gender === 'diverse' ? dev1 : HomeBild} alt="Skincare" className="img-hover" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+          <img src={gender === 'male' ? ManBild : (!gender || gender === 'diverse') ? dev1 : HomeBild} alt="Skincare" className="img-hover" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
           <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(90deg, rgba(20,12,4,0.78) 0%, rgba(20,12,4,0.42) 55%, rgba(20,12,4,0.08) 100%)' }} />
         </div>
 
@@ -309,7 +309,7 @@ export default function Home() {
             <div style={{ maxWidth: 560 }}>
              
               <h1 style={{ fontFamily: "'Outfit', sans-serif", fontSize: 'clamp(42px, 6vw, 78px)', fontWeight: 800, lineHeight: 1.05, letterSpacing: '-0.03em', color: '#fff', margin: '0 0 24px' }}>
-                {getHeroTitle(null)}
+                {getHeroTitle('diverse')}
               </h1>
               <p style={{ fontSize: 16, color: 'rgba(255,255,255,0.72)', lineHeight: 1.75, margin: '0 0 20px', fontWeight: 300, maxWidth: 420 }}>
                 Registriere dich und erhalte eine <span style={{ color: '#D4A574', fontWeight: 500 }}>vollständig personalisierte Erfahrung</span> — basierend auf deinem Geschlecht, Hauttyp und deinen Bedürfnissen.
@@ -336,7 +336,7 @@ export default function Home() {
             <h2 style={{ fontFamily: "'Outfit', sans-serif", fontSize: 'clamp(22px, 2.8vw, 34px)', fontWeight: 700, margin: 0, letterSpacing: '-0.02em' }}>Welcher Hauttyp bist du?</h2>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
-            {(gender === 'male' ? skinTypesMale : gender === 'diverse' ? skinTypesDiverse : skinTypes).map((t) => (
+            {(gender === 'male' ? skinTypesMale : (!gender || gender === 'diverse') ? skinTypesDiverse : skinTypes).map((t) => (
               <Link to={`/shop?skinType=${encodeURIComponent(t.value)}`} key={t.value} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, textDecoration: 'none', flex: '1 1 100px' }}>
                 <div className="skin-circle" style={{ width: 100, height: 100, borderRadius: '50%', overflow: 'hidden' }}>
                   <img src={t.img} alt={t.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -409,7 +409,7 @@ export default function Home() {
       {/* ── NEWSLETTER ── */}
       <section style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', minHeight: 460 }}>
         <div style={{ position: 'relative', overflow: 'hidden' }}>
-          <img src={gender === 'male' ? man7 : gender === 'diverse' ? dev7 : "https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?w=900&h=700&fit=crop"} alt="Newsletter" className="img-hover" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+          <img src={gender === 'male' ? man7 : (!gender || gender === 'diverse') ? dev7 : "https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?w=900&h=700&fit=crop"} alt="Newsletter" className="img-hover" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
           <div style={{ position: 'absolute', inset: 0, background: 'rgba(28,18,9,0.22)' }} />
         </div>
         <div style={{ background: '#1c1209', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '60px clamp(28px,6vw,80px)', gap: 20 }}>

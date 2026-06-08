@@ -1,6 +1,9 @@
-const express = require('express')
-const router  = express.Router()
+const express        = require('express')
+const router         = express.Router()
+const prisma         = require('../config/prisma')
+const authMiddleware = require('../middleware/authMiddleware')
 
+// ── POST /api/skin-analysis/analyze ──────────────────────────────────────────
 router.post('/analyze', async (req, res) => {
   try {
     const { imageData, mediaType } = req.body
@@ -19,6 +22,7 @@ Antworte NUR mit einem validen JSON-Objekt ohne Markdown-Backticks:
   "blemishes": 0-100,
   "sensitivity": 0-100,
   "overall": "Ein Satz der den Hautzustand zusammenfasst",
+  "multipleFaces": true oder false (true wenn mehr als ein Gesicht im Bild erkennbar ist),
   "tips": ["Tipp 1", "Tipp 2", "Tipp 3"],
   "products": [
     {"name": "Produktname", "category": "Serum|Feuchtigkeitspflege|Toner|Reinigung|Sonnenschutz", "reason": "Kurze Begründung"},
@@ -27,7 +31,8 @@ Antworte NUR mit einem validen JSON-Objekt ohne Markdown-Backticks:
   ]
 }
 
-Nur wenn kein Mensch oder Körperteil erkennbar ist, gib zurück: {"error": "Kein Gesicht erkennbar"}`
+Wenn mehrere Gesichter im Bild sind, setze "multipleFaces": true und analysiere NUR das prominenteste/größte Gesicht im Vordergrund.
+Nur wenn überhaupt kein Mensch erkennbar ist, gib zurück: {"error": "Kein Gesicht erkennbar"}`
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -58,11 +63,81 @@ Nur wenn kein Mensch oder Körperteil erkennbar ist, gib zurück: {"error": "Kei
     const text   = data.choices?.[0]?.message?.content || ''
     const clean  = text.replace(/```json|```/g, '').trim()
     const parsed = JSON.parse(clean)
-    return res.json(parsed)
 
+    return res.json(parsed)
   } catch (err) {
     console.error('Analyse-Fehler:', err)
     return res.status(500).json({ error: 'Analyse fehlgeschlagen: ' + err.message })
+  }
+})
+
+// ── POST /api/skin-analysis/save ─────────────────────────────────────────────
+router.post('/save', authMiddleware, async (req, res) => {
+  try {
+    const { skinType, dryness, redness, blemishes, sensitivity, overall, tips, products } = req.body
+
+    if (!skinType) {
+      return res.status(400).json({ error: 'skinType fehlt' })
+    }
+
+    const analysis = await prisma.skinAnalysis.create({
+      data: {
+        userId:      req.user.userId,
+        skinType,
+        dryness:     Math.round(dryness     || 0),
+        redness:     Math.round(redness     || 0),
+        blemishes:   Math.round(blemishes   || 0),
+        sensitivity: Math.round(sensitivity || 0),
+        overall:     overall   || '',
+        tips:        JSON.stringify(tips     || []),
+        products:    JSON.stringify(products || []),
+      }
+    })
+
+    return res.json({ analysis })
+  } catch (err) {
+    console.error('Save-Fehler:', err)
+    return res.status(500).json({ error: 'Fehler beim Speichern der Analyse' })
+  }
+})
+
+// ── GET /api/skin-analysis/history ───────────────────────────────────────────
+router.get('/history', authMiddleware, async (req, res) => {
+  try {
+    const analyses = await prisma.skinAnalysis.findMany({
+      where:   { userId: req.user.userId },
+      orderBy: { createdAt: 'desc' },
+      take:    20,
+    })
+
+    return res.json(
+      analyses.map(a => ({
+        ...a,
+        tips:     JSON.parse(a.tips     || '[]'),
+        products: JSON.parse(a.products || '[]'),
+      }))
+    )
+  } catch (err) {
+    console.error('History-Fehler:', err)
+    return res.status(500).json({ error: 'Fehler beim Laden der Analysen' })
+  }
+})
+
+// ── DELETE /api/skin-analysis/:id ────────────────────────────────────────────
+router.delete('/:id', authMiddleware, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id)
+
+    const analysis = await prisma.skinAnalysis.findUnique({ where: { id } })
+    if (!analysis || analysis.userId !== req.user.userId) {
+      return res.status(404).json({ error: 'Analyse nicht gefunden' })
+    }
+
+    await prisma.skinAnalysis.delete({ where: { id } })
+    return res.json({ message: 'Analyse gelöscht' })
+  } catch (err) {
+    console.error('Delete-Fehler:', err)
+    return res.status(500).json({ error: 'Fehler beim Löschen' })
   }
 })
 
