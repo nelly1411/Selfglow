@@ -82,7 +82,7 @@ function getUserNameValidationMessage(name) {
 // ─── Register ─────────────────────────────────────────────────────────────────
 async function register(req, res) {
   try {
-    const { email, password, name } = req.body;
+    const { email, password, name, gender } = req.body;
     const normalizedEmail = normalizeEmail(email);
     const trimmedName     = typeof name === "string" ? name.trim() : "";
 
@@ -399,5 +399,3 @@ async function updateGender(req, res) {
   }
 }
 module.exports = { register, login, getAddress, updateAddress, updateSkinType, deleteSkinType, checkWelcomeCode, confirmEmail, updateProfile, updatePassword, updateGender}
-
-

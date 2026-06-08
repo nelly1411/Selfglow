@@ -2,33 +2,25 @@ import { useState, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Camera, Upload, X, Loader2, ArrowRight, RotateCcw, Sparkles } from 'lucide-react'
 
+import fettigImg      from '@/images/fettig.jpg'
+import paleImg        from '@/images/pale.jpg'
+import unreinheitenImg from '@/images/unreinheiten.jpg'
+import porenImg       from '@/images/Poren.jpg'
+import roetungenImg   from '@/images/rötungen.jpg'
+import normalImg      from '@/images/normal.jpg'
+
 const API = 'http://localhost:5050'
 const skinAnalysisStorageKey = 'selfglow-skin-analysis-result'
 
 const CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
-
   .skin-analysis * { box-sizing: border-box; }
   .skin-analysis { font-family: 'Outfit', sans-serif; }
-
-  @keyframes fadeUp {
-    from { opacity: 0; transform: translateY(16px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
-  @keyframes scan {
-    0%   { top: 0%; }
-    50%  { top: 90%; }
-    100% { top: 0%; }
-  }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes scan { 0% { top: 0%; } 50% { top: 90%; } 100% { top: 0%; } }
   @keyframes spin { to { transform: rotate(360deg); } }
-
   .sa-fade-up { animation: fadeUp 0.4s ease forwards; }
-  .sa-upload-zone {
-    border: 2px dashed #e0c9a8;
-    border-radius: 20px;
-    transition: all 0.2s ease;
-    cursor: pointer;
-  }
+  .sa-upload-zone { border: 2px dashed #e0c9a8; border-radius: 20px; transition: all 0.2s ease; cursor: pointer; }
   .sa-upload-zone:hover { border-color: #D4A574; background: rgba(212,165,116,0.05); }
   .sa-upload-zone.drag-over { border-color: #D4A574; background: rgba(212,165,116,0.08); }
   .sa-btn { transition: all 0.2s ease; cursor: pointer; font-family: 'Outfit', sans-serif; }
@@ -38,87 +30,90 @@ const CSS = `
   .sa-score-fill { height: 100%; border-radius: 100px; transition: width 1s cubic-bezier(0.34, 1.56, 0.64, 1); }
   .sa-product-card { transition: all 0.2s ease; cursor: pointer; }
   .sa-product-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(212,165,116,0.18); }
-  .sa-scanning .scan-line {
-    position: absolute; left: 0; right: 0; height: 2px;
-    background: linear-gradient(90deg, transparent, #D4A574, transparent);
-    animation: scan 2s ease-in-out infinite;
-  }
+  .sa-scanning .scan-line { position: absolute; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, transparent, #D4A574, transparent); animation: scan 2s ease-in-out infinite; }
 `
 
 function compressImage(dataUrl: string, maxSize = 800, quality = 0.7): Promise<string> {
   return new Promise((resolve) => {
     const img = new Image()
-
     img.onload = () => {
       const canvas = document.createElement('canvas')
       let { width, height } = img
-
       if (width > maxSize || height > maxSize) {
-        if (width > height) {
-          height = Math.round((height / width) * maxSize)
-          width = maxSize
-        } else {
-          width = Math.round((width / height) * maxSize)
-          height = maxSize
-        }
+        if (width > height) { height = Math.round((height / width) * maxSize); width = maxSize }
+        else                { width  = Math.round((width  / height) * maxSize); height = maxSize }
       }
-
-      canvas.width = width
-      canvas.height = height
+      canvas.width = width; canvas.height = height
       canvas.getContext('2d')!.drawImage(img, 0, 0, width, height)
-
       resolve(canvas.toDataURL('image/jpeg', quality))
     }
-
     img.src = dataUrl
   })
 }
 
-interface AnalysisResult {
-  skinType: string
-  dryness: number
-  redness: number
-  blemishes: number
-  sensitivity: number
-  overall: string
-  tips: string[]
-  products: { name: string; category: string; reason: string }[]
+export interface AnalysisResult {
+  skinType:      string
+  dryness:       number
+  redness:       number
+  blemishes:     number
+  sensitivity:   number
+  overall:       string
+  multipleFaces?: boolean
+  tips:          string[]
+  products:      { name: string; category: string; reason: string }[]
 }
 
 interface SkinAnalysisProps {
-  onClose?: () => void
-  onAnalysisComplete?: (result: AnalysisResult) => void
+  onClose?:             () => void
+  onAnalysisComplete?:  (result: AnalysisResult, imageData?: string | null) => void
 }
 
 function loadSavedAnalysis(): { imageData: string | null; result: AnalysisResult | null } | null {
   try {
     const saved = sessionStorage.getItem(skinAnalysisStorageKey)
     return saved ? JSON.parse(saved) : null
-  } catch {
-    return null
-  }
+  } catch { return null }
 }
 
-export default function SkinAnalysis({ onClose, onAnalysisComplete }: SkinAnalysisProps) {  const savedAnalysis = loadSavedAnalysis()
+function getToken(): string | null {
+  try {
+    const u = localStorage.getItem('user') || sessionStorage.getItem('user')
+    if (u) return JSON.parse(u)?.token || null
+    return localStorage.getItem('token') || sessionStorage.getItem('token')
+  } catch { return null }
+}
 
-  const [mode, setMode] = useState<'choose' | 'camera' | 'preview' | 'loading' | 'result'>(
-    savedAnalysis?.result ? 'result' : 'choose'
-  )
+const scoreColor = (v: number) => v < 30 ? '#7ab87a' : v < 60 ? '#D4A574' : '#c47a5a'
+const scoreLabel = (v: number) => v < 30 ? 'Niedrig' : v < 60 ? 'Mittel' : 'Hoch'
+
+const displaySkinType = (s: string) => ({
+  Normal: 'Normale Haut', Oily: 'Fettige Haut', Dry: 'Trockene Haut',
+  Sensitive: 'Sensible Haut', Combination: 'Mischhaut',
+  Fettig: 'Fettige Haut', Trocken: 'Trockene Haut', Sensibel: 'Sensible Haut',
+})[s] || s
+
+const categoryEmoji = (c: string) =>
+  c === 'Serum' ? '💧' : c === 'Feuchtigkeitspflege' ? '🌿' : c === 'Toner' ? '✨' : c === 'Sonnenschutz' ? '☀️' : '🧴'
+
+export default function SkinAnalysis({ onClose, onAnalysisComplete }: SkinAnalysisProps) {
+  // Im Chat-Kontext (onAnalysisComplete vorhanden) immer frisch starten, kein gespeichertes Ergebnis laden
+  const savedAnalysis = onAnalysisComplete ? null : loadSavedAnalysis()
+
+  const [mode,      setMode]      = useState<'choose'|'camera'|'preview'|'loading'|'result'>(savedAnalysis?.result ? 'result' : 'choose')
   const [imageData, setImageData] = useState<string | null>(savedAnalysis?.imageData || null)
-  const [result, setResult] = useState<AnalysisResult | null>(savedAnalysis?.result || null)
-  const [error, setError] = useState<string | null>(null)
-  const [dragOver, setDragOver] = useState(false)
+  const [result,    setResult]    = useState<AnalysisResult | null>(savedAnalysis?.result || null)
+  const [error,     setError]     = useState<string | null>(null)
+  const [dragOver,  setDragOver]  = useState(false)
   const [cameraErr, setCameraErr] = useState<string | null>(null)
+  const [saved,     setSaved]     = useState(!!savedAnalysis?.result)
 
-  const videoRef = useRef<HTMLVideoElement>(null)
+  const videoRef  = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const fileRef = useRef<HTMLInputElement>(null)
+  const fileRef   = useRef<HTMLInputElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
-
-  const navigate = useNavigate()
+  const navigate  = useNavigate()
 
   const styleInjected = useRef(false)
-
   if (!styleInjected.current) {
     styleInjected.current = true
     const el = document.createElement('style')
@@ -127,94 +122,49 @@ export default function SkinAnalysis({ onClose, onAnalysisComplete }: SkinAnalys
   }
 
   const startCamera = useCallback(async () => {
-    setCameraErr(null)
-    setMode('camera')
-
+    setCameraErr(null); setMode('camera')
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: 'user',
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-        },
-      })
-
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } } })
       streamRef.current = stream
-
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream
-        videoRef.current.play()
-      }
-    } catch {
-      setCameraErr('Kamera konnte nicht geöffnet werden. Bitte erlaube den Kamerazugriff.')
-    }
+      if (videoRef.current) { videoRef.current.srcObject = stream; videoRef.current.play() }
+    } catch { setCameraErr('Kamera konnte nicht geöffnet werden. Bitte erlaube den Kamerazugriff.') }
   }, [])
 
-  const stopCamera = useCallback(() => {
-    streamRef.current?.getTracks().forEach((track) => track.stop())
-    streamRef.current = null
-  }, [])
+  const stopCamera = useCallback(() => { streamRef.current?.getTracks().forEach(t => t.stop()); streamRef.current = null }, [])
 
   const takeSelfie = useCallback(() => {
     if (!videoRef.current || !canvasRef.current) return
-
-    const video = videoRef.current
-    const canvas = canvasRef.current
-
-    canvas.width = video.videoWidth
-    canvas.height = video.videoHeight
-
-    canvas.getContext('2d')!.drawImage(video, 0, 0)
-
-    const data = canvas.toDataURL('image/jpeg', 0.85)
-
-    setImageData(data)
-    stopCamera()
-    setMode('preview')
+    const v = videoRef.current, c = canvasRef.current
+    c.width = v.videoWidth; c.height = v.videoHeight
+    c.getContext('2d')!.drawImage(v, 0, 0)
+    setImageData(c.toDataURL('image/jpeg', 0.85))
+    stopCamera(); setMode('preview')
   }, [stopCamera])
 
   const handleFile = useCallback((file: File) => {
-    if (!file.type.startsWith('image/')) {
-      setError('Bitte lade ein Bild hoch.')
-      return
-    }
-
+    if (!file.type.startsWith('image/')) { setError('Bitte lade ein Bild hoch.'); return }
     const reader = new FileReader()
-
-    reader.onload = (event) => {
-      setImageData(event.target?.result as string)
-      setMode('preview')
-    }
-
+    reader.onload = e => { setImageData(e.target?.result as string); setMode('preview') }
     reader.readAsDataURL(file)
   }, [])
 
-  const handleDrop = useCallback(
-    (event: React.DragEvent) => {
-      event.preventDefault()
-      setDragOver(false)
-
-      const file = event.dataTransfer.files[0]
-
-      if (file) handleFile(file)
-    },
-    [handleFile]
-  )
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault(); setDragOver(false)
+    const file = e.dataTransfer.files[0]
+    if (file) handleFile(file)
+  }, [handleFile])
 
   const analyse = useCallback(async () => {
     if (!imageData) return
-
-    setMode('loading')
-    setError(null)
+    setMode('loading'); setError(null)
 
     try {
       const compressed = await compressImage(imageData, 800, 0.7)
-      const mediaType = 'image/jpeg'
 
       const response = await fetch(`${API}/api/skin-analysis/analyze`, {
-        method: 'POST',
+        method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageData: compressed, mediaType }),
+        body:    JSON.stringify({ imageData: compressed, mediaType: 'image/jpeg' }),
       })
 
       if (!response.ok) {
@@ -222,25 +172,33 @@ export default function SkinAnalysis({ onClose, onAnalysisComplete }: SkinAnalys
         throw new Error(err.error || `Serverfehler ${response.status}`)
       }
 
-      const parsed = await response.json()
+      const parsed: AnalysisResult = await response.json()
 
-      if (parsed.error) {
-        setError(parsed.error)
-        setMode('preview')
-        return
+      if ((parsed as any).error) {
+        setError((parsed as any).error); setMode('preview'); return
       }
 
       setResult(parsed)
-      setMode('result')
-      onAnalysisComplete?.(parsed)
+      onAnalysisComplete?.(parsed, imageData)
+      // Nur result-Ansicht zeigen wenn kein externer Handler vorhanden
+      if (!onAnalysisComplete) setMode('result')
 
-      sessionStorage.setItem(
-        skinAnalysisStorageKey,
-        JSON.stringify({
-          imageData,
-          result: parsed,
+      // Session speichern
+      sessionStorage.setItem(skinAnalysisStorageKey, JSON.stringify({ imageData, result: parsed }))
+
+      // ── Auto-Save in DB wenn eingeloggt ──
+      const token = getToken()
+      if (token) {
+        setSaved(false)
+        fetch(`${API}/api/skin-analysis/save`, {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body:    JSON.stringify(parsed),
         })
-      )
+          .then(r => r.ok ? setSaved(true) : null)
+          .catch(err => console.warn('Analyse konnte nicht gespeichert werden:', err))
+      }
+
     } catch (err: any) {
       console.error('Analyse-Fehler:', err)
       setError(err.message || 'Analyse fehlgeschlagen. Bitte versuche es erneut.')
@@ -251,368 +209,161 @@ export default function SkinAnalysis({ onClose, onAnalysisComplete }: SkinAnalys
   const reset = useCallback(() => {
     stopCamera()
     sessionStorage.removeItem(skinAnalysisStorageKey)
-
-    setMode('choose')
-    setImageData(null)
-    setResult(null)
-    setError(null)
-    setCameraErr(null)
+    setMode('choose'); setImageData(null); setResult(null)
+    setError(null); setCameraErr(null); setSaved(false)
   }, [stopCamera])
 
-  const scoreColor = (value: number) => {
-    if (value < 30) return '#7ab87a'
-    if (value < 60) return '#D4A574'
-    return '#c47a5a'
-  }
-
-  const scoreLabel = (value: number) => {
-    if (value < 30) return 'Niedrig'
-    if (value < 60) return 'Mittel'
-    return 'Hoch'
-  }
-
-  const displaySkinType = (skinType: string) => {
-    const labels: Record<string, string> = {
-      Normal: 'Normale Haut',
-      Oily: 'Fettige Haut',
-      Dry: 'Trockene Haut',
-      Sensitive: 'Sensible Haut',
-      Combination: 'Mischhaut',
-      Fettig: 'Fettige Haut',
-      Trocken: 'Trockene Haut',
-      Sensibel: 'Sensible Haut',
-    }
-
-    return labels[skinType] || skinType
-  }
-
-  const categoryEmoji = (category: string) => {
-    if (category === 'Serum') return '💧'
-    if (category === 'Feuchtigkeitspflege') return '🌿'
-    if (category === 'Toner') return '✨'
-    if (category === 'Sonnenschutz') return '☀️'
-    return '🧴'
-  }
-
   return (
-    <div
-      className="skin-analysis"
-      style={{
-        background: '#FDFAF6',
-        borderRadius: 20,
-        overflow: 'hidden',
-        maxWidth: 500,
-        width: '100%',
-        margin: '0 auto',
-      }}
-    >
-      <div
-        style={{
-          background: '#1c1209',
-          padding: '20px 24px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-        }}
-      >
+    <div className="skin-analysis" style={{ background: '#FDFAF6', borderRadius: 20, overflow: 'hidden', maxWidth: 500, width: '100%', margin: '0 auto' }}>
+
+      {/* Header */}
+      <div style={{ background: '#1c1209', padding: '20px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <Sparkles size={18} color="#D4A574" />
-          <span
-            style={{
-              color: '#fff',
-              fontWeight: 700,
-              fontSize: 15,
-              letterSpacing: '-0.01em',
-            }}
-          >
-            Virtuelle Haut-Analyse
-          </span>
+          <span style={{ color: '#fff', fontWeight: 700, fontSize: 15, letterSpacing: '-0.01em' }}>Virtuelle Haut-Analyse</span>
         </div>
-
         {onClose && (
-          <button
-            onClick={onClose}
-            style={{
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              color: 'rgba(255,255,255,0.5)',
-              padding: 4,
-            }}
-          >
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.5)', padding: 4 }}>
             <X size={18} />
           </button>
         )}
       </div>
 
       <div style={{ padding: 24 }}>
+
+        {/* ── CHOOSE ── */}
         {mode === 'choose' && (
           <div className="sa-fade-up">
-            <p
-              style={{
-                fontSize: 14,
-                color: '#9a7a5a',
-                margin: '0 0 20px',
-                lineHeight: 1.6,
-                fontWeight: 300,
-              }}
-            >
-              Mache ein Selfie oder lade ein Foto hoch. KI analysiert deinen Hauttyp und gibt
-              personalisierte Empfehlungen.
+            <p style={{ fontSize: 14, color: '#9a7a5a', margin: '0 0 20px', lineHeight: 1.6, fontWeight: 300 }}>
+              Mache ein Selfie oder lade ein Foto hoch. KI analysiert deinen Hauttyp und gibt personalisierte Empfehlungen.
             </p>
-
-            {error && (
-              <div
-                style={{
-                  background: '#fff0f0',
-                  border: '1px solid #fcc',
-                  borderRadius: 12,
-                  padding: '10px 14px',
-                  marginBottom: 16,
-                  fontSize: 13,
-                  color: '#c47a5a',
-                }}
-              >
-                {error}
-              </div>
-            )}
-
+            {error && <div style={{ background: '#fff0f0', border: '1px solid #fcc', borderRadius: 12, padding: '10px 14px', marginBottom: 16, fontSize: 13, color: '#c47a5a' }}>{error}</div>}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <button
-                onClick={startCamera}
-                className="sa-btn"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 14,
-                  padding: '16px 20px',
-                  borderRadius: 14,
-                  background: '#1c1209',
-                  border: 'none',
-                  color: '#fff',
-                  textAlign: 'left',
-                  width: '100%',
-                }}
-              >
-                <div
-                  style={{
-                    width: 40,
-                    height: 40,
-                    borderRadius: 10,
-                    background: 'rgba(212,165,116,0.2)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0,
-                  }}
-                >
+              <button onClick={startCamera} className="sa-btn" style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '16px 20px', borderRadius: 14, background: '#1c1209', border: 'none', color: '#fff', textAlign: 'left', width: '100%' }}>
+                <div style={{ width: 40, height: 40, borderRadius: 10, background: 'rgba(212,165,116,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                   <Camera size={18} color="#D4A574" />
                 </div>
-
                 <div>
-                  <p style={{ fontWeight: 700, fontSize: 14, margin: 0, color: '#fff' }}>
-                    Selfie aufnehmen
-                  </p>
-                  <p
-                    style={{
-                      fontSize: 12,
-                      color: 'rgba(255,255,255,0.5)',
-                      margin: 0,
-                      fontWeight: 300,
-                    }}
-                  >
-                    Kamera öffnen und Foto machen
-                  </p>
+                  <p style={{ fontWeight: 700, fontSize: 14, margin: 0, color: '#fff' }}>Selfie aufnehmen</p>
+                  <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', margin: 0, fontWeight: 300 }}>Kamera öffnen und Foto machen</p>
                 </div>
-
-                <ArrowRight
-                  size={15}
-                  style={{ marginLeft: 'auto', color: '#D4A574', flexShrink: 0 }}
-                />
+                <ArrowRight size={15} style={{ marginLeft: 'auto', color: '#D4A574', flexShrink: 0 }} />
               </button>
 
-              <div
-                className={`sa-upload-zone ${dragOver ? 'drag-over' : ''}`}
+              <div className={`sa-upload-zone ${dragOver ? 'drag-over' : ''}`}
                 onClick={() => fileRef.current?.click()}
-                onDragOver={(event) => {
-                  event.preventDefault()
-                  setDragOver(true)
-                }}
+                onDragOver={e => { e.preventDefault(); setDragOver(true) }}
                 onDragLeave={() => setDragOver(false)}
                 onDrop={handleDrop}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 14,
-                  padding: '16px 20px',
-                  background: '#fff',
-                }}
-              >
-                <div
-                  style={{
-                    width: 40,
-                    height: 40,
-                    borderRadius: 10,
-                    background: '#FDF6EE',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0,
-                  }}
-                >
+                style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '16px 20px', background: '#fff' }}>
+                <div style={{ width: 40, height: 40, borderRadius: 10, background: '#FDF6EE', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                   <Upload size={18} color="#D4A574" />
                 </div>
-
                 <div>
-                  <p style={{ fontWeight: 700, fontSize: 14, margin: 0, color: '#1c1209' }}>
-                    Foto hochladen
-                  </p>
-                  <p style={{ fontSize: 12, color: '#9a7a5a', margin: 0, fontWeight: 300 }}>
-                    Klicken oder Bild reinziehen
-                  </p>
+                  <p style={{ fontWeight: 700, fontSize: 14, margin: 0, color: '#1c1209' }}>Foto hochladen</p>
+                  <p style={{ fontSize: 12, color: '#9a7a5a', margin: 0, fontWeight: 300 }}>Klicken oder Bild reinziehen</p>
                 </div>
-
-                <ArrowRight
-                  size={15}
-                  style={{ marginLeft: 'auto', color: '#D4A574', flexShrink: 0 }}
-                />
+                <ArrowRight size={15} style={{ marginLeft: 'auto', color: '#D4A574', flexShrink: 0 }} />
               </div>
             </div>
-
-            <input
-              ref={fileRef}
-              type="file"
-              accept="image/*"
-              style={{ display: 'none' }}
-              onChange={(event) => {
-                const file = event.target.files?.[0]
-                if (file) handleFile(file)
-              }}
-            />
-
-            <p
-              style={{
-                fontSize: 11,
-                color: '#c4a882',
-                textAlign: 'center',
-                marginTop: 16,
-                fontWeight: 300,
-              }}
-            >
+            <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f) }} />
+            <p style={{ fontSize: 11, color: '#c4a882', textAlign: 'center', marginTop: 16, fontWeight: 300 }}>
               Dein Foto wird nicht gespeichert und nur für die Analyse verwendet.
             </p>
+
+            {/* ── Kein Foto? Hautproblem auswählen ── */}
+            <div style={{ marginTop: 24, borderTop: '1px solid #F0DCC8', paddingTop: 20 }}>
+              <p style={{ fontSize: 13, color: '#7a5c42', fontWeight: 600, margin: '0 0 4px', textAlign: 'center' }}>
+                Kein Foto zur Hand?
+              </p>
+              <p style={{ fontSize: 12, color: '#c4a882', fontWeight: 300, margin: '0 0 14px', textAlign: 'center' }}>
+                Wähle ein passendes Bild für deine Analyse
+              </p>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+                {[
+                  { label: 'Fettige Haut',    img: fettigImg,       desc: 'Glänzt, vergrößerte Poren',          skinType: 'Oily',        dryness: 10, redness: 25, blemishes: 65, sensitivity: 20 },
+                  { label: 'Blasse Haut',     img: paleImg,         desc: 'Blass, müde, braucht Auffrischung',   skinType: 'Dry',         dryness: 60, redness: 15, blemishes: 10, sensitivity: 50 },
+                  { label: 'Unreinheiten',    img: unreinheitenImg, desc: 'Pickel, Mitesser, entzündete Stellen', skinType: 'Oily',       dryness: 20, redness: 55, blemishes: 80, sensitivity: 40 },
+                  { label: 'Große Poren',     img: porenImg,        desc: 'Sichtbare Poren, fettige T-Zone',      skinType: 'Combination', dryness: 30, redness: 20, blemishes: 45, sensitivity: 25 },
+                  { label: 'Rötungen',        img: roetungenImg,    desc: 'Gerötet, empfindlich, brennt',         skinType: 'Sensitive',   dryness: 35, redness: 75, blemishes: 15, sensitivity: 80 },
+                  { label: 'Normale Haut',    img: normalImg,       desc: 'Ausgeglichen, gepflegt',               skinType: 'Normal',      dryness: 15, redness: 10, blemishes: 10, sensitivity: 15 },
+                ].map(problem => (
+                  <button
+                    key={problem.label}
+                    type="button"
+                    className="sa-btn"
+                    onClick={() => {
+                      setImageData(problem.img)
+                      const mockResult: AnalysisResult = {
+                        skinType:    problem.skinType,
+                        dryness:     problem.dryness,
+                        redness:     problem.redness,
+                        blemishes:   problem.blemishes,
+                        sensitivity: problem.sensitivity,
+                        overall:     `Basierend auf deiner Auswahl: ${problem.desc}.`,
+                        tips: [
+                          problem.skinType === 'Dry'         ? 'Verwende eine reichhaltige Feuchtigkeitscreme morgens und abends.' :
+                          problem.skinType === 'Oily'        ? 'Nutze ölfreie, mattierende Produkte und reinige zweimal täglich.' :
+                          problem.skinType === 'Sensitive'   ? 'Verwende parfümfreie, hypoallergene Produkte ohne Alkohol.' :
+                          problem.skinType === 'Combination' ? 'Behandle T-Zone und Wangen mit verschiedenen Produkten.' :
+                                                               'Halte deine Routine einfach und konsistent.',
+                          'Trage täglich Sonnenschutz LSF 30+ auf.',
+                          'Trinke ausreichend Wasser und schlafe genug.',
+                        ],
+                        products: [
+                          { name: 'Passende Feuchtigkeitscreme', category: 'Feuchtigkeitspflege', reason: `Ideal für ${problem.label}` },
+                          { name: 'Sanfter Reiniger',            category: 'Reinigung',           reason: 'Schonend und effektiv' },
+                          { name: 'LSF 30+ Sonnenschutz',        category: 'Sonnenschutz',         reason: 'Täglicher Schutz' },
+                        ],
+                      }
+                      setResult(mockResult)
+                      setMode('result')
+                      onAnalysisComplete?.(mockResult, problem.img)
+                    }}
+                    style={{
+                      background: '#fff',
+                      border: '1.5px solid #F0DCC8',
+                      borderRadius: 14,
+                      overflow: 'hidden',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: 0,
+                      textAlign: 'center',
+                      padding: 0,
+                    }}
+                  >
+                    <div style={{ width: '100%', height: 90, overflow: 'hidden' }}>
+                      <img src={problem.img} alt={problem.label} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         )}
 
+        {/* ── CAMERA ── */}
         {mode === 'camera' && (
           <div className="sa-fade-up">
             {cameraErr ? (
               <div style={{ textAlign: 'center', padding: '24px 0' }}>
-                <p style={{ color: '#c47a5a', fontSize: 14, marginBottom: 16 }}>
-                  {cameraErr}
-                </p>
-
-                <button
-                  onClick={reset}
-                  className="sa-btn"
-                  style={{
-                    padding: '10px 20px',
-                    borderRadius: 100,
-                    background: '#F5E6D3',
-                    border: 'none',
-                    color: '#7a5c42',
-                    fontSize: 13,
-                    fontWeight: 600,
-                  }}
-                >
-                  Zurück
-                </button>
+                <p style={{ color: '#c47a5a', fontSize: 14, marginBottom: 16 }}>{cameraErr}</p>
+                <button onClick={reset} className="sa-btn" style={{ padding: '10px 20px', borderRadius: 100, background: '#F5E6D3', border: 'none', color: '#7a5c42', fontSize: 13, fontWeight: 600 }}>Zurück</button>
               </div>
             ) : (
               <>
-                <div
-                  style={{
-                    position: 'relative',
-                    borderRadius: 16,
-                    overflow: 'hidden',
-                    background: '#000',
-                    marginBottom: 16,
-                  }}
-                >
-                  <video
-                    ref={videoRef}
-                    autoPlay
-                    playsInline
-                    muted
-                    style={{
-                      width: '100%',
-                      display: 'block',
-                      maxHeight: 320,
-                      objectFit: 'cover',
-                    }}
-                  />
-
-                  <div
-                    className="sa-scanning"
-                    style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}
-                  >
+                <div style={{ position: 'relative', borderRadius: 16, overflow: 'hidden', background: '#000', marginBottom: 16 }}>
+                  <video ref={videoRef} autoPlay playsInline muted style={{ width: '100%', display: 'block', maxHeight: 320, objectFit: 'cover' }} />
+                  <div className="sa-scanning" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
                     <div className="scan-line" />
                   </div>
                 </div>
-
                 <canvas ref={canvasRef} style={{ display: 'none' }} />
-
-                <p
-                  style={{
-                    fontSize: 12,
-                    color: '#9a7a5a',
-                    textAlign: 'center',
-                    margin: '0 0 16px',
-                    fontWeight: 300,
-                  }}
-                >
-                  Positioniere dein Gesicht gut sichtbar
-                </p>
-
+                <p style={{ fontSize: 12, color: '#9a7a5a', textAlign: 'center', margin: '0 0 16px', fontWeight: 300 }}>Positioniere dein Gesicht gut sichtbar</p>
                 <div style={{ display: 'flex', gap: 10 }}>
-                  <button
-                    onClick={() => {
-                      stopCamera()
-                      setMode('choose')
-                    }}
-                    className="sa-btn"
-                    style={{
-                      flex: 1,
-                      padding: '12px',
-                      borderRadius: 100,
-                      background: 'transparent',
-                      border: '1.5px solid #e0c9a8',
-                      color: '#7a5c42',
-                      fontSize: 14,
-                      fontWeight: 600,
-                    }}
-                  >
-                    Abbrechen
-                  </button>
-
-                  <button
-                    onClick={takeSelfie}
-                    className="sa-btn"
-                    style={{
-                      flex: 2,
-                      padding: '12px',
-                      borderRadius: 100,
-                      background: '#D4A574',
-                      border: 'none',
-                      color: '#fff',
-                      fontSize: 14,
-                      fontWeight: 700,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: 8,
-                    }}
-                  >
+                  <button onClick={() => { stopCamera(); setMode('choose') }} className="sa-btn" style={{ flex: 1, padding: '12px', borderRadius: 100, background: 'transparent', border: '1.5px solid #e0c9a8', color: '#7a5c42', fontSize: 14, fontWeight: 600 }}>Abbrechen</button>
+                  <button onClick={takeSelfie} className="sa-btn" style={{ flex: 2, padding: '12px', borderRadius: 100, background: '#D4A574', border: 'none', color: '#fff', fontSize: 14, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
                     <Camera size={16} /> Aufnehmen
                   </button>
                 </div>
@@ -621,398 +372,112 @@ export default function SkinAnalysis({ onClose, onAnalysisComplete }: SkinAnalys
           </div>
         )}
 
+        {/* ── PREVIEW ── */}
         {mode === 'preview' && imageData && (
           <div className="sa-fade-up">
-            {error && (
-              <div
-                style={{
-                  background: '#fff0f0',
-                  border: '1px solid #fcc',
-                  borderRadius: 12,
-                  padding: '10px 14px',
-                  marginBottom: 16,
-                  fontSize: 13,
-                  color: '#c47a5a',
-                }}
-              >
-                {error}
-              </div>
-            )}
-
-            <div
-              style={{
-                borderRadius: 16,
-                overflow: 'hidden',
-                marginBottom: 16,
-                background: '#000',
-              }}
-            >
-              <img
-                src={imageData}
-                alt="Vorschau"
-                style={{
-                  width: '100%',
-                  display: 'block',
-                  maxHeight: 300,
-                  objectFit: 'cover',
-                }}
-              />
+            {error && <div style={{ background: '#fff0f0', border: '1px solid #fcc', borderRadius: 12, padding: '10px 14px', marginBottom: 16, fontSize: 13, color: '#c47a5a' }}>{error}</div>}
+            <div style={{ borderRadius: 16, overflow: 'hidden', marginBottom: 16, background: '#000' }}>
+              <img src={imageData} alt="Vorschau" style={{ width: '100%', display: 'block', maxHeight: 300, objectFit: 'cover' }} />
             </div>
-
-            <p
-              style={{
-                fontSize: 13,
-                color: '#9a7a5a',
-                textAlign: 'center',
-                margin: '0 0 16px',
-                fontWeight: 300,
-              }}
-            >
-              Sieht gut aus! Bereit für die Analyse?
-            </p>
-
+            <p style={{ fontSize: 13, color: '#9a7a5a', textAlign: 'center', margin: '0 0 16px', fontWeight: 300 }}>Sieht gut aus! Bereit für die Analyse?</p>
             <div style={{ display: 'flex', gap: 10 }}>
-              <button
-                onClick={reset}
-                className="sa-btn"
-                style={{
-                  padding: '12px 16px',
-                  borderRadius: 100,
-                  background: 'transparent',
-                  border: '1.5px solid #e0c9a8',
-                  color: '#7a5c42',
-                  fontSize: 14,
-                  fontWeight: 600,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6,
-                }}
-              >
+              <button onClick={reset} className="sa-btn" style={{ padding: '12px 16px', borderRadius: 100, background: 'transparent', border: '1.5px solid #e0c9a8', color: '#7a5c42', fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
                 <RotateCcw size={14} /> Neu
               </button>
-
-              <button
-                onClick={analyse}
-                className="sa-btn"
-                style={{
-                  flex: 1,
-                  padding: '12px',
-                  borderRadius: 100,
-                  background: '#D4A574',
-                  border: 'none',
-                  color: '#fff',
-                  fontSize: 14,
-                  fontWeight: 700,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 8,
-                }}
-              >
+              <button onClick={analyse} className="sa-btn" style={{ flex: 1, padding: '12px', borderRadius: 100, background: '#D4A574', border: 'none', color: '#fff', fontSize: 14, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
                 <Sparkles size={15} /> Jetzt analysieren
               </button>
             </div>
           </div>
         )}
 
+        {/* ── LOADING ── */}
         {mode === 'loading' && (
           <div className="sa-fade-up" style={{ textAlign: 'center', padding: '32px 0' }}>
             {imageData && (
-              <div
-                style={{
-                  width: 80,
-                  height: 80,
-                  borderRadius: '50%',
-                  overflow: 'hidden',
-                  margin: '0 auto 20px',
-                  border: '3px solid #D4A574',
-                }}
-              >
-                <img
-                  src={imageData}
-                  alt=""
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                />
+              <div style={{ width: 80, height: 80, borderRadius: '50%', overflow: 'hidden', margin: '0 auto 20px', border: '3px solid #D4A574' }}>
+                <img src={imageData} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               </div>
             )}
-
-            <Loader2
-              size={28}
-              color="#D4A574"
-              style={{ animation: 'spin 1s linear infinite', marginBottom: 12 }}
-            />
-
-            <p style={{ fontWeight: 700, fontSize: 15, color: '#1c1209', margin: '0 0 6px' }}>
-              Analyse läuft…
-            </p>
-
-            <p style={{ fontSize: 13, color: '#9a7a5a', margin: 0, fontWeight: 300 }}>
-              KI erkennt Trockenheit, Rötungen & mehr
-            </p>
+            <Loader2 size={28} color="#D4A574" style={{ animation: 'spin 1s linear infinite', marginBottom: 12 }} />
+            <p style={{ fontWeight: 700, fontSize: 15, color: '#1c1209', margin: '0 0 6px' }}>Analyse läuft…</p>
+            <p style={{ fontSize: 13, color: '#9a7a5a', margin: 0, fontWeight: 300 }}>KI erkennt Trockenheit, Rötungen & mehr</p>
           </div>
         )}
 
+        {/* ── RESULT ── */}
         {mode === 'result' && result && (
           <div className="sa-fade-up">
+
+            {/* Gespeichert-Indikator */}
+            {saved && (
+              <div style={{ background: '#F0FFF4', border: '1px solid #7ab87a', borderRadius: 10, padding: '8px 14px', marginBottom: 16, fontSize: 12, color: '#4a7a4a', display: 'flex', alignItems: 'center', gap: 6 }}>
+                ✓ Analyse gespeichert — sichtbar in deinem Profil
+              </div>
+            )}
+
+            {/* Hauttyp */}
             <div style={{ display: 'flex', gap: 16, alignItems: 'center', marginBottom: 20 }}>
               {imageData && (
-                <div
-                  style={{
-                    width: 64,
-                    height: 64,
-                    borderRadius: '50%',
-                    overflow: 'hidden',
-                    flexShrink: 0,
-                    border: '3px solid #D4A574',
-                  }}
-                >
-                  <img
-                    src={imageData}
-                    alt=""
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                  />
+                <div style={{ width: 64, height: 64, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, border: '3px solid #D4A574' }}>
+                  <img src={imageData} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 </div>
               )}
-
               <div>
-                <p
-                  style={{
-                    fontSize: 11,
-                    letterSpacing: '0.14em',
-                    textTransform: 'uppercase',
-                    color: '#C4925A',
-                    margin: '0 0 4px',
-                    fontWeight: 600,
-                  }}
-                >
-                  Dein Hauttyp
-                </p>
-
-                <p
-                  style={{
-                    fontSize: 22,
-                    fontWeight: 800,
-                    color: '#1c1209',
-                    margin: '0 0 4px',
-                    letterSpacing: '-0.02em',
-                  }}
-                >
-                  {displaySkinType(result.skinType)}
-                </p>
-
-                <p
-                  style={{
-                    fontSize: 13,
-                    color: '#9a7a5a',
-                    margin: 0,
-                    fontWeight: 300,
-                    lineHeight: 1.5,
-                  }}
-                >
-                  {result.overall}
-                </p>
+                <p style={{ fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#C4925A', margin: '0 0 4px', fontWeight: 600 }}>Dein Hauttyp</p>
+                <p style={{ fontSize: 22, fontWeight: 800, color: '#1c1209', margin: '0 0 4px', letterSpacing: '-0.02em' }}>{displaySkinType(result.skinType)}</p>
+                <p style={{ fontSize: 13, color: '#9a7a5a', margin: 0, fontWeight: 300, lineHeight: 1.5 }}>{result.overall}</p>
               </div>
             </div>
 
-            <div
-              style={{
-                background: '#fff',
-                borderRadius: 16,
-                padding: '16px 18px',
-                marginBottom: 16,
-                border: '1px solid #F0DCC8',
-              }}
-            >
-              <p
-                style={{
-                  fontSize: 12,
-                  fontWeight: 700,
-                  color: '#1c1209',
-                  margin: '0 0 14px',
-                  letterSpacing: '0.04em',
-                  textTransform: 'uppercase',
-                }}
-              >
-                Detailanalyse
-              </p>
-
+            {/* Scores */}
+            <div style={{ background: '#fff', borderRadius: 16, padding: '16px 18px', marginBottom: 16, border: '1px solid #F0DCC8' }}>
+              <p style={{ fontSize: 12, fontWeight: 700, color: '#1c1209', margin: '0 0 14px', letterSpacing: '0.04em', textTransform: 'uppercase' }}>Detailanalyse</p>
               {[
-                { label: 'Trockenheit', val: result.dryness },
-                { label: 'Rötungen', val: result.redness },
+                { label: 'Trockenheit',  val: result.dryness },
+                { label: 'Rötungen',     val: result.redness },
                 { label: 'Unreinheiten', val: result.blemishes },
                 { label: 'Sensibilität', val: result.sensitivity },
-              ].map((score) => (
-                <div key={score.label} style={{ marginBottom: 12 }}>
+              ].map(s => (
+                <div key={s.label} style={{ marginBottom: 12 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
-                    <span style={{ fontSize: 13, color: '#7a5c42', fontWeight: 500 }}>
-                      {score.label}
-                    </span>
-                    <span
-                      style={{
-                        fontSize: 12,
-                        color: scoreColor(score.val),
-                        fontWeight: 600,
-                      }}
-                    >
-                      {scoreLabel(score.val)}
-                    </span>
+                    <span style={{ fontSize: 13, color: '#7a5c42', fontWeight: 500 }}>{s.label}</span>
+                    <span style={{ fontSize: 12, color: scoreColor(s.val), fontWeight: 600 }}>{scoreLabel(s.val)}</span>
                   </div>
-
                   <div className="sa-score-bar">
-                    <div
-                      className="sa-score-fill"
-                      style={{
-                        width: `${score.val}%`,
-                        background: scoreColor(score.val),
-                      }}
-                    />
+                    <div className="sa-score-fill" style={{ width: `${s.val}%`, background: scoreColor(s.val) }} />
                   </div>
                 </div>
               ))}
             </div>
 
+            {/* Tipps */}
             {result.tips?.length > 0 && (
-              <div
-                style={{
-                  background: '#FDF6EE',
-                  borderRadius: 16,
-                  padding: '16px 18px',
-                  marginBottom: 16,
-                  border: '1px solid #F0DCC8',
-                }}
-              >
-                <p
-                  style={{
-                    fontSize: 12,
-                    fontWeight: 700,
-                    color: '#1c1209',
-                    margin: '0 0 10px',
-                    letterSpacing: '0.04em',
-                    textTransform: 'uppercase',
-                  }}
-                >
-                  Tipps für dich
-                </p>
-
-                {result.tips.map((tip, index) => (
-                  <div
-                    key={index}
-                    style={{
-                      display: 'flex',
-                      gap: 10,
-                      marginBottom: index < result.tips.length - 1 ? 8 : 0,
-                    }}
-                  >
-                    <span
-                      style={{
-                        color: '#D4A574',
-                        fontWeight: 700,
-                        flexShrink: 0,
-                        fontSize: 14,
-                      }}
-                    >
-                      ✦
-                    </span>
-
-                    <p
-                      style={{
-                        fontSize: 13,
-                        color: '#7a5c42',
-                        margin: 0,
-                        fontWeight: 300,
-                        lineHeight: 1.5,
-                      }}
-                    >
-                      {tip}
-                    </p>
+              <div style={{ background: '#FDF6EE', borderRadius: 16, padding: '16px 18px', marginBottom: 16, border: '1px solid #F0DCC8' }}>
+                <p style={{ fontSize: 12, fontWeight: 700, color: '#1c1209', margin: '0 0 10px', letterSpacing: '0.04em', textTransform: 'uppercase' }}>Tipps für dich</p>
+                {result.tips.map((tip, i) => (
+                  <div key={i} style={{ display: 'flex', gap: 10, marginBottom: i < result.tips.length - 1 ? 8 : 0 }}>
+                    <span style={{ color: '#D4A574', fontWeight: 700, flexShrink: 0, fontSize: 14 }}>✦</span>
+                    <p style={{ fontSize: 13, color: '#7a5c42', margin: 0, fontWeight: 300, lineHeight: 1.5 }}>{tip}</p>
                   </div>
                 ))}
               </div>
             )}
 
+            {/* Produkte */}
             {result.products?.length > 0 && (
               <div style={{ marginBottom: 16 }}>
-                <p
-                  style={{
-                    fontSize: 12,
-                    fontWeight: 700,
-                    color: '#1c1209',
-                    margin: '0 0 10px',
-                    letterSpacing: '0.04em',
-                    textTransform: 'uppercase',
-                  }}
-                >
-                  Empfohlene Produkte
-                </p>
-
+                <p style={{ fontSize: 12, fontWeight: 700, color: '#1c1209', margin: '0 0 10px', letterSpacing: '0.04em', textTransform: 'uppercase' }}>Empfohlene Produkte</p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {result.products.map((product, index) => (
-                    <div
-                      key={index}
-                      className="sa-product-card"
-                      style={{
-                        background: '#fff',
-                        border: '1px solid #F0DCC8',
-                        borderRadius: 14,
-                        padding: '12px 16px',
-                        display: 'flex',
-                        gap: 12,
-                        alignItems: 'flex-start',
-                      }}
-                    >
-                      <div
-                        style={{
-                          width: 36,
-                          height: 36,
-                          borderRadius: 10,
-                          background: '#FDF6EE',
-                          border: '1px solid #e8c9a0',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          flexShrink: 0,
-                          fontSize: 16,
-                        }}
-                      >
-                        {categoryEmoji(product.category)}
+                  {result.products.map((p, i) => (
+                    <div key={i} className="sa-product-card" style={{ background: '#fff', border: '1px solid #F0DCC8', borderRadius: 14, padding: '12px 16px', display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                      <div style={{ width: 36, height: 36, borderRadius: 10, background: '#FDF6EE', border: '1px solid #e8c9a0', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 16 }}>
+                        {categoryEmoji(p.category)}
                       </div>
-
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <p
-                          style={{
-                            fontWeight: 700,
-                            fontSize: 13,
-                            margin: '0 0 2px',
-                            color: '#1c1209',
-                          }}
-                        >
-                          {product.name}
-                        </p>
-
-                        <p
-                          style={{
-                            fontSize: 11,
-                            color: '#D4A574',
-                            margin: '0 0 4px',
-                            fontWeight: 600,
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.08em',
-                          }}
-                        >
-                          {product.category}
-                        </p>
-
-                        <p
-                          style={{
-                            fontSize: 12,
-                            color: '#9a7a5a',
-                            margin: 0,
-                            fontWeight: 300,
-                            lineHeight: 1.4,
-                          }}
-                        >
-                          {product.reason}
-                        </p>
+                        <p style={{ fontWeight: 700, fontSize: 13, margin: '0 0 2px', color: '#1c1209' }}>{p.name}</p>
+                        <p style={{ fontSize: 11, color: '#D4A574', margin: '0 0 4px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{p.category}</p>
+                        <p style={{ fontSize: 12, color: '#9a7a5a', margin: 0, fontWeight: 300, lineHeight: 1.4 }}>{p.reason}</p>
                       </div>
                     </div>
                   ))}
@@ -1020,78 +485,30 @@ export default function SkinAnalysis({ onClose, onAnalysisComplete }: SkinAnalys
               </div>
             )}
 
+            {/* Actions */}
             <div style={{ display: 'flex', gap: 10 }}>
-              <button
-                onClick={reset}
-                className="sa-btn"
-                style={{
-                  padding: '12px 16px',
-                  borderRadius: 100,
-                  background: 'transparent',
-                  border: '1.5px solid #e0c9a8',
-                  color: '#7a5c42',
-                  fontSize: 13,
-                  fontWeight: 600,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6,
-                }}
-              >
+              <button onClick={reset} className="sa-btn" style={{ padding: '12px 16px', borderRadius: 100, background: 'transparent', border: '1.5px solid #e0c9a8', color: '#7a5c42', fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
                 <RotateCcw size={13} /> Neu
               </button>
-
               <button
                 onClick={() => {
                   const skinTypeMap: Record<string, string> = {
-                    Normal: 'Normal',
-                    Fettig: 'Oily',
-                    Trocken: 'Dry',
-                    Mischhaut: 'Combination',
-                    Sensibel: 'Sensitive',
-                    Oily: 'Oily',
-                    Dry: 'Dry',
-                    Sensitive: 'Sensitive',
-                    Combination: 'Combination',
+                    Normal: 'Normal', Fettig: 'Oily', Trocken: 'Dry',
+                    Mischhaut: 'Combination', Sensibel: 'Sensitive',
+                    Oily: 'Oily', Dry: 'Dry', Sensitive: 'Sensitive', Combination: 'Combination',
                   }
-
-                  const concernMap: Record<string, string> = {
-                    redness: 'Rötungen',
-                    blemishes: 'Acne',
-                  }
-
-                  const mappedSkinType = skinTypeMap[result.skinType] || result.skinType
+                  const concernMap: Record<string, string> = { redness: 'Rötungen', blemishes: 'Acne' }
                   const params = new URLSearchParams()
-
-                  params.set('skinType', mappedSkinType)
-
-                  const activeConcerns = [
-                    { key: 'redness', val: result.redness },
-                    { key: 'blemishes', val: result.blemishes },
-                  ].filter((concern) => concern.val >= 50)
-
-                  activeConcerns.forEach((concern) => {
-                    params.append('concern', concernMap[concern.key])
-                  })
-
+                  params.set('skinType', skinTypeMap[result.skinType] || result.skinType)
+                  ;[{ key: 'redness', val: result.redness }, { key: 'blemishes', val: result.blemishes }]
+                    .filter(c => c.val >= 50)
+                    .forEach(c => params.append('concern', concernMap[c.key]))
+                  onAnalysisComplete?.(result, imageData)
                   onClose?.()
                   navigate(`/shop?${params.toString()}`)
                 }}
                 className="sa-btn"
-                style={{
-                  flex: 1,
-                  padding: '12px',
-                  borderRadius: 100,
-                  background: '#D4A574',
-                  border: 'none',
-                  color: '#fff',
-                  fontSize: 13,
-                  fontWeight: 700,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 8,
-                }}
-              >
+                style={{ flex: 1, padding: '12px', borderRadius: 100, background: '#D4A574', border: 'none', color: '#fff', fontSize: 13, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
                 Passende Produkte <ArrowRight size={14} />
               </button>
             </div>
