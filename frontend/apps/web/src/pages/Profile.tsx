@@ -160,7 +160,7 @@ export default function Profile() {
   const [pwSuccess,    setPwSuccess]    = useState('')
   const [nameSuccess,  setNameSuccess]  = useState('')
   const [genderMsg,    setGenderMsg]    = useState('')
-  const [genderSuccess,setGenderSuccess]= useState('')
+  const [,setGenderSuccess]             = useState('')
   const [genderSaved,  setGenderSaved]  = useState(true)  // starts true = already saved
 
   const styleInjected = useState(false)

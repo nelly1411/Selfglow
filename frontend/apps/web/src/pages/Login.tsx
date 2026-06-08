@@ -44,7 +44,7 @@ function PasswordRequirement({ fulfilled, text }: { fulfilled: boolean; text: st
 }
 
 // ── Gender Button ─────────────────────────────────────────────────────────────
-function GenderButton({ value, label, emoji, selected, onClick }: {
+function GenderButton({ label, emoji, selected, onClick }: {
   value: Gender; label: string; emoji: string; selected: boolean; onClick: () => void
 }) {
   return (

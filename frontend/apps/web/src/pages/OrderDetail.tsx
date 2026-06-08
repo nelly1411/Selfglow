@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, MapPin, Package } from 'lucide-react'
-import { Button } from '@workspace/ui/components/button'
 import { useAuth } from '@/context/AuthContext'
 import { apiUrl } from '@/lib/api'
 
