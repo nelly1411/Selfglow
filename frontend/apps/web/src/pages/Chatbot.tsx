@@ -14,6 +14,39 @@ type ChatResponseData = {
   canExplainProducts?: boolean
 }
 
+type WeatherData = {
+  summary?: string
+  temp?: number
+  humidity?: number
+  weatherMain?: string
+  season?: string
+  promptContext?: string
+}
+
+function getWeatherEmoji(weatherMain?: string, temp?: number): string {
+  if (!weatherMain) return '🌡️'
+  const w = weatherMain.toLowerCase()
+  if (w === 'clear') return temp && temp >= 25 ? '☀️' : '🌤️'
+  if (w === 'clouds') return '☁️'
+  if (w === 'rain' || w === 'drizzle') return '🌧️'
+  if (w === 'thunderstorm') return '⛈️'
+  if (w === 'snow') return '❄️'
+  if (w === 'mist' || w === 'fog' || w === 'haze') return '🌫️'
+  return '🌡️'
+}
+
+function getWeatherMessage(weather: WeatherData): string {
+  const emoji = getWeatherEmoji(weather.weatherMain, weather.temp)
+  const temp = weather.temp !== undefined ? `${weather.temp}°C` : ''
+  const humidity = weather.humidity !== undefined ? `${weather.humidity}% Luftfeuchtigkeit` : ''
+  return [emoji, temp, humidity].filter(Boolean).join(' · ')
+}
+
+function getWeatherRecommendationPrompt(weather: WeatherData): string {
+  const emoji = getWeatherEmoji(weather.weatherMain, weather.temp)
+  return `${emoji} Es ist ${weather.temp !== undefined ? weather.temp + '°C' : 'aktuell'} und ${weather.weatherMain?.toLowerCase() || 'bewölkt'} bei ${weather.humidity ?? '?'}% Luftfeuchtigkeit. Welche Hautpflegeprodukte empfiehlst du mir für dieses Wetter?`
+}
+
 const starterQuestions = [
   'Ich habe ölige Haut und suche etwas gegen Unreinheiten.',
   'Welche parfumfreien Produkte passen zu empfindlicher Haut?',
@@ -95,6 +128,7 @@ export default function Chatbot() {
     applyMessages,
     saveConversationToDb,
     isLoadingHistory,
+    weather,
   } = useChat()
 
   const [isLoading, setIsLoading] = useState(false)
@@ -105,6 +139,7 @@ export default function Chatbot() {
   const [isGeneratingGlow, setIsGeneratingGlow] = useState(false)
   const [glowLoadingForMsg, setGlowLoadingForMsg] = useState<string | null>(null)
   const [glowSources, setGlowSources] = useState<Record<string, string>>({})
+  const [weatherAnimation, setWeatherAnimation] = useState<string | null>(null)
   const messagesContainerRef = useRef<HTMLDivElement | null>(null)
 
   const messages = activeConversation?.messages ?? initialMessages
@@ -190,7 +225,7 @@ export default function Chatbot() {
       const response = await fetch(apiUrl('/api/chat/stream'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: trimmed, history: chatHistory, contextProductIds }),
+        body: JSON.stringify({ message: trimmed, history: chatHistory, contextProductIds, weather }),
       })
       if (!response.ok) throw new Error('Die KI-Beratung konnte gerade nicht antworten.')
       if (!response.body) throw new Error('Streaming nicht unterstützt.')
@@ -366,6 +401,25 @@ export default function Chatbot() {
               className="mb-3 flex h-9 w-full items-center justify-center gap-2 rounded-full border border-[#e0c9a8] bg-[#FDF6EE] text-sm font-medium text-[#A97745] transition-colors hover:bg-[#F5E6D3]">
               <Camera className="h-4 w-4" /> Haut analysieren
             </button>
+
+            {/* ── Wetter-Widget ── */}
+            {weather && (
+              <button
+                type="button"
+                disabled={isLoading}
+                onClick={() => {
+                  const w = weather as WeatherData
+                  setWeatherAnimation(w.weatherMain?.toLowerCase() ?? 'clouds')
+                  setTimeout(() => setWeatherAnimation(null), 10000)
+                  sendMessage(getWeatherRecommendationPrompt(w))
+                }}
+                className="mb-3 flex h-9 w-full items-center justify-between gap-2 rounded-full border border-[#e0c9a8] bg-[#FDF6EE] px-4 text-sm font-medium text-[#A97745] transition-colors hover:bg-[#F5E6D3] disabled:opacity-60"
+              >
+                <span>🌤️ Wetter-Tipps</span>
+                <span className="text-xs opacity-70">→</span>
+              </button>
+            )}
+
             <h2 className="mb-3 text-sm font-semibold text-foreground">Chatverlauf</h2>
             {isLoadingHistory && <p className="mb-2 text-xs text-muted-foreground">Chats werden geladen...</p>}
             <div className="max-h-[420px] space-y-2 overflow-y-auto pr-1 lg:max-h-[calc(100vh-18rem)]">
@@ -397,7 +451,78 @@ export default function Chatbot() {
           </aside>
 
           <main className="space-y-4">
-            <section className="flex h-[75vh] flex-col rounded-lg border border-border bg-background">
+            <section className="relative flex h-[75vh] flex-col rounded-lg border border-border bg-background overflow-hidden">
+              {/* ── Wetter-Animation ── */}
+              {weatherAnimation && (
+                <div className="pointer-events-none absolute inset-0 z-10 overflow-hidden rounded-lg">
+                  {weatherAnimation === 'clear' && (
+                    <div className="absolute inset-0 animate-pulse bg-gradient-to-b from-yellow-100/60 via-orange-50/40 to-transparent">
+                      <div className="absolute left-1/2 top-4 h-16 w-16 -translate-x-1/2 rounded-full bg-yellow-300/70 blur-xl animate-ping" />
+                      <div className="absolute left-1/2 top-2 h-24 w-24 -translate-x-1/2 rounded-full bg-yellow-200/50 blur-2xl" />
+                      {['10%','25%','40%','60%','75%','90%'].map((l, i) => (
+                        <div key={i} className="absolute top-8 h-1 w-1 rounded-full bg-yellow-400/80"
+                          style={{ left: l, animation: `ping ${1 + i * 0.3}s cubic-bezier(0,0,0.2,1) infinite`, animationDelay: `${i * 0.2}s` }} />
+                      ))}
+                    </div>
+                  )}
+                  {(weatherAnimation === 'clouds' || weatherAnimation === 'overcast') && (
+                    <div className="absolute inset-0 bg-gradient-to-b from-slate-200/50 to-transparent">
+                      {[
+                        { w: '120px', h: '40px', top: '8%',  left: '-10%',  dur: '8s',  delay: '0s' },
+                        { w: '160px', h: '50px', top: '15%', left: '-20%',  dur: '12s', delay: '1s' },
+                        { w: '100px', h: '35px', top: '5%',  left: '-15%',  dur: '10s', delay: '2s' },
+                        { w: '140px', h: '45px', top: '20%', left: '-25%',  dur: '9s',  delay: '0.5s' },
+                        { w: '180px', h: '55px', top: '3%',  left: '-30%',  dur: '14s', delay: '3s' },
+                      ].map((c, i) => (
+                        <div key={i} className="absolute rounded-full bg-white/70 blur-sm"
+                          style={{ width: c.w, height: c.h, top: c.top, left: c.left,
+                            animation: `slideRight ${c.dur} linear infinite`, animationDelay: c.delay }} />
+                      ))}
+                    </div>
+                  )}
+                  {(weatherAnimation === 'rain' || weatherAnimation === 'drizzle') && (
+                    <div className="absolute inset-0 bg-gradient-to-b from-blue-200/30 to-transparent">
+                      {Array.from({ length: 30 }).map((_, i) => (
+                        <div key={i} className="absolute w-px bg-blue-400/60 rounded-full"
+                          style={{
+                            left: `${Math.random() * 100}%`,
+                            height: `${8 + Math.random() * 12}px`,
+                            top: '-10px',
+                            animation: `rainfall ${0.6 + Math.random() * 0.8}s linear infinite`,
+                            animationDelay: `${Math.random() * 1}s`,
+                          }} />
+                      ))}
+                    </div>
+                  )}
+                  {weatherAnimation === 'snow' && (
+                    <div className="absolute inset-0 bg-gradient-to-b from-blue-50/40 to-transparent">
+                      {Array.from({ length: 20 }).map((_, i) => (
+                        <div key={i} className="absolute text-white/80 text-sm select-none"
+                          style={{
+                            left: `${Math.random() * 100}%`,
+                            top: '-20px',
+                            animation: `snowfall ${2 + Math.random() * 3}s linear infinite`,
+                            animationDelay: `${Math.random() * 2}s`,
+                          }}>❄️</div>
+                      ))}
+                    </div>
+                  )}
+                  {(weatherAnimation === 'mist' || weatherAnimation === 'fog' || weatherAnimation === 'haze') && (
+                    <div className="absolute inset-0 bg-gradient-to-b from-gray-300/40 via-gray-200/20 to-transparent animate-pulse" />
+                  )}
+                  {weatherAnimation === 'thunderstorm' && (
+                    <div className="absolute inset-0 bg-gradient-to-b from-purple-900/30 to-transparent">
+                      <div className="absolute left-1/2 top-0 text-4xl -translate-x-1/2 animate-bounce">⚡</div>
+                    </div>
+                  )}
+                  {/* CSS für Animationen */}
+                  <style>{`
+                    @keyframes slideRight { from { transform: translateX(0); } to { transform: translateX(110vw); } }
+                    @keyframes rainfall { from { transform: translateY(-10px); } to { transform: translateY(100vh); } }
+                    @keyframes snowfall { from { transform: translateY(-20px) rotate(0deg); } to { transform: translateY(100vh) rotate(360deg); } }
+                  `}</style>
+                </div>
+              )}
               <div ref={messagesContainerRef} className="flex-1 space-y-3 overflow-y-auto p-3 md:p-4">
                 {messages.map((message) => (
                   <div key={message.id} className="space-y-2">

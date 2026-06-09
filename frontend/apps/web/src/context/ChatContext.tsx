@@ -53,7 +53,8 @@ type ChatContextType = {
   applyMessages: (conversationId: string, updater: (msgs: Message[]) => Message[]) => Conversation | null
   saveConversationToDb: (conversation: Conversation) => void
   deleteConversationFromDb: (id: string) => void
-  isLoadingHistory: boolean
+isLoadingHistory: boolean
+  weather: object | null
 }
 
 export const initialMessages: Message[] = [
@@ -106,7 +107,22 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const [chatState, setChatState] = useState<ChatState>(freshState)
   const [input, setInput] = useState('')
   const [isLoadingHistory, setIsLoadingHistory] = useState(false)
-
+  const [weather, setWeather] = useState<object | null>(null)
+useEffect(() => {
+  if (!navigator.geolocation) return
+  navigator.geolocation.getCurrentPosition(
+    async (pos) => {
+      try {
+        const { latitude: lat, longitude: lon } = pos.coords
+        const res = await fetch(apiUrl(`/api/weather?lat=${lat}&lon=${lon}`))
+        if (!res.ok) return
+        const data = await res.json()
+        if (data.weather) setWeather(data.weather)
+      } catch { /* ignore */ }
+    },
+    () => { /* Standort abgelehnt */ }
+  )
+}, [])
   const loadedForToken = useRef<string | null>(null)
   const saving = useRef<Record<string, boolean>>({})
   const pending = useRef<Record<string, Conversation>>({})
@@ -316,9 +332,10 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       chatState, setChatState,
       activeConversation, messages,
       input, setInput,
-      startNewConversation, selectConversation, deleteConversation,
+    startNewConversation, selectConversation, deleteConversation,
       applyMessages, saveConversationToDb, deleteConversationFromDb,
       isLoadingHistory,
+      weather,
     }}>
       {children}
     </ChatContext.Provider>

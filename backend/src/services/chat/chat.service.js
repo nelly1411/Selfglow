@@ -75,7 +75,7 @@ async function getContextProducts(productIds) {
   return products.map((product) => toChatProduct(product));
 }
 
-async function createChatResponse(message, history = [], contextProductIds = []) {
+async function createChatResponse(message, history = [], contextProductIds = [], weather = null) {
   const previousContextProducts =
     contextProductIds.length > 0 && process.env.OPENAI_API_KEY
       ? await getContextProducts(contextProductIds)
@@ -105,7 +105,7 @@ async function createChatResponse(message, history = [], contextProductIds = [])
         },
         {
           role: "user",
-          content: buildProductFollowUpPrompt(message, history, previousContextProducts),
+         content: buildProductFollowUpPrompt(message, history, previousContextProducts, weather),
         },
       ],
       fallbackAnswer
@@ -129,7 +129,7 @@ async function createChatResponse(message, history = [], contextProductIds = [])
         },
         {
           role: "user",
-          content: buildSkincareChatPrompt(message, history, decision.intent),
+          content: buildSkincareChatPrompt(message, history, decision.intent, weather),
         },
       ],
       GENERAL_SKINCARE_FALLBACK_ANSWER
@@ -161,7 +161,8 @@ async function createChatResponseStream(
   message,
   history = [],
   contextProductIds = [],
-  onDelta = () => {}
+  onDelta = () => {},
+  weather = null
 ) {
   const previousContextProducts =
     contextProductIds.length > 0 && process.env.OPENAI_API_KEY
@@ -192,7 +193,7 @@ async function createChatResponseStream(
         },
         {
           role: "user",
-          content: buildProductFollowUpPrompt(message, history, previousContextProducts),
+          content: buildProductFollowUpPrompt(message, history, previousContextProducts, weather),
         },
       ],
       fallbackAnswer,
@@ -218,7 +219,7 @@ async function createChatResponseStream(
         },
         {
           role: "user",
-          content: buildSkincareChatPrompt(message, history, decision.intent),
+         content: buildSkincareChatPrompt(message, history, decision.intent, weather),
         },
       ],
       fallbackAnswer,
@@ -267,7 +268,7 @@ async function createChatResponseStream(
       },
       {
         role: "user",
-        content: buildGeneralPrompt(message, history, []),
+       content: buildGeneralPrompt(message, history, [], weather),
       },
     ],
     fallbackAnswer,

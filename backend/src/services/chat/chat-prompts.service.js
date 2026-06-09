@@ -5,6 +5,10 @@ const {
   MAX_PROMPT_INGREDIENTS_LENGTH,
 } = require("./chat.constants");
 const { truncatePromptText } = require("./chat.utils");
+function formatWeatherBlock(weather) {
+  if (!weather?.promptContext) return ''
+  return `\nCurrent weather context: ${weather.promptContext}\nUse this to prioritize relevant products (e.g. SPF on sunny days, rich moisturizer in dry/cold air).\n`
+}
 
 // Convert retrieved products into a compact prompt context. The instructions ask
 // the model to answer only from these products, which is the generation half of
@@ -45,7 +49,7 @@ ${context}
 `;
 }
 
-function buildGeneralPrompt(message, history = [], contextProducts = []) {
+function buildGeneralPrompt(message, history = [], contextProducts = [], weather = null) {
   const conversationHistory = history
     .slice(-MAX_FOLLOW_UP_HISTORY)
     .map((item) => `${item.role === "assistant" ? "Assistant" : "Customer"}: ${item.content}`)
@@ -72,7 +76,7 @@ If the recent conversation contains previously recommended products, you may ans
 Do not invent SelfGlow product recommendations beyond the provided product context.
 Do not diagnose medical conditions or promise treatment results.
 If the question requires medical advice, suggest consulting a dermatologist.
-${AI_RESPONSE_FORMAT_INSTRUCTIONS}
+${formatWeatherBlock(weather)}${AI_RESPONSE_FORMAT_INSTRUCTIONS}
 
 Recent conversation:
 ${conversationHistory || "No previous conversation."}
@@ -84,8 +88,7 @@ Customer question:
 ${message}
 `;
 }
-
-function buildProductFollowUpPrompt(message, history = [], contextProducts = []) {
+function buildProductFollowUpPrompt(message, history = [], contextProducts = [], weather = null) {
   const conversationHistory = history
     .slice(-MAX_FOLLOW_UP_HISTORY)
     .map((item) => `${item.role === "assistant" ? "Assistant" : "Customer"}: ${item.content}`)
@@ -118,7 +121,7 @@ Explain fit, ingredients, tradeoffs, or comparisons only when supported by the p
 If the previous product context is not enough, say what is missing and ask one concise clarifying question.
 Do not diagnose medical conditions or promise treatment results.
 If the question requires medical advice, suggest consulting a dermatologist.
-${AI_RESPONSE_FORMAT_INSTRUCTIONS}
+${formatWeatherBlock(weather)}${AI_RESPONSE_FORMAT_INSTRUCTIONS}
 
 Recent conversation:
 ${conversationHistory || "No previous conversation."}
@@ -131,7 +134,7 @@ ${message}
 `;
 }
 
-function buildSkincareChatPrompt(message, history = [], intent = "skincare_general") {
+function buildSkincareChatPrompt(message, history = [], intent = "skincare_general", weather = null) {
   const conversationHistory = history
     .slice(-MAX_FOLLOW_UP_HISTORY)
     .map((item) => `${item.role === "assistant" ? "Assistant" : "Customer"}: ${item.content}`)
@@ -171,7 +174,7 @@ Can you recommend me a movie?
 How do i cook pasta?
 Which book should i read?
 ${intent === "greeting" ? "For a greeting, reply warmly and ask what skincare goal the customer has." : ""}
-${AI_RESPONSE_FORMAT_INSTRUCTIONS}
+${formatWeatherBlock(weather)}${AI_RESPONSE_FORMAT_INSTRUCTIONS}
 
 Recent conversation:
 ${conversationHistory || "No previous conversation."}

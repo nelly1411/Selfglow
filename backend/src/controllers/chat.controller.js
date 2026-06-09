@@ -2,17 +2,12 @@ const chatService = require("../services/chat.service");
 
 async function createChatResponse(req, res) {
   try {
-    const { message, history, contextProductIds } = req.body;
+    const { message, history, contextProductIds, weather } = req.body;
 
-    // The chatbot only needs one required input: the customer's free-text question.
-    // Keeping validation here protects the service from empty prompts and gives the
-    // frontend a predictable 400 response for invalid requests.
     if (!message || typeof message !== "string" || message.trim().length < 2) {
       return res.status(400).json({ message: "Message is required" });
     }
 
-    // The service owns the full keyword RAG flow: keyword extraction, product
-    // retrieval, optional model generation, and fallback answer creation.
     const safeHistory = Array.isArray(history)
       ? history
           .filter(
@@ -31,10 +26,13 @@ async function createChatResponse(req, res) {
           .slice(-3)
       : [];
 
+    const safeWeather = weather && typeof weather === "object" ? weather : null;
+
     const response = await chatService.createChatResponse(
       message,
       safeHistory,
-      safeContextProductIds
+      safeContextProductIds,
+      safeWeather
     );
     res.status(200).json(response);
   } catch (error) {
@@ -50,7 +48,7 @@ function writeStreamEvent(res, event, data) {
 
 async function createChatResponseStream(req, res) {
   try {
-    const { message, history, contextProductIds } = req.body;
+    const { message, history, contextProductIds, weather } = req.body;
 
     if (!message || typeof message !== "string" || message.trim().length < 2) {
       return res.status(400).json({ message: "Message is required" });
@@ -74,6 +72,8 @@ async function createChatResponseStream(req, res) {
           .slice(-3)
       : [];
 
+    const safeWeather = weather && typeof weather === "object" ? weather : null;
+
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache, no-transform");
     res.setHeader("Connection", "keep-alive");
@@ -83,7 +83,8 @@ async function createChatResponseStream(req, res) {
       message,
       safeHistory,
       safeContextProductIds,
-      (text) => writeStreamEvent(res, "delta", { text })
+      (text) => writeStreamEvent(res, "delta", { text }),
+      safeWeather
     );
 
     writeStreamEvent(res, "done", response);
