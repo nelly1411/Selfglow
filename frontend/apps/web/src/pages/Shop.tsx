@@ -125,6 +125,13 @@ function ProductCard({ product }: { product: Product }) {
       category: product.category,
       price: product.price,
       image: product.imageUrl || 'https://placehold.co/300x300?text=Kein+Bild',
+     
+      skinTypes: product.skinTypes,
+      concerns: product.concerns,
+      vegan: product.vegan,
+      alcoholFree: product.alcoholFree,
+      fragranceFree: product.fragranceFree,
+    
     })
 
     setCartToastVisible(true)
