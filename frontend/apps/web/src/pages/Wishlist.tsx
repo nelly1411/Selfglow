@@ -34,6 +34,14 @@ export default function Wishlist() {
       category: item.category,
       price: item.price,
       image: item.image,
+
+      skinTypes: item.skinTypes,
+      concerns: item.concerns,
+      vegan: item.vegan,
+      alcoholFree: item.alcoholFree,
+      fragranceFree: item.fragranceFree,
+
+
     })
 
     setCartToastVisible(true)

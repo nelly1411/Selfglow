@@ -11,6 +11,12 @@ export interface CartItem {
   image: string
   quantity: number
   selected?: boolean
+
+  skinTypes?: string | null
+  concerns?: string | null
+  vegan?: boolean
+  alcoholFree?: boolean
+  fragranceFree?: boolean
 }
 
 interface CartContextType {
@@ -122,6 +128,11 @@ useEffect(() => {
       image: cartItem.product.imageUrl || '',
       quantity: cartItem.quantity,
       selected: cartItem.selected,
+      skinTypes: cartItem.product.skinTypes,
+      concerns: cartItem.product.concerns,
+      vegan: cartItem.product.vegan,
+      alcoholFree: cartItem.product.alcoholFree,
+      fragranceFree: cartItem.product.fragranceFree,
      
     }))
 

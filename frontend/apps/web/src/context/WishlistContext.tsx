@@ -10,6 +10,12 @@ export interface WishlistItem {
   image: string
   rating: number
   reviews: number
+
+  skinTypes?: string | null
+  concerns?: string | null
+  vegan?: boolean
+  alcoholFree?: boolean
+  fragranceFree?: boolean
 }
 
 type BackendWishlistItem = {
