@@ -7,6 +7,7 @@ import { apiUrl } from '@/lib/api'
 import { cn } from '@workspace/ui/lib/utils'
 import SkinAnalysis from '@/pages/SkinAnalysis'
 import { useChat, initialMessages, type Message, type ChatProduct } from '@/context/ChatContext'
+import { useAuth } from '@/context/AuthContext'
 
 type ChatResponseData = {
   answer: string
@@ -130,6 +131,7 @@ export default function Chatbot() {
     isLoadingHistory,
     weather,
   } = useChat()
+  const { token } = useAuth()
 
   const [isLoading, setIsLoading] = useState(false)
   const [explainingMessageId, setExplainingMessageId] = useState<string | null>(null)
@@ -224,7 +226,10 @@ export default function Chatbot() {
     try {
       const response = await fetch(apiUrl('/api/chat/stream'), {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({ message: trimmed, history: chatHistory, contextProductIds, weather }),
       })
       if (!response.ok) throw new Error('Die KI-Beratung konnte gerade nicht antworten.')

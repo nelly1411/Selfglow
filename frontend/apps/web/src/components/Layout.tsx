@@ -1,14 +1,15 @@
-import { Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { MessageCircle } from 'lucide-react'
+import { Outlet, useLocation } from 'react-router-dom'
 import Header from './Header'
 import Footer from './Footer'
+import FloatingChat from './FloatingChat'
 
 export default function Layout() {
   const location = useLocation()
-  const navigate = useNavigate()
 
   const isHome = location.pathname === '/'
   const isChatbotPage = location.pathname === '/chatbot'
+  const productMatch = location.pathname.match(/^\/product\/(\d+)/)
+  const currentProductId = productMatch ? Number(productMatch[1]) : null
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -19,15 +20,7 @@ export default function Layout() {
       </main>
 
       {!isChatbotPage && (
-        <button
-          type="button"
-          onClick={() => navigate('/chatbot')}
-          className="fixed bottom-40 right-5 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-[#D4A574] text-white shadow-lg transition hover:bg-[#C49464] hover:scale-105"
-          aria-label="KI-Beratung öffnen"
-          title="KI-Beratung öffnen"
-        >
-          <MessageCircle className="h-6 w-6" />
-        </button>
+        <FloatingChat currentProductId={currentProductId} routeKey={location.pathname} />
       )}
 
       <Footer />

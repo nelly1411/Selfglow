@@ -61,9 +61,17 @@ export const initialMessages: Message[] = [
   {
     id: 'welcome',
     role: 'assistant',
-    content: 'Hi, ich bin deine SelfGlow KI-Beratung. Sag mir deinen Hauttyp, dein Anliegen oder welche Eigenschaften dir wichtig sind.',
+    content: 'Wobei kann ich helfen?',
   },
 ]
+
+function isWelcomeMessage(message: Pick<Message, 'id' | 'content'>) {
+  return (
+    message.id === 'welcome' ||
+    message.content === initialMessages[0].content ||
+    message.content.includes('SelfGlow KI-Beratung')
+  )
+}
 
 export function createConversation(messages: Message[] = initialMessages): Conversation {
   return { id: crypto.randomUUID(), title: 'Neue Beratung', updatedAt: new Date().toISOString(), messages }
@@ -167,13 +175,11 @@ useEffect(() => {
           return
         }
 
-        const welcomeContent = initialMessages[0].content
-
         const dbConversations: Conversation[] = data.map((c) => {
           // Nachrichten aus DB — createdAt ist bereits sortiert (orderBy asc im Backend)
           // Welcome-Nachrichten filtern (werden frisch eingefügt)
           const dbMessages: Message[] = (c.messages ?? [])
-            .filter((m: any) => m.content !== welcomeContent && m.id !== 'welcome')
+            .filter((m: any) => !isWelcomeMessage({ id: m.id, content: m.content }))
             .map((m: any) => ({
               id:                m.id,
               role:              m.role,
@@ -234,10 +240,9 @@ useEffect(() => {
 
   // ── HTTP Save ─────────────────────────────────────────────────────────────
   const execSave = useCallback(async (conv: Conversation, tok: string) => {
-    const welcomeContent = initialMessages[0].content
     // Welcome-Nachricht niemals speichern
     const messagesToSave = conv.messages.filter(
-      (m) => m.id !== 'welcome' && m.content !== welcomeContent
+      (m) => !isWelcomeMessage(m)
     )
 
     const processedMessages = await Promise.all(
