@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
-import { User, ShoppingCart, Search, Menu, X, Heart, LogOut } from 'lucide-react'
+import { User, ShoppingCart, Search, Menu, X, Heart, LogOut, Sparkles } from 'lucide-react'
 import { cn } from '@workspace/ui/lib/utils'
 import { useCart } from '@/context/CartContext'
 import { useWishlist } from '@/context/WishlistContext'
@@ -9,6 +9,59 @@ import { useAuth } from '@/context/AuthContext'
 const CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
   .header-root { font-family: 'Outfit', sans-serif; }
+  .ai-nav-link {
+    position: relative;
+    border: 1.5px solid transparent;
+    color: #D4A574;
+  }
+  .ai-nav-link:hover {
+    box-shadow: 0 6px 18px rgba(212, 165, 116, 0.16);
+    transform: translateY(-1px);
+  }
+  .ai-nav-icon {
+    position: relative;
+    width: 30px;
+    height: 30px;
+    border-radius: 999px;
+    background: #F9E8D2;
+    color: #A97745;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    overflow: hidden;
+    box-shadow: 0 0 0 1px rgba(212, 165, 116, 0.24), 0 0 18px rgba(212, 165, 116, 0.32);
+    animation: aiIconPulse 2.6s ease-in-out infinite;
+  }
+  .ai-nav-icon::after {
+    content: '';
+    position: absolute;
+    top: -35%;
+    bottom: -35%;
+    left: -80%;
+    width: 70%;
+    background: linear-gradient(90deg, transparent, #fff, #ffe9b8, #fff, transparent);
+    transform: rotate(22deg);
+    animation: aiIconGlint 2.1s ease-in-out infinite;
+  }
+  .ai-nav-icon svg {
+    position: relative;
+    z-index: 1;
+    animation: aiStarTwinkle 2s ease-in-out infinite;
+  }
+  @keyframes aiIconGlint {
+    0%, 42%, 100% { left: -85%; opacity: 0; }
+    58% { opacity: 1; }
+    78% { left: 130%; opacity: 0; }
+  }
+  @keyframes aiIconPulse {
+    0%, 100% { box-shadow: 0 0 0 1px rgba(212, 165, 116, 0.24), 0 0 18px rgba(212, 165, 116, 0.32); }
+    50% { box-shadow: 0 0 0 3px rgba(212, 165, 116, 0.18), 0 0 26px rgba(212, 165, 116, 0.55); }
+  }
+  @keyframes aiStarTwinkle {
+    0%, 100% { filter: drop-shadow(0 0 2px rgba(212,165,116,0.35)); opacity: 0.92; transform: scale(1); }
+    50% { filter: drop-shadow(0 0 10px rgba(212,165,116,1)); opacity: 1; transform: scale(1.12); }
+  }
 `
 
 export default function Header() {
@@ -146,15 +199,22 @@ export default function Header() {
     className={({ isActive }) =>
   to === '/chatbot'
     ? cn(
-        'text-base font-semibold whitespace-nowrap rounded-full px-4 py-2 transition-all duration-200 border border-[#D4A574]',
-        isActive
-          ? 'text-[#D4A574] bg-transparent'
-          : 'text-[#2a1c10] hover:bg-[#D4A574] hover:text-white'
+        'ai-nav-link inline-flex items-center gap-2 text-base font-semibold whitespace-nowrap rounded-full py-1.5 pl-1.5 pr-4 transition-all duration-200',
+        isActive && 'shadow-lg'
       )
     : navLink(isActive)
 }
   >
-    {label}
+    {to === '/chatbot' ? (
+      <>
+        <span className="ai-nav-icon">
+          <Sparkles className="h-4 w-4" strokeWidth={1.8} />
+        </span>
+        <span>{label}</span>
+      </>
+    ) : (
+      label
+    )}
   </NavLink>
 ))}
           </nav>
