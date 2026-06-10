@@ -18,6 +18,8 @@ import Profile from './pages/Profile'
 import { useAuth } from './context/AuthContext'
 import ThankYou from './pages/ThankYou'
 import OrderDetail from './pages/OrderDetail.tsx'
+import Hautwissen from './pages/Hautwissen.tsx'
+import HautwissenDetail from './pages/HautwissenDetail'
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
   const { isLoggedIn } = useAuth()
@@ -48,6 +50,8 @@ function App() {
               <Route path="/checkout" element={<Checkout />} />
               <Route path="/thank-you" element={<ThankYou />} />
               <Route path="/quiz" element={<SkinQuiz />} />
+              <Route path="/hautwissen" element={<Hautwissen />} />
+              <Route path="/hautwissen/:slug" element={<HautwissenDetail />} />
               <Route
                 path="/profile"
                 element={

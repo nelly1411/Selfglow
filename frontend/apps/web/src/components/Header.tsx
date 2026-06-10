@@ -191,6 +191,7 @@ export default function Header() {
   { to: '/shop', label: 'Produkte', end: false },
   { to: '/about', label: 'Über uns', end: false },
   { to: '/chatbot', label: 'KI-Beratung', end: false },
+  { to: '/hautwissen', label: 'Hautwissen', end: false },
 ].map(({ to, label, end }) => (
   <NavLink
     key={to}
