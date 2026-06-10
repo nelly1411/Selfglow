@@ -2,6 +2,9 @@ const express        = require('express')
 const router         = express.Router()
 const prisma         = require('../config/prisma')
 const authMiddleware = require('../middleware/authMiddleware')
+const {
+  captureSkinAnalysisProfileFacts,
+} = require('../services/user-skin-profile.service')
 
 // ── POST /api/skin-analysis/analyze ──────────────────────────────────────────
 router.post('/analyze', async (req, res) => {
@@ -166,6 +169,8 @@ router.post('/save', authMiddleware, async (req, res) => {
         products:    JSON.stringify(products || []),
       }
     })
+
+    await captureSkinAnalysisProfileFacts(req.user.userId, analysis)
 
     return res.json({ analysis })
   } catch (err) {

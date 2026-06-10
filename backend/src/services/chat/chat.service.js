@@ -27,7 +27,9 @@ async function createOpenAIAnswer(
   message,
   products,
   history = [],
-  contextProducts = []
+  contextProducts = [],
+  weather = null,
+  userProfile = null
 ) {
   if (products.length > 0) {
     return PRODUCT_RECOMMENDATION_ANSWER;
@@ -47,7 +49,7 @@ async function createOpenAIAnswer(
       },
       {
         role: "user",
-        content: buildGeneralPrompt(message, history, contextProducts),
+        content: buildGeneralPrompt(message, history, contextProducts, weather, userProfile),
       },
     ],
     buildFallbackAnswer(products)
@@ -75,7 +77,13 @@ async function getContextProducts(productIds) {
   return products.map((product) => toChatProduct(product));
 }
 
-async function createChatResponse(message, history = [], contextProductIds = [], weather = null) {
+async function createChatResponse(
+  message,
+  history = [],
+  contextProductIds = [],
+  weather = null,
+  userProfile = null
+) {
   const previousContextProducts =
     contextProductIds.length > 0 && process.env.OPENAI_API_KEY
       ? await getContextProducts(contextProductIds)
@@ -105,7 +113,7 @@ async function createChatResponse(message, history = [], contextProductIds = [],
         },
         {
           role: "user",
-         content: buildProductFollowUpPrompt(message, history, previousContextProducts, weather),
+         content: buildProductFollowUpPrompt(message, history, previousContextProducts, weather, userProfile),
         },
       ],
       fallbackAnswer
@@ -129,7 +137,7 @@ async function createChatResponse(message, history = [], contextProductIds = [],
         },
         {
           role: "user",
-          content: buildSkincareChatPrompt(message, history, decision.intent, weather),
+          content: buildSkincareChatPrompt(message, history, decision.intent, weather, userProfile),
         },
       ],
       GENERAL_SKINCARE_FALLBACK_ANSWER
@@ -147,7 +155,7 @@ async function createChatResponse(message, history = [], contextProductIds = [],
   const finalSelection = await selectFinalProducts(message, history, candidateProducts);
   const products = finalSelection.products;
   const answer =
-    finalSelection.answer || (await createOpenAIAnswer(message, products, history, []));
+    finalSelection.answer || (await createOpenAIAnswer(message, products, history, [], weather, userProfile));
 
   return {
     answer,
@@ -162,7 +170,8 @@ async function createChatResponseStream(
   history = [],
   contextProductIds = [],
   onDelta = () => {},
-  weather = null
+  weather = null,
+  userProfile = null
 ) {
   const previousContextProducts =
     contextProductIds.length > 0 && process.env.OPENAI_API_KEY
@@ -193,7 +202,7 @@ async function createChatResponseStream(
         },
         {
           role: "user",
-          content: buildProductFollowUpPrompt(message, history, previousContextProducts, weather),
+          content: buildProductFollowUpPrompt(message, history, previousContextProducts, weather, userProfile),
         },
       ],
       fallbackAnswer,
@@ -219,7 +228,7 @@ async function createChatResponseStream(
         },
         {
           role: "user",
-         content: buildSkincareChatPrompt(message, history, decision.intent, weather),
+         content: buildSkincareChatPrompt(message, history, decision.intent, weather, userProfile),
         },
       ],
       fallbackAnswer,
@@ -251,7 +260,7 @@ async function createChatResponseStream(
 
   if (products.length > 0 || !process.env.OPENAI_API_KEY) {
     return {
-      answer: await createOpenAIAnswer(message, products, history, []),
+      answer: await createOpenAIAnswer(message, products, history, [], weather, userProfile),
       products,
       canExplainProducts: Boolean(process.env.OPENAI_API_KEY && products.length > 0),
       usedFallback: !process.env.OPENAI_API_KEY,
@@ -268,7 +277,7 @@ async function createChatResponseStream(
       },
       {
         role: "user",
-       content: buildGeneralPrompt(message, history, [], weather),
+       content: buildGeneralPrompt(message, history, [], weather, userProfile),
       },
     ],
     fallbackAnswer,

@@ -1,5 +1,8 @@
 const reviewService = require("../services/review.service");
 const prisma = require("../config/prisma");
+const {
+    captureReviewProfileFacts,
+} = require("../services/user-skin-profile.service");
 
 async function createReview(req, res) {
     try {
@@ -50,6 +53,12 @@ async function createReview(req, res) {
                 message: "Sie haben dieses Produkt bereits bewertet!"
             });
         }
+
+        const product = await prisma.product.findUnique({
+            where: { id: Number(productId) },
+            select: { id: true, name: true, brand: true, category: true },
+        });
+        await captureReviewProfileFacts(userId, reviewText, product);
 
         return res.status(201).json(review);
 

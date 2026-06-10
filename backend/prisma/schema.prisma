@@ -61,6 +61,7 @@ model User {
    gender String? // "male" | "female" | "diverse"
    skinAnalyses SkinAnalysis[]
    conversations Conversation[]
+   skinProfileFacts UserSkinProfileFact[]
 }
 
 model Order {
@@ -169,6 +170,24 @@ model SkinAnalysis {
 
   user User @relation(fields: [userId], references: [id])
 }
+
+model UserSkinProfileFact {
+  id         Int      @id @default(autoincrement())
+  userId     Int
+  key        String
+  value      String
+  source     String   @default("chat")
+  confidence Float    @default(0.7)
+  evidence   String?  @db.Text
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, key, value])
+  @@index([userId, key])
+}
+
 model Conversation {
   id        String        @id @default(uuid())
   userId    Int

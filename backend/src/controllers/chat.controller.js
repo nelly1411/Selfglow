@@ -1,10 +1,70 @@
 const chatService = require("../services/chat.service");
+const prisma = require("../config/prisma");
+const {
+  captureUserSkinProfileFromMessage,
+  getUserSkinProfileFacts,
+} = require("../services/user-skin-profile.service");
+
+function parseStoredJson(value, fallback) {
+  if (!value) return fallback;
+
+  try {
+    return JSON.parse(value);
+  } catch {
+    return fallback;
+  }
+}
+
+async function getUserProfileContext(userId) {
+  if (!userId) return null;
+
+  const [user, latestAnalysis, profileFacts] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        skinType: true,
+        gender: true,
+      },
+    }),
+    prisma.skinAnalysis.findFirst({
+      where: { userId },
+      orderBy: { createdAt: "desc" },
+    }),
+    getUserSkinProfileFacts(userId),
+  ]);
+
+  if (!user && !latestAnalysis) return null;
+
+  return {
+    skinTypeFromQuiz: user?.skinType || null,
+    gender: user?.gender || null,
+    facts: profileFacts.map((fact) => ({
+      key: fact.key,
+      value: fact.value,
+      confidence: fact.confidence,
+      source: fact.source,
+      updatedAt: fact.updatedAt,
+    })),
+    latestSkinAnalysis: latestAnalysis
+      ? {
+          skinType: latestAnalysis.skinType,
+          dryness: latestAnalysis.dryness,
+          redness: latestAnalysis.redness,
+          blemishes: latestAnalysis.blemishes,
+          sensitivity: latestAnalysis.sensitivity,
+          overall: latestAnalysis.overall,
+          tips: parseStoredJson(latestAnalysis.tips, []),
+          createdAt: latestAnalysis.createdAt,
+        }
+      : null,
+  };
+}
 
 async function createChatResponse(req, res) {
   try {
     const { message, history, contextProductIds, weather } = req.body;
 
-    if (!message || typeof message !== "string" || message.trim().length < 2) {
+    if (!message || typeof message !== "string" || message.trim().length < 1) {
       return res.status(400).json({ message: "Message is required" });
     }
 
@@ -27,12 +87,15 @@ async function createChatResponse(req, res) {
       : [];
 
     const safeWeather = weather && typeof weather === "object" ? weather : null;
+    await captureUserSkinProfileFromMessage(req.user?.userId, message);
+    const userProfile = await getUserProfileContext(req.user?.userId);
 
     const response = await chatService.createChatResponse(
       message,
       safeHistory,
       safeContextProductIds,
-      safeWeather
+      safeWeather,
+      userProfile
     );
     res.status(200).json(response);
   } catch (error) {
@@ -50,7 +113,7 @@ async function createChatResponseStream(req, res) {
   try {
     const { message, history, contextProductIds, weather } = req.body;
 
-    if (!message || typeof message !== "string" || message.trim().length < 2) {
+    if (!message || typeof message !== "string" || message.trim().length < 1) {
       return res.status(400).json({ message: "Message is required" });
     }
 
@@ -73,6 +136,8 @@ async function createChatResponseStream(req, res) {
       : [];
 
     const safeWeather = weather && typeof weather === "object" ? weather : null;
+    await captureUserSkinProfileFromMessage(req.user?.userId, message);
+    const userProfile = await getUserProfileContext(req.user?.userId);
 
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache, no-transform");
@@ -84,7 +149,8 @@ async function createChatResponseStream(req, res) {
       safeHistory,
       safeContextProductIds,
       (text) => writeStreamEvent(res, "delta", { text }),
-      safeWeather
+      safeWeather,
+      userProfile
     );
 
     writeStreamEvent(res, "done", response);
