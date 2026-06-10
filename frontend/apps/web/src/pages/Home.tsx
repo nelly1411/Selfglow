@@ -2,6 +2,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { Bot, Sparkles, SlidersHorizontal, ArrowRight } from 'lucide-react'
 import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '@/context/AuthContext'
+import { apiUrl } from '@/lib/api'
 import serumBild        from '@/images/serum.jpg'
 import feuchtigkeitBild from '@/images/Feuchtigkeit.jpg'
 import tonerBild        from '@/images/toner.jpg'
@@ -227,7 +228,7 @@ export default function Home() {
                         const t = user?.token || parsed?.token || localStorage.getItem('token')
                         if (!t) return
                         try {
-                          const res = await fetch('http://localhost:5050/api/auth/skin-type', {
+                          const res = await fetch(apiUrl('/api/auth/skin-type'), {
                             method: 'DELETE', headers: { Authorization: `Bearer ${t}` },
                           })
                           const data = await res.json()

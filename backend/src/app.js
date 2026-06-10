@@ -16,7 +16,34 @@ const app = express();
 const chatHistoryRoutes = require('./routes/chatHistory.routes.js')
 const weatherRoutes = require('./routes/weather.routes')
 
-app.use(cors());
+const allowedOrigins = [
+    'http://localhost:5173',
+    process.env.FRONTEND_URL,
+  ].filter(Boolean)
+  
+  app.use(
+    cors({
+      origin(origin, callback) {
+        if (!origin) {
+          return callback(null, true)
+        }
+  
+        if (allowedOrigins.includes(origin)) {
+          return callback(null, true)
+        }
+  
+        if (origin.endsWith('.vercel.app')) {
+          return callback(null, true)
+        }
+  
+        return callback(new Error(`Not allowed by CORS: ${origin}`))
+      },
+      credentials: true,
+    })
+  )
+
+
+
 app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ limit: '10mb', extended: true }))
 
@@ -36,4 +63,6 @@ app.get("/", (req, res) => res.send("SelfGlow backend is running"));
 app.get("/api/test", (req, res) => res.json({ message: "API works" }));
 
 const PORT = process.env.PORT || 5050;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Server running on port ${PORT}`)
+  })

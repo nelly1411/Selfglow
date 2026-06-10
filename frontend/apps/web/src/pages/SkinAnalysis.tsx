@@ -2,22 +2,22 @@ import { useState, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Camera, Upload, X, Loader2, ArrowRight, RotateCcw, Sparkles } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
+import { apiUrl } from '@/lib/api'
 
-import fettigImg       from '@/images/fettig.jpg'
-import paleImg         from '@/images/pale.jpg'
+import fettigImg from '@/images/fettig.jpg'
+import paleImg from '@/images/pale.jpg'
 import unreinheitenImg from '@/images/unreinheiten.jpg'
-import porenImg        from '@/images/poren.jpg'
-import roetungenImg    from '@/images/rötungen.jpg'
-import normalImg       from '@/images/normal.jpg'
-import trockeneImg     from '@/images/trocken.jpg'
+import porenImg from '@/images/poren.jpg'
+import roetungenImg from '@/images/rötungen.jpg'
+import trockeneImg from '@/images/trocken.jpg'
 
-import porenManImg     from '@/images/porenMan.jpg.webp'
-import pickelManImg    from '@/images/pickelMan.jpg'
-import normalManImg    from '@/images/normalMan.jpg'
+import porenManImg from '@/images/porenMan.jpg.webp'
+import pickelManImg from '@/images/pickelMan.jpg'
+import normalManImg from '@/images/normalMan.jpg'
 import rasierPickelImg from '@/images/rassierPickel.jpg.webp'
-import fettigManImg    from '@/images/fettigMan.jpg'
+import fettigManImg from '@/images/fettigMan.jpg'
 
-const API = 'http://localhost:5050'
+
 const skinAnalysisStorageKey = 'selfglow-skin-analysis-result'
 
 const CSS = `
@@ -190,7 +190,7 @@ export default function SkinAnalysis({ onClose, onAnalysisComplete }: SkinAnalys
     try {
       const compressed = await compressImage(imageData, 800, 0.7)
 
-      const response = await fetch(`${API}/api/skin-analysis/analyze`, {
+      const response = await fetch(apiUrl('/api/skin-analysis/analyze'), {        
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ imageData: compressed, mediaType: 'image/jpeg' }),
@@ -216,7 +216,7 @@ export default function SkinAnalysis({ onClose, onAnalysisComplete }: SkinAnalys
       const token = getToken()
       if (token) {
         setSaved(false)
-        fetch(`${API}/api/skin-analysis/save`, {
+        fetch(apiUrl('/api/skin-analysis/save'), {          
           method:  'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
           body:    JSON.stringify(parsed),

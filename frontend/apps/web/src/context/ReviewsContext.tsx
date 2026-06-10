@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, type ReactNode } from "react";
+import { apiUrl } from '@/lib/api'
 
 export interface Review {
   id: number;
@@ -35,8 +36,6 @@ interface ReviewsContextType {
 
 const ReviewsContext = createContext<ReviewsContextType | undefined>(undefined);
 
-const API_URL = "http://localhost:5050/api/reviews";
-
 export function ReviewsProvider({
   children,
 }: {
@@ -51,8 +50,7 @@ export function ReviewsProvider({
     reviewText: string,
     token: string
   ) => {
-    const response = await fetch(`${API_URL}`, {
-      method: "POST",
+    const response = await fetch(apiUrl('/api/reviews'), {      method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
@@ -81,9 +79,9 @@ export function ReviewsProvider({
 
     try {
       const response = await fetch(
-        `${API_URL}/product/${productId}`
+        apiUrl(`/api/reviews/product/${productId}`)
       );
-
+      
       if (!response.ok) {
         throw new Error("Failed to fetch reviews");
       }
@@ -103,8 +101,10 @@ export function ReviewsProvider({
 
   const getAverageRating = async (productId: number) => {
     try {
-      const response = await fetch(`${API_URL}/product/${productId}/average`);
-
+      const response = await fetch(
+        apiUrl(`/api/reviews/product/${productId}/average`)
+      );
+      
       if (!response.ok) {
         throw new Error("Failed to fetch average rating");
       }
@@ -125,14 +125,12 @@ export function ReviewsProvider({
     setLoading(true);
 
     try {
-      const response = await fetch(`${API_URL}/${reviewId}`,
-        {
-          method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const response = await fetch(apiUrl(`/api/reviews/${reviewId}`), {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
       if (!response.ok) {
         const errorData = await response.json();

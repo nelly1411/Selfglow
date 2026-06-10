@@ -3,8 +3,9 @@ import { useCart } from '@/context/CartContext'
 import { useAuth } from '@/context/AuthContext'
 import { useNavigate, Link } from 'react-router-dom'
 import { ArrowLeft, Tag, CheckCircle, Loader2 } from 'lucide-react'
+import { apiUrl } from '@/lib/api'
 
-const API = 'http://localhost:5050'
+
 
 // ─── Validators ────────────────────────────────────────────────────────────────
 const validators = {
@@ -24,7 +25,7 @@ const BASE_FORM = {
 }
 
 // ─── Payment config ────────────────────────────────────────────────────────────
-const PAYMENT_METHODS = [
+/*const PAYMENT_METHODS = [
   {
     id: 'klarna',
     label: 'Klarna',
@@ -51,7 +52,7 @@ const PAYMENT_METHODS = [
     buttonColor: '#0070ba',
     buttonTextColor: '#fff',
   },
-] as const
+] as const*/
 
 type PaymentId = 'klarna' | 'paypal'
 
@@ -68,7 +69,7 @@ const token = user?.token
   const [discountError, setDiscountError]     = useState('')
   const [discountApplied, setDiscountApplied] = useState(false)
   const [discountLabel, setDiscountLabel]   = useState('')
-const [checkingCode, setCheckingCode]     = useState(false)
+  const [, setCheckingCode]     = useState(false)
   const [errorMsg, setErrorMsg]               = useState('')
   const [errors, setErrors]                   = useState<Record<string, string>>({})
   const [touched, setTouched]                 = useState<Record<string, boolean>>({})
@@ -111,7 +112,7 @@ const [checkingCode, setCheckingCode]     = useState(false)
     }
 
     setLoadingAddress(true)
-    fetch(`${API}/api/auth/address`, {
+    fetch(apiUrl('/api/auth/address'), {
       headers: { Authorization: `Bearer ${user.token}` },
     })
       .then(r => { if (!r.ok) throw new Error(`${r.status}`); return r.json() })
@@ -183,7 +184,7 @@ const [checkingCode, setCheckingCode]     = useState(false)
       : null
 
   // ─── Discount ─────────────────────────────────────────────────────────
-  const VALID_CODES: Record<string, number> = { SAVE10: 0.10, WELCOME5: 0.05 }
+  /*const VALID_CODES: Record<string, number> = { SAVE10: 0.10, WELCOME5: 0.05 }*/
 
   const applyDiscount = async () => {
   setDiscountApplied(false)
@@ -208,8 +209,7 @@ const [checkingCode, setCheckingCode]     = useState(false)
     }
     setCheckingCode(true)
     try {
-      const res  = await fetch(`${API}/api/auth/check-welcome-code`, {
-        headers: { Authorization: `Bearer ${t}` },
+      const res  = await fetch(apiUrl('/api/auth/check-welcome-code'), {        headers: { Authorization: `Bearer ${t}` },
       })
       const data = await res.json()
       if (data.used) {
@@ -270,7 +270,7 @@ const [checkingCode, setCheckingCode]     = useState(false)
         headers.Authorization = `Bearer ${token}`
       }
 
-      const res = await fetch(`${API}/api/checkout`, {
+      const res = await fetch(apiUrl('/api/checkout'), {
         method: 'POST',
         headers,
         body: JSON.stringify(orderData),
@@ -291,7 +291,7 @@ const [checkingCode, setCheckingCode]     = useState(false)
       clearCart()
 
       if (user?.token) {
-        const addrRes = await fetch(`${API}/api/auth/address`, {
+        const addrRes = await fetch(apiUrl('/api/auth/address'), {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',

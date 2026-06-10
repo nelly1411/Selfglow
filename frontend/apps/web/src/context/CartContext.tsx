@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, type ReactNode, useRef } from 'react'
 import { useAuth } from '@/context/AuthContext'
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5050'
+import { apiUrl } from '@/lib/api'
 
 export interface CartItem {
   id: number
@@ -53,8 +53,7 @@ useEffect(() => {
   const addToCart =async (product: Omit<CartItem, 'quantity'>) => {
       // Wenn der User eingeloggt ist, wird das Produkt zusätzlich im Backend gespeichert.
     if (isLoggedIn && token) {
-      await fetch(`${API_BASE_URL}/api/cart/items/${product.id}`, {
-        method: 'POST',
+      await fetch(apiUrl(`/api/cart/items/${product.id}`), {        method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -85,8 +84,7 @@ useEffect(() => {
     const localItems: CartItem[] = localCart ? JSON.parse(localCart) : []
 
     if (localItems.length > 0) {
-      await fetch(`${API_BASE_URL}/api/cart/sync`, {
-        method: 'POST',
+      await fetch(apiUrl('/api/cart/sync'), {        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
@@ -103,8 +101,7 @@ useEffect(() => {
       localStorage.removeItem('cart')
     }
 
-    const response = await fetch(`${API_BASE_URL}/api/cart`, {
-      headers: {
+    const response = await fetch(apiUrl('/api/cart'), {      headers: {
         Authorization: `Bearer ${token}`,
       },
     })
@@ -133,8 +130,7 @@ useEffect(() => {
 
   const removeFromCart = async(id: number) => {
      if (isLoggedIn && token) {
-      await fetch(`${API_BASE_URL}/api/cart/items/${id}`, {
-        method: 'DELETE',
+      await fetch(apiUrl(`/api/cart/items/${id}`), {        method: 'DELETE',
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -150,8 +146,7 @@ useEffect(() => {
     }
 
     if (isLoggedIn && token) {
-      await fetch(`${API_BASE_URL}/api/cart/items/${id}/quantity`, {
-        method: 'PATCH',
+      await fetch(apiUrl(`/api/cart/items/${id}/quantity`), {        method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
@@ -170,8 +165,7 @@ useEffect(() => {
   // Auswahl eines Produkts im Warenkorb ändern
   const updateSelected = async (id: number, selected: boolean) => {
     if (isLoggedIn && token) {
-      await fetch(`${API_BASE_URL}/api/cart/items/${id}/selected`, {
-        method: 'PATCH',
+      await fetch(apiUrl(`/api/cart/items/${id}/selected`), {        method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
@@ -189,7 +183,7 @@ useEffect(() => {
 
   const clearCart = async () => {
     if (isLoggedIn && token) {
-      await fetch(`${API_BASE_URL}/api/cart`, {
+      await fetch(apiUrl('/api/cart'), {
         method: 'DELETE',
         headers: {
           Authorization: `Bearer ${token}`,
