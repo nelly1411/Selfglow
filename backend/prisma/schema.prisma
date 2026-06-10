@@ -50,6 +50,8 @@ model User {
   skinType        String?
   password        String
   usedWelcomeCode Boolean @default(false)
+  verificationCode  String?
+  verificationCodeExpiry  DateTime?
 
   wishlistItems WishlistItem[]
   orders        Order[]

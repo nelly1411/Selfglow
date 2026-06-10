@@ -164,7 +164,7 @@ exports.sendOrderConfirmation = async ({
 }
 
 // ─── E-Mail-Verifizierung bei Registrierung ──────────────────────────────────
-exports.sendEmailConfirmation = async ({ to, name, confirmationUrl }) => {
+exports.sendEmailConfirmation = async ({ to, name, code }) => {
   if (!to) {
     throw new Error('No recipient email provided')
   }
@@ -180,17 +180,12 @@ exports.sendEmailConfirmation = async ({ to, name, confirmationUrl }) => {
 
       <div style="background:#FFF8F2;padding:32px;border:1px solid #f0e0cc;border-top:none;border-radius:0 0 12px 12px;">
         <p>Hallo${greetingName},</p>
-        <p>Bitte bestätige deine E-Mail-Adresse, damit du dich bei SelfGlow anmelden kannst.</p>
+        <p>Bitte gib diesen Code ein, um deine E-Mail-Adresse zu bestätigen:</p>
 
-        <p style="margin:28px 0;">
-          <a href="${confirmationUrl}" style="display:inline-block;background:#D4A574;color:#fff;text-decoration:none;padding:12px 18px;border-radius:999px;font-weight:600;">
-            E-Mail bestätigen
-          </a>
-        </p>
-
-        <p style="color:#777;font-size:13px;line-height:1.6;">
-          Der Link ist 24 Stunden gültig. Falls du kein Konto erstellt hast, kannst du diese E-Mail ignorieren.
-        </p>
+        <div style="text-align:center;margin:28px 0;">
+          <span style="font-size:36px;font-weight:700;letter-spacing:0.3em;color:#D4A574;">${code}</span>
+        </div>
+        <p style="color:#777;font-size:13px;">Der Code ist 15 Minuten gültig.</p>
       </div>
     </div>
   `
@@ -198,7 +193,7 @@ exports.sendEmailConfirmation = async ({ to, name, confirmationUrl }) => {
   await transporter.sendMail({
     from: getFromAddress(),
     to,
-    subject: 'Bestätige deine E-Mail-Adresse',
+    subject: 'Dein bestätigungscode für SelfGlow',
     html,
   })
 }

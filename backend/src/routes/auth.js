@@ -8,7 +8,7 @@ const {
   getAddress,
   updateAddress,
   updateSkinType,
-  confirmEmail,
+  verifyCode,
   deleteSkinType,
   checkWelcomeCode,
    updateProfile,
@@ -18,10 +18,11 @@ const {
 
 router.post  ("/register",       register);
 router.post  ("/login",          login);
+router.post  ("/verify-code", verifyCode),
 router.get   ("/address",        authMiddleware, getAddress);
 router.patch ("/address",        authMiddleware, updateAddress);
 router.patch ("/skin-type",      authMiddleware, updateSkinType);  
-router.get   ("/confirm/:token", confirmEmail);
+router.get   ("/confirm/:token", verifyCode);
 router.delete("/skin-type", authMiddleware, deleteSkinType)
 router.get("/check-welcome-code", authMiddleware, checkWelcomeCode)
 router.patch("/profile", authMiddleware, updateProfile);

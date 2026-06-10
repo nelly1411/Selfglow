@@ -101,8 +101,13 @@ async function register(req, res) {
       return res.status(409).json({ message: "Dieser Benutzer existiert bereits" });
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const jwtSecret = getJwtSecret(res);
-    if (!jwtSecret) return;
+
+    //6-stelligen Verifikationscode
+    const verificationCode = Math.floor(
+      100000 + Math.random() * 900000
+    ).toString();
+
+    const verificationCodeExpiry = new Date(Date.now() + 15 * 60 * 1000);
 
     const user = await prisma.user.create({
       data: {
@@ -110,64 +115,89 @@ async function register(req, res) {
         password: hashedPassword,   // ← FIX: war passwordHash
         name:     trimmedName || null,
         gender:   gender || null, 
-        emailVerified: !REQUIRE_EMAIL_VERIFICATION,
+        emailVerified: false,
+        verificationCode,
+        verificationCodeExpiry,
       },
     });
-
-    /*const confirmationToken = jwt.sign(
-      { userId: user.id, email: user.email, purpose: "email-confirmation" },
-      jwtSecret,
-      { expiresIn: process.env.EMAIL_CONFIRMATION_EXPIRES_IN || "24h" }
-    );
-    const confirmationUrl = `${getBackendUrl(req)}/api/auth/confirm/${confirmationToken}`;
 
     try {
       await sendEmailConfirmation({
         to: user.email,
         name: user.name,
-        confirmationUrl,
+        code: verificationCode,
       });
-    } catch (mailError) {
-      await prisma.user.delete({ where: { id: user.id } });
-      console.error("Failed to send confirmation email:", mailError);
+    } catch (mailError){
+      await prisma.user.delete({
+        where: { id: user.id },
+      });
+
+      console.error("Failed to send confirmation mail: ", mailError);
+
       return res.status(500).json({
-        message: "Konto konnte nicht erstellt werden, weil die Bestätigungs-E-Mail nicht gesendet werden konnte",
+        message: "Konto konnte nicht erstellt werden, weil die bestätigungsmail nicht gesendet werden konnte",
       });
-    }*/
-      if (REQUIRE_EMAIL_VERIFICATION) {
-        const confirmationToken = jwt.sign(
-          { userId: user.id, email: user.email, purpose: "email-confirmation" },
-          jwtSecret,
-          { expiresIn: process.env.EMAIL_CONFIRMATION_EXPIRES_IN || "24h" }
-        );
-      
-        const confirmationUrl = `${getBackendUrl(req)}/api/auth/confirm/${confirmationToken}`;
-      
-        try {
-          await sendEmailConfirmation({
-            to: user.email,
-            name: user.name,
-            confirmationUrl,
-          });
-        } catch (mailError) {
-          await prisma.user.delete({ where: { id: user.id } });
-          console.error("Failed to send confirmation email:", mailError);
-          return res.status(500).json({
-            message:
-              "Konto konnte nicht erstellt werden, weil die Bestätigungs-E-Mail nicht gesendet werden konnte",
-          });
-        }
-      }
+    }
 
     return res.status(201).json({
-      message: REQUIRE_EMAIL_VERIFICATION
-      ? "Konto erstellt. Bitte bestätige deine E-Mail-Adresse, bevor du dich anmeldest."
-      : "Konto erstellt. Du kannst dich jetzt anmelden.",
-      user:    toAuthUser(user),
+      message: "Konto erstellt. Bitte gib den 6-stelligen Code aus deiner E-Mail ein.",
+      email: normalizedEmail,
     });
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ message: "Serverfehler" });
+    return res.status(500).json({
+      message: "Serverfehler"
+    });
+  }
+}
+
+//___ Verify Code
+async function verifyCode(req, res){
+  try {
+    const {email, code} = req.body;
+    const normalizedEmail = normalizeEmail(email);
+
+    const user = await prisma.user.findUnique({
+      where: { email: normalizedEmail },
+    });
+
+    if (!user)
+      return res.status(404).json({
+    message: "Benutzer nicht gefunden"});
+
+    if (user.emailVerified) 
+      return res.status(400).json({
+    message: "E-Mail bereits bestätigt"});
+
+    if (!user.verificationCode || !user.verificationCodeExpiry)
+      return res.status(400).json({
+    message: "Kein Code vorhanden"});
+
+    if (new Date() > user.verificationCodeExpiry)
+      return res.status(400).json({
+    message: "Code abgelaufen. Bitte erneut registrieren."});
+
+    if (user.verificationCode !== code) 
+      return res.status(400).json({
+    message: "Falscher Code"});
+
+    await prisma.user.update({
+      where: {id: user.id},
+      data: {
+        emailVerified: true,
+        verificationCode: null,
+        verificationCodeExpiry: null
+      },
+    });
+
+    return res.json({
+      message: "E-Mail erfolgreich bestätigt. Du kannst dich jetzt anmelden."
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      message: "Serverfehler"
+    });
   }
 }
 
@@ -295,27 +325,7 @@ async function updateSkinType(req, res) {
   }
 }
 
-// ─── Email Confirm ────────────────────────────────────────────────────────────
-async function confirmEmail(req, res) {
-  try {
-    const { token } = req.params;
-    const jwtSecret = getJwtSecret(res);
-    if (!jwtSecret) return;
 
-    const decoded = jwt.verify(token, jwtSecret);
-    if (decoded.purpose !== "email-confirmation")
-      return res.status(400).json({ message: "Ungültiger Bestätigungslink" });
-
-    await prisma.user.update({
-      where: { id: decoded.userId },
-      data:  { emailVerified: true },
-    });
-    return res.redirect(`${getFrontendUrl()}/login?verified=1`);
-  } catch (error) {
-    console.error(error);
-    return res.status(400).json({ message: "Ungültiger oder abgelaufener Bestätigungslink" });
-  }
-}
 async function deleteSkinType(req, res) {
   try {
     const updatedUser = await prisma.user.update({
@@ -398,4 +408,4 @@ async function updateGender(req, res) {
     return res.status(500).json({ message: 'Serverfehler' })
   }
 }
-module.exports = { register, login, getAddress, updateAddress, updateSkinType, deleteSkinType, checkWelcomeCode, confirmEmail, updateProfile, updatePassword, updateGender}
+module.exports = { register, login, getAddress, updateAddress, updateSkinType, deleteSkinType, checkWelcomeCode, verifyCode, updateProfile, updatePassword, updateGender}

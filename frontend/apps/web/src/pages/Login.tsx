@@ -78,7 +78,7 @@ function GenderButton({ value, label, emoji, selected, onClick }: {
 }
 
 export default function Login() {
-  const [mode,                setMode]                = useState<'login' | 'register'>('login')
+  const [mode,                setMode]                = useState<'login' | 'register' | 'verify'>('login')
   const [name,                setName]                = useState('')
   const [email,               setEmail]               = useState('')
   const [password,            setPassword]            = useState('')
@@ -91,6 +91,8 @@ export default function Login() {
   const [error,               setError]               = useState('')
   const [success,             setSuccess]             = useState('')
   const [isSubmitting,        setIsSubmitting]        = useState(false)
+  const [pendingEmail,        setPendingEmail]        = useState('')
+  const [verifyCode,          setVerifyCode]          = useState('')
 
   const { login }       = useAuth()
   const navigate        = useNavigate()
@@ -166,8 +168,9 @@ export default function Login() {
       }
 
       if (mode === 'register') {
-        setSuccess(data.message || 'Konto erstellt. Du kannst dich jetzt anmelden.')
-        setMode('login')
+        setPendingEmail(email.trim())
+        setMode('verify')
+        setError('')
         setPassword(''); setConfirmPassword(''); setGender(null)
         return
       }
@@ -189,12 +192,105 @@ export default function Login() {
     }
   }
 
+  //verification code part
+  async function handleVerify(event: FormEvent) {
+    event.preventDefault()
+    setError('')
+    setIsSubmitting(true)
+
+    try {
+      const response = await fetch(apiUrl('/api/auth/verify-code'), {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({email: pendingEmail, code: verifyCode}),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        setError(data.message || 'Falscher oder abgelaufener Code.')
+        return
+      }
+
+      setSuccess('E-Mail bestätigt. Du kannst dich jetzt anmelden.')
+      setMode('login')
+      setVerifyCode('')
+    } catch {
+      setError('Netzwerkfehler')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
   function switchMode() {
     setMode(m => m === 'login' ? 'register' : 'login')
     setError(''); setSuccess(''); setFieldErrors({})
     setPassword(''); setConfirmPassword(''); setGender(null)
   }
 
+  //Verify Screen:
+  if (mode === 'verify') {
+    return (
+      <div className='px-4 py-10 sm:px-6 lg:px-8'>
+        <form
+          onSubmit={handleVerify}
+          className='relative mx-auto w-full max-w-md overflow-hidden rounded-lg border border-border bg-background shadow-sm'
+          noValidate
+          >
+            <section className='flex flex-col gap-5 px-6 py-8 sm:px-8 lg:px-10'>
+              <div className='space-y-2'>
+                <h2 className='text-2xl font-bold text-foreground'>E-Mail bestätigen</h2>
+                <p className='text-sm leading-6 text-muted-foreground'>Wir haben einen 6-stelligen Code an <strong>{pendingEmail}</strong> gesendet. Bitte gib ihn unten ein.</p>
+              </div>
+
+              <label className='flex flex-col gap-2 text-sm font-medium text-foreground'>
+                Bestätigungscode
+                <input
+                className='rounded-md border border-input bg-background px-3 py-2.5 text-xl font-normal outline-none transition focus:ring-2 focus:ring-[#D4A574] tracking-[0.3em] text-center'
+                type='text'
+                maxLength={6}
+                placeholder='- - - - - -'
+                value={verifyCode}
+                onChange={e => setVerifyCode(e.target.value.replace(/\D/g, ''))}
+                />
+              </label>
+
+              {error && (
+                <p className='rounded-md bg-red-50 px-3 py-2 text-sm text-red-600'>{error}</p>
+              )}
+
+              {success && (
+                <p className='flex items-center gap-2 rounded-md bg-green-50 px-3 py-2 text-sm text-green-700'>
+                  <CheckCircle2 className='h-4 w-4'/>{success}
+                </p>
+              )}
+
+              <button 
+                className='inline-flex items-center justify-center gap-2 rounded-full bg-[#D4A574] px-4 py-3 font-medium text-white transition-colors hover:bg-[#C19660] disabled:cursor-not-allowed disabled:opacity-70'
+                type='submit'
+                disabled={isSubmitting || verifyCode.length !== 6}
+              >
+                {isSubmitting
+                  ? <Loader2 className='h-4 w-4 animate-spin' />
+                  : <CheckCircle2 className='h-4 w-4'/>
+                }
+                Code bestätigen
+              </button>
+
+              <button
+                type='button'
+                className='text-sm font-medium text-[#8A6337] hover:underline'
+                onClick={() => {setMode('login'); setVerifyCode(''); setError('')}}
+              >
+                Zurück zur Anmeldung
+              </button>
+            </section>
+        </form>
+      </div>
+    )
+  }
+
+  //Login/Register screen
   const isLoginMode = mode === 'login'
   const title    = isLoginMode ? 'Willkommen zurück' : 'Konto erstellen'
   const subtitle = isLoginMode
