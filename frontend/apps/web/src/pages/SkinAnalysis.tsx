@@ -216,8 +216,7 @@ export default function SkinAnalysis({ onClose, onAnalysisComplete }: SkinAnalys
       const token = getToken()
       if (token) {
         setSaved(false)
-        fetch(apiUrl('/api/skin-analysis/save'), {          
-          method:  'POST',
+        fetch(apiUrl('/api/skin-analysis/save'), {          method:  'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
           body:    JSON.stringify(parsed),
         })
