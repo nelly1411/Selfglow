@@ -8,7 +8,8 @@
     "seed": "node prisma/seed.js",
     "embed:products": "node prisma/embed-products.js",
     "export:product-embeddings": "node prisma/export-product-embeddings.js",
-    "import:product-embeddings": "node prisma/import-product-embeddings.js"
+    "import:product-embeddings": "node prisma/import-product-embeddings.js",
+    "generate:product-explanations": "node prisma/generate-product-explanations.js"
   },
   "keywords": [],
   "author": "",

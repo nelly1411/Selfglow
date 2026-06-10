@@ -33,6 +33,7 @@ model Product {
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
   productEmbedding ProductEmbedding?
+  aiExplanation    ProductAiExplanation?
 }
 
 model User {
@@ -140,6 +141,19 @@ model ProductEmbedding {
 
   product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 }
+
+model ProductAiExplanation {
+  productId   Int      @id
+  answer      String   @db.Text
+  contentHash String
+  model       String
+  language    String   @default("de")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
 model SkinAnalysis {
   id          Int      @id @default(autoincrement())
   userId      Int
