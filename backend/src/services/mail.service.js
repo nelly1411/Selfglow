@@ -1,5 +1,5 @@
 // backend/src/services/mail.service.js
-const nodemailer = require('nodemailer')
+
 
 const DEFAULT_SENDER_NAME = 'SelfGlow'
 
@@ -40,6 +40,44 @@ function getFromAddress() {
   return `"${senderName}" <${senderAddress}>`
 }
 
+async function sendBrevoMail({ to, subject, html }) {
+  const apiKey = process.env.BREVO_API_KEY
+
+  if (!apiKey) {
+    throw new Error('BREVO_API_KEY is not configured')
+  }
+
+  const senderEmail = getSenderAddress()
+  const senderName = getSenderName()
+
+  const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: {
+      'api-key': apiKey,
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify({
+      sender: {
+        name: senderName,
+        email: senderEmail,
+      },
+      to: [
+        {
+          email: to,
+        },
+      ],
+      subject,
+      htmlContent: html,
+    }),
+  })
+
+  if (!response.ok) {
+    const errorText = await response.text()
+    throw new Error(`Brevo API mail failed: ${response.status} ${errorText}`)
+  }
+}
+
 function formatPrice(value) {
   return Number(value).toLocaleString('de-DE', {
     style: 'currency',
@@ -74,7 +112,7 @@ exports.sendOrderConfirmation = async ({
     throw new Error('No recipient email provided')
   }
 
-  const transporter = createTransporter()
+  
   const parsedItems = parseItems(items)
 
   const itemRows = parsedItems
@@ -155,8 +193,7 @@ exports.sendOrderConfirmation = async ({
     </div>
   `
 
-  await transporter.sendMail({
-    from: getFromAddress(),
+  await sendBrevoMail({
     to,
     subject: `Bestellbestätigung #${orderId}`,
     html,
@@ -169,7 +206,7 @@ exports.sendEmailConfirmation = async ({ to, name, code }) => {
     throw new Error('No recipient email provided')
   }
 
-  const transporter = createTransporter()
+  
   const greetingName = name ? ` ${name}` : ''
 
   const html = `
@@ -190,10 +227,9 @@ exports.sendEmailConfirmation = async ({ to, name, code }) => {
     </div>
   `
 
-  await transporter.sendMail({
-    from: getFromAddress(),
+  await sendBrevoMail({
     to,
-    subject: 'Dein bestätigungscode für SelfGlow',
+    subject: 'Dein Bestätigungscode für SelfGlow',
     html,
   })
 }
