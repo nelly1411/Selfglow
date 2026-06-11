@@ -36,12 +36,12 @@ function getWeatherEmoji(weatherMain?: string, temp?: number): string {
   return '🌡️'
 }
 
-function getWeatherMessage(weather: WeatherData): string {
+/*function getWeatherMessage(weather: WeatherData): string {
   const emoji = getWeatherEmoji(weather.weatherMain, weather.temp)
   const temp = weather.temp !== undefined ? `${weather.temp}°C` : ''
   const humidity = weather.humidity !== undefined ? `${weather.humidity}% Luftfeuchtigkeit` : ''
   return [emoji, temp, humidity].filter(Boolean).join(' · ')
-}
+}*/
 
 function getWeatherRecommendationPrompt(weather: WeatherData): string {
   const emoji = getWeatherEmoji(weather.weatherMain, weather.temp)
@@ -138,7 +138,7 @@ export default function Chatbot() {
   const [error, setError] = useState<string | null>(null)
   const [showAnalysis, setShowAnalysis] = useState(false)
   const [conversationToDelete, setConversationToDelete] = useState<string | null>(null)
-  const [isGeneratingGlow, setIsGeneratingGlow] = useState(false)
+  const [isGeneratingGlow] = useState(false)
   const [glowLoadingForMsg, setGlowLoadingForMsg] = useState<string | null>(null)
   const [glowSources, setGlowSources] = useState<Record<string, string>>({})
   const [weatherAnimation, setWeatherAnimation] = useState<string | null>(null)
