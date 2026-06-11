@@ -34,6 +34,12 @@ type Product = {
   ingredients?: string | null
   rating?: number | null
   application?: string | null
+
+  skinTypes?: string | null
+  concerns?: string | null
+  vegan?: boolean
+  alcoholFree?: boolean
+  fragranceFree?: boolean
 }
 
 type ProductAiAction = 'explain' | 'fit'
@@ -131,6 +137,12 @@ export default function ProductDetail() {
       category: product.category,
       price: product.price,
       image: product.imageUrl || 'https://placehold.co/300x300?text=Kein+Bild',
+     
+      skinTypes: product.skinTypes,
+      concerns: product.concerns,
+      vegan: product.vegan,
+      alcoholFree: product.alcoholFree,
+      fragranceFree: product.fragranceFree,
     })
 
     setAddedToCart(true)
