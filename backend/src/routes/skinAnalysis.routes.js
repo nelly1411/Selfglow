@@ -6,6 +6,9 @@ const {
   captureSkinAnalysisProfileFacts,
 } = require('../services/user-skin-profile.service')
 
+
+const { refreshUserProfileEmbedding } = require("../services/user-profile-embedding.service");
+
 // ── POST /api/skin-analysis/analyze ──────────────────────────────────────────
 router.post('/analyze', async (req, res) => {
   try {
@@ -170,7 +173,10 @@ router.post('/save', authMiddleware, async (req, res) => {
       }
     })
 
-    await captureSkinAnalysisProfileFacts(req.user.userId, analysis)
+    const capturedProfile = await captureSkinAnalysisProfileFacts(req.user.userId, analysis)
+    if (capturedProfile.facts.length > 0 || capturedProfile.skinType) {
+      await refreshUserProfileEmbedding(req.user.userId)
+    }
 
     return res.json({ analysis })
   } catch (err) {
@@ -212,6 +218,7 @@ router.delete('/:id', authMiddleware, async (req, res) => {
     }
 
     await prisma.skinAnalysis.delete({ where: { id } })
+    await refreshUserProfileEmbedding(req.user.userId)
     return res.json({ message: 'Analyse gelöscht' })
   } catch (err) {
     console.error('Delete-Fehler:', err)

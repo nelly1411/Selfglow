@@ -11,6 +11,8 @@ const USER_NAME_PATTERN        = /^[A-Za-z0-9 _-]+$/;
 const REQUIRE_EMAIL_VERIFICATION =
   process.env.REQUIRE_EMAIL_VERIFICATION === "true";
 
+const { refreshUserProfileEmbedding } = require("../services/user-profile-embedding.service");
+
 function getJwtSecret(res) {
   if (!process.env.JWT_SECRET) {
     console.error("JWT_SECRET is not configured");
@@ -318,6 +320,7 @@ async function updateSkinType(req, res) {
       where: { id: req.user.userId },
       data:  { skinType },
     });
+    await refreshUserProfileEmbedding(req.user.userId);
     return res.json({ message: "Hauttyp gespeichert", user: toAuthUser(updatedUser) });
   } catch (error) {
     console.error(error);
@@ -332,6 +335,7 @@ async function deleteSkinType(req, res) {
       where: { id: req.user.userId },
       data:  { skinType: null },
     })
+    await refreshUserProfileEmbedding(req.user.userId)
     return res.json({ message: 'Hauttyp gelöscht', user: toAuthUser(updatedUser) })
   } catch (error) {
     console.error(error)
@@ -402,6 +406,7 @@ async function updateGender(req, res) {
       where: { id: req.user.userId },
       data:  { gender: gender ?? null }
     })
+    await refreshUserProfileEmbedding(req.user.userId)
     return res.json({ message: 'Gespeichert', user: toAuthUser(updated) })
   } catch (err) {
     console.error(err)
