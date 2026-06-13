@@ -5,7 +5,7 @@ import { Bot, MessageCircle, Send, User, X } from 'lucide-react'
 import { Button } from '@workspace/ui/components/button'
 import { cn } from '@workspace/ui/lib/utils'
 import { apiUrl } from '@/lib/api'
-import { useChat, type ChatProduct, type Message } from '@/context/ChatContext'
+import { initialMessages, useChat, type ChatProduct, type Message } from '@/context/ChatContext'
 import { useAuth } from '@/context/AuthContext'
 
 type CurrentProduct = {
@@ -182,6 +182,32 @@ export default function FloatingChat({
   useEffect(() => {
     setIsOpen(false)
   }, [routeKey])
+
+  useEffect(() => {
+    if (!isOpen) return
+
+    if (isProductChat) {
+      setProductHistoryCount(productMessages.length)
+      setProductVisibleCount(PRODUCT_HISTORY_PAGE_SIZE)
+      return
+    }
+
+    if (!activeConversation) return
+
+    const hasWelcomeAtBottom =
+      activeConversation.messages[activeConversation.messages.length - 1]?.id === 'welcome'
+
+    if (hasWelcomeAtBottom) return
+
+    setChatState((state) => ({
+      ...state,
+      conversations: state.conversations.map((conversation) =>
+        conversation.id !== state.activeConversationId
+          ? conversation
+          : { ...conversation, messages: [...conversation.messages, initialMessages[0]] }
+      ),
+    }))
+  }, [isOpen, isProductChat, productMessages.length, activeConversation, setChatState])
 
   useEffect(() => {
     if (!currentProductId) {
@@ -578,7 +604,7 @@ export default function FloatingChat({
 
             {!isProductChat && visibleMessages.map((message, index) => (
               <div key={message.id} className="space-y-3">
-                {index === 1 && visibleMessages[0]?.id === 'welcome' && (
+                {message.id === 'welcome' && index > 0 && (
                   <HistoryDivider />
                 )}
                 {renderChatMessage(message)}

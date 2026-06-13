@@ -254,6 +254,16 @@ function getLatestRecommendedProductIds(messages: Message[]) {
   return []
 }
 
+function HistoryDivider() {
+  return (
+    <div className="flex items-center gap-2 py-1 text-xs text-muted-foreground">
+      <span className="h-px flex-1 bg-[#E8D5C0]" />
+      <span>--- Chatverlauf ---</span>
+      <span className="h-px flex-1 bg-[#E8D5C0]" />
+    </div>
+  )
+}
+
 export default function Chatbot() {
   const {
     chatState, setChatState,
@@ -698,8 +708,9 @@ export default function Chatbot() {
                 </div>
               )}
               <div ref={messagesContainerRef} className="flex-1 space-y-3 overflow-y-auto p-3 md:p-4">
-                {messages.map((message) => (
+                {messages.map((message, index) => (
                   <div key={message.id} className="space-y-2">
+                    {message.id === 'welcome' && index > 0 && <HistoryDivider />}
                     <div className={cn('flex gap-2', message.role === 'user' ? 'justify-end' : 'justify-start')}>
                       {message.role === 'assistant' && (
                         <div className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#F5E6D3]">

@@ -193,8 +193,8 @@ useEffect(() => {
             id:        c.id,
             title:     c.title,
             updatedAt: c.updatedAt,
-            // Welcome immer als erste Nachricht einfügen
-            messages:  [initialMessages[0], ...dbMessages],
+            // Welcome ist der Start der neuen Sitzung und steht unter dem Verlauf.
+            messages:  dbMessages.length > 0 ? [...dbMessages, initialMessages[0]] : initialMessages,
           }
         })
 
