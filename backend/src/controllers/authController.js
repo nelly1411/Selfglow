@@ -289,6 +289,94 @@ async function getAddress(req, res) {
   }
 }
 
+async function getProfileContext(req, res) {
+  try {
+    const userId = req.user.userId;
+
+    const [user, facts, cart, wishlist] = await Promise.all([
+      prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+          id: true,
+          skinType: true,
+          gender: true,
+        },
+      }),
+      prisma.userSkinProfileFact.findMany({
+        where: { userId },
+        orderBy: { updatedAt: "desc" },
+        take: 30,
+      }),
+      prisma.cart.findUnique({
+        where: { userId },
+        include: {
+          items: {
+            take: 5,
+            orderBy: { updatedAt: "desc" },
+            include: {
+              product: {
+                select: {
+                  id: true,
+                  name: true,
+                  brand: true,
+                  category: true,
+                },
+              },
+            },
+          },
+        },
+      }),
+      prisma.wishlistItem.findMany({
+        where: { userId },
+        take: 5,
+        orderBy: { createdAt: "desc" },
+        include: {
+          product: {
+            select: {
+              id: true,
+              name: true,
+              brand: true,
+              category: true,
+            },
+          },
+        },
+      }),
+    ]);
+
+    if (!user) {
+      return res.status(404).json({ message: "Benutzer nicht gefunden" });
+    }
+
+    return res.json({
+      skinType: user.skinType,
+      gender: user.gender,
+      facts: facts.map((fact) => ({
+        key: fact.key,
+        value: fact.value,
+        confidence: fact.confidence,
+        source: fact.source,
+        updatedAt: fact.updatedAt,
+      })),
+      cart: (cart?.items || []).map((item) => ({
+        id: item.product.id,
+        name: item.product.name,
+        brand: item.product.brand,
+        category: item.product.category,
+        quantity: item.quantity,
+      })),
+      wishlist: wishlist.map((item) => ({
+        id: item.product.id,
+        name: item.product.name,
+        brand: item.product.brand,
+        category: item.product.category,
+      })),
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Serverfehler" });
+  }
+}
+
 // ─── PATCH /api/auth/address ──────────────────────────────────────────────────
 async function updateAddress(req, res) {
   try {
@@ -413,4 +501,4 @@ async function updateGender(req, res) {
     return res.status(500).json({ message: 'Serverfehler' })
   }
 }
-module.exports = { register, login, getAddress, updateAddress, updateSkinType, deleteSkinType, checkWelcomeCode, verifyCode, updateProfile, updatePassword, updateGender}
+module.exports = { register, login, getAddress, getProfileContext, updateAddress, updateSkinType, deleteSkinType, checkWelcomeCode, verifyCode, updateProfile, updatePassword, updateGender}
