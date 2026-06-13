@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import {
   CalendarDays, Mail, MapPin, ShoppingBag, X,
   UserRound, Star, Trash2, ExternalLink, Heart,
+  Droplets, Activity, ShieldCheck, Sparkles,
 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { useWishlist } from '@/context/WishlistContext'
@@ -12,12 +13,58 @@ import { apiUrl } from '@/lib/api'
 type OrderItem = { id: number; name: string; price: number; quantity?: number; image?: string }
 type Order = { id: number; totalPrice: number; paymentMethod: string; address: string; city: string; postal: string; country: string; items: string; createdAt: string }
 type Gender = 'male' | 'female' | 'diverse' | null
+type SkinFact = { key: string; value: string; confidence?: number; source?: string; updatedAt?: string }
+type SkinAnalysisSnapshot = { id: number; skinType: string; dryness: number; redness: number; blemishes: number; sensitivity: number; overall: string; imageData?: string | null; createdAt: string }
+type ProfileImageSnapshot = { id?: string; imageData: string; source: 'skin_analysis' | 'chat'; createdAt: string }
+type SkinProfile = { skinType: string | null; gender?: string | null; facts: SkinFact[]; latestAnalysis?: SkinAnalysisSnapshot | null; latestProfileImage?: ProfileImageSnapshot | null; profileImages?: ProfileImageSnapshot[] }
+type EditableSkinFacts = Record<string, string[]>
 
 function formatCurrency(value: number) { return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(value) }
 function formatDate(value: string) { return new Intl.DateTimeFormat('de-DE', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(value)) }
 function formatPaymentMethod(value: string) { return ({ klarna: 'Klarna', paypal: 'PayPal' })[value.toLowerCase()] || value }
 function parseOrderItems(items: string): OrderItem[] { try { const p = JSON.parse(items); return Array.isArray(p) ? p : [] } catch { return [] } }
 function genderLabel(g: Gender) { return g === 'female' ? '👩 Frau' : g === 'male' ? '👨 Mann' : g === 'diverse' ? '🧑 Divers' : 'Nicht angegeben' }
+function skinTypeLabel(s?: string | null) { return ({ Normal: 'Normale Haut', Oily: 'Fettige Haut', Dry: 'Trockene Haut', Combination: 'Mischhaut', Sensitive: 'Sensible Haut' } as Record<string, string>)[s || ''] || 'Nicht angegeben' }
+function factLabel(value: string) {
+  return ({
+    acne: 'Akne', blemishes: 'Unreinheiten', redness: 'Rötungen', pores: 'Große Poren', dark_spots: 'Pigmentflecken',
+    dryness: 'Trockenheit', oily_t_zone: 'Ölige T-Zone', sensitive: 'Empfindlich', fragrance: 'Parfum meiden',
+    alcohol: 'Alkohol meiden', hydration: 'Mehr Feuchtigkeit', calming: 'Beruhigung', glow: 'Glow', anti_aging: 'Anti-Aging',
+    light_texture: 'Leichte Textur', rich_texture: 'Reichhaltige Textur', fragrance_free: 'Parfumfrei',
+    alcohol_free: 'Alkoholfrei', vegan: 'Vegan', non_comedogenic: 'Nicht komedogen', oil_free: 'Ölfrei',
+    cruelty_free: 'Tierversuchsfrei', natural_ingredients: 'Natürliche Inhaltsstoffe',
+  } as Record<string, string>)[value] || value
+}
+
+const skinTypeOptions = [
+  { value: 'Normal', label: 'Normal', tone: '#7ab87a' },
+  { value: 'Oily', label: 'Fettig', tone: '#D4A574' },
+  { value: 'Dry', label: 'Trocken', tone: '#7aa7b8' },
+  { value: 'Combination', label: 'Mischhaut', tone: '#b88bd4' },
+  { value: 'Sensitive', label: 'Sensibel', tone: '#c47a5a' },
+]
+
+const editableFactGroups = [
+  { key: 'concern', label: 'Hautthemen', values: ['acne', 'blemishes', 'redness', 'pores', 'dark_spots'] },
+  { key: 'skin_state', label: 'Aktueller Zustand', values: ['dryness', 'oily_t_zone'] },
+  { key: 'sensitivity', label: 'Empfindlichkeit', values: ['sensitive'] },
+  { key: 'ingredient_avoidance', label: 'Meiden', values: ['fragrance', 'alcohol'] },
+  { key: 'goal', label: 'Ziele', values: ['hydration', 'calming', 'glow', 'anti_aging'] },
+  { key: 'preference', label: 'Vorlieben', values: ['light_texture', 'rich_texture', 'fragrance_free', 'alcohol_free', 'vegan', 'non_comedogenic', 'oil_free', 'cruelty_free', 'natural_ingredients'] },
+]
+
+function emptyEditableFacts(): EditableSkinFacts {
+  return Object.fromEntries(editableFactGroups.map(group => [group.key, []]))
+}
+
+function factsFromProfile(profile: SkinProfile | null): EditableSkinFacts {
+  const next = emptyEditableFacts()
+  if (!profile) return next
+  for (const fact of profile.facts) {
+    if (next[fact.key] && !next[fact.key].includes(fact.value)) next[fact.key].push(fact.value)
+  }
+  return next
+}
 
 function StarRow({ rating, size = 14 }: { rating: number; size?: number }) {
   return (
@@ -33,17 +80,17 @@ const CSS = `
   .profile-root { font-family: 'Outfit', sans-serif; }
   @keyframes fadeUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
   .p-fade { animation: fadeUp 0.45s ease forwards; }
-  .p-card { background:#fff; border:1px solid #F0DCC8; border-radius:20px; transition:all 0.2s ease; }
+  .p-card { background:#fff; border:1px solid #F0DCC8; border-radius:18px; transition:all 0.2s ease; }
   .p-card:hover { transform:translateY(-2px); box-shadow:0 8px 24px rgba(212,165,116,0.12); }
   .p-tab { cursor:pointer; padding:10px 20px; border-radius:100px; font-size:14px; font-weight:500; transition:all 0.2s; border:none; background:transparent; font-family:'Outfit',sans-serif; }
   .p-tab.active { background:#D4A574; color:#fff; }
   .p-tab:not(.active) { color:#9a7a5a; }
   .p-tab:not(.active):hover { background:#FDF6EE; color:#1c1209; }
-  .p-stat { background:linear-gradient(135deg,#fff 0%,#FFF9F3 100%); border:1.5px solid #E2B98F; border-radius:22px; padding:26px; box-shadow:0 10px 28px rgba(111,78,55,0.08); transition:all 0.2s ease; }
+  .p-stat { background:linear-gradient(135deg,#fff 0%,#FFF9F3 100%); border:1.5px solid #E2B98F; border-radius:18px; padding:18px 20px; box-shadow:0 10px 28px rgba(111,78,55,0.08); transition:all 0.2s ease; }
   .p-stat:hover { border-color:#D4A574; box-shadow:0 14px 36px rgba(111,78,55,0.14); transform:translateY(-2px); }
-  .p-review-card { background:#FDFAF6; border:1px solid #F0DCC8; border-radius:16px; padding:18px; transition:all 0.2s; }
+  .p-review-card { background:#FDFAF6; border:1px solid #F0DCC8; border-radius:14px; padding:14px 16px; transition:all 0.2s; }
   .p-review-card:hover { border-color:#D4A574; box-shadow:0 4px 16px rgba(212,165,116,0.12); }
-  .p-order-card { background:#fff; border:1px solid #E8D5C0; border-radius:16px; padding:20px; transition:all 0.2s; }
+  .p-order-card { background:#fff; border:1px solid #E8D5C0; border-radius:14px; padding:15px 18px; transition:all 0.2s; }
   .p-order-card:hover { border-color:#D4A574; box-shadow:0 4px 16px rgba(212,165,116,0.1); }
   .p-delete-btn { background:none; border:none; cursor:pointer; color:#c4a882; transition:color 0.2s; padding:4px; border-radius:8px; }
   .p-delete-btn:hover { color:#c47a5a; background:#fff0f0; }
@@ -59,6 +106,25 @@ const CSS = `
   .p-close-btn { background:none; border:none; cursor:pointer; color:#9a7a5a; padding:6px; border-radius:8px; display:flex; align-items:center; transition:all 0.2s; }
   .p-close-btn:hover { color:#1c1209; background:#F0DCC8; }
   .p-gender-btn { flex:1; padding:10px 8px; border-radius:12px; cursor:pointer; transition:all 0.15s ease; display:flex; flex-direction:column; align-items:center; gap:4px; font-family:'Outfit',sans-serif; }
+  .p-skin-option { border:1.5px solid #E8D5C0; background:#fff; border-radius:14px; padding:12px 10px; cursor:pointer; font-family:'Outfit',sans-serif; transition:all 0.15s ease; text-align:left; }
+  .p-skin-option:hover { border-color:#D4A574; background:#FDF6EE; }
+  .p-chip { border:1px solid #E8D5C0; background:#fff; color:#7a5c42; border-radius:999px; padding:8px 11px; font-size:12px; font-weight:600; cursor:pointer; font-family:'Outfit',sans-serif; transition:all 0.15s ease; }
+  .p-chip.active { border-color:#D4A574; background:#FDF6EE; color:#1c1209; box-shadow:0 0 0 2px rgba(212,165,116,0.12); }
+  .p-fact-pill { display:inline-flex; align-items:center; gap:6px; border:1px solid #F0DCC8; background:#FDF6EE; color:#7a5c42; border-radius:999px; padding:7px 10px; font-size:12px; font-weight:600; font-family:'Outfit',sans-serif; }
+  .p-meter { height:7px; border-radius:999px; background:#F3E4D2; overflow:hidden; }
+  .p-meter-fill { height:100%; border-radius:999px; background:linear-gradient(90deg,#7ab87a,#D4A574,#c47a5a); transition:width 0.3s ease; }
+  .p-mirror { position:relative; overflow:hidden; border:1px solid rgba(173,184,188,0.9); cursor:pointer; font-family:'Outfit',sans-serif; width:100%; min-height:140px; border-radius:18px; background:linear-gradient(105deg,#f8f8f6 0%,#e7eaeb 14%,#ffffff 25%,#cfd6d8 44%,#aeb9bc 53%,#dce1e2 67%,#ffffff 79%,#c4cccf 100%); box-shadow:inset 0 0 0 2px rgba(255,255,255,0.76), inset 18px 0 42px rgba(255,255,255,0.62), inset -24px 0 48px rgba(63,76,82,0.24), 0 14px 28px rgba(58,36,28,0.14); transition:transform 0.2s ease, box-shadow 0.2s ease; }
+  .p-mirror:hover { transform:translateY(-2px); box-shadow:inset 0 0 0 2px rgba(255,255,255,0.84), inset 18px 0 42px rgba(255,255,255,0.72), inset -24px 0 52px rgba(63,76,82,0.28), 0 20px 36px rgba(58,36,28,0.18); }
+  .p-mirror::before { content:''; position:absolute; inset:4px; border-radius:14px; background:radial-gradient(circle at 50% 50%,rgba(255,255,255,0.22),rgba(255,255,255,0.05) 58%,rgba(36,23,20,0.1) 100%); box-shadow:inset 0 0 20px rgba(255,255,255,0.44), inset 0 0 44px rgba(32,44,49,0.12); pointer-events:none; z-index:2; }
+  .p-mirror::after { content:''; position:absolute; top:-18%; bottom:-18%; left:9%; width:32%; transform:rotate(14deg); background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,0.82),rgba(255,255,255,0.12),rgba(255,255,255,0)); filter:blur(1px); pointer-events:none; z-index:3; }
+  .p-mirror-shine { position:absolute; top:-16%; bottom:-16%; right:12%; width:22%; transform:rotate(14deg); background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,0.62),rgba(255,255,255,0)); filter:blur(2px); z-index:3; pointer-events:none; }
+  .p-mirror-img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; opacity:0.72; filter:saturate(0.88) contrast(0.96); }
+  .p-mirror-content { position:relative; z-index:4; min-height:140px; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:18px 22px; text-align:center; color:#2b1b16; text-shadow:0 1px 8px rgba(255,255,255,0.7); }
+  .p-mirror-title { margin:0; max-width:82%; font-size:clamp(17px,2.2vw,23px); line-height:1.05; font-weight:800; letter-spacing:0; text-wrap:balance; }
+  .p-mirror-sub { margin:10px 0 0; max-width:74%; font-size:12px; color:#5f463b; font-weight:700; }
+  .p-photo-viewer-thumb { width:56px; height:56px; border-radius:12px; border:2px solid transparent; padding:0; overflow:hidden; background:#fff; cursor:pointer; opacity:0.74; transition:all 0.15s ease; }
+  .p-photo-viewer-thumb.active { border-color:#D4A574; opacity:1; box-shadow:0 0 0 2px rgba(212,165,116,0.18); }
+  .p-photo-viewer-thumb img { width:100%; height:100%; object-fit:cover; display:block; }
 `
 
 function ExpandableItems({ items, orderId }: { items: OrderItem[], orderId: number }) {
@@ -132,6 +198,148 @@ function GenderPicker({ value, onChange }: { value: Gender; onChange: (g: Gender
   )
 }
 
+function SkinProfileModal({
+  profile, editSkinType, editFacts, saving, message,
+  onClose, onSkinTypeChange, onToggleFact, onSave,
+}: {
+  profile: SkinProfile | null
+  editSkinType: string | null
+  editFacts: EditableSkinFacts
+  saving: boolean
+  message: string
+  onClose: () => void
+  onSkinTypeChange: (value: string | null) => void
+  onToggleFact: (key: string, value: string) => void
+  onSave: () => void
+}) {
+  const visibleFacts = profile?.facts || []
+  const profileFacts = visibleFacts.filter(fact => fact.key !== 'skin_type')
+  const latestImage = profile?.latestProfileImage?.imageData || profile?.latestAnalysis?.imageData || null
+  const images = profile?.profileImages?.length
+    ? profile.profileImages
+    : latestImage
+      ? [{ id: 'latest', imageData: latestImage, source: profile?.latestProfileImage?.source || 'skin_analysis', createdAt: profile?.latestProfileImage?.createdAt || profile?.latestAnalysis?.createdAt || '' }]
+      : []
+  const [photoViewerIndex, setPhotoViewerIndex] = useState<number | null>(null)
+  const activePhoto = photoViewerIndex !== null ? images[photoViewerIndex] : null
+  const completion = Math.min(100, Math.round(((editSkinType ? 1 : 0) + Object.values(editFacts).filter(v => v.length > 0).length) / 5 * 100))
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
+      <div style={{ width: '100%', maxWidth: 760, background: '#fff', borderRadius: 28, padding: 0, boxShadow: '0 24px 60px rgba(0,0,0,0.18)', maxHeight: '92vh', overflowY: 'auto' }}>
+        <div style={{ padding: 28, borderBottom: '1px solid #F0DCC8', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16 }}>
+          <div>
+            <p style={{ fontSize: 11, color: '#D4A574', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', margin: '0 0 6px' }}>Meine Haut</p>
+            <h2 style={{ fontFamily: "'Outfit',sans-serif", fontSize: 24, fontWeight: 800, color: '#1c1209', margin: 0 }}>{skinTypeLabel(editSkinType)}</h2>
+          </div>
+          <button className="p-close-btn" onClick={onClose} title="Schließen"><X size={20} /></button>
+        </div>
+
+        <div style={{ padding: 28, display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(260px,1fr))', gap: 22 }}>
+          <div>
+            <div style={{ border: '1px solid #F0DCC8', borderRadius: 20, padding: 20, background: 'linear-gradient(135deg,#FFF9F3 0%,#fff 100%)' }}>
+              <p style={{ fontSize: 12, color: '#9a7a5a', margin: '0 0 4px', fontWeight: 600 }}>Hautprofil</p>
+              <p style={{ fontSize: 28, color: '#1c1209', margin: '0 0 14px', fontWeight: 800, letterSpacing: '-0.02em' }}>{completion}%</p>
+              <div className="p-meter"><div className="p-meter-fill" style={{ width: `${completion}%` }} /></div>
+              <p style={{ fontSize: 12, color: '#9a7a5a', margin: '12px 0 0', lineHeight: 1.5 }}>Vollständigkeit deiner gespeicherten Hautinformationen für bessere Empfehlungen.</p>
+            </div>
+
+            <button
+              type="button"
+              className="p-mirror"
+              onClick={() => { if (images.length > 0) setPhotoViewerIndex(0) }}
+              style={{ cursor: images.length > 0 ? 'pointer' : 'default', marginTop: 14 }}
+            >
+              {latestImage && <img className="p-mirror-img" src={latestImage} alt="Letztes Hautprofil" />}
+              <div className="p-mirror-content">
+              </div>
+            </button>
+
+            <div style={{ marginTop: 14, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <div style={{ border: '1px solid #F0DCC8', borderRadius: 16, padding: 14 }}>
+                <Activity size={16} color="#D4A574" />
+                <p style={{ fontSize: 20, fontWeight: 800, color: '#1c1209', margin: '8px 0 0' }}>{profileFacts.length}</p>
+                <p style={{ fontSize: 11, color: '#9a7a5a', margin: 0 }}>Merkmale</p>
+              </div>
+              <div style={{ border: '1px solid #F0DCC8', borderRadius: 16, padding: 14 }}>
+                <ShieldCheck size={16} color="#D4A574" />
+                <p style={{ fontSize: 20, fontWeight: 800, color: '#1c1209', margin: '8px 0 0' }}>{profileFacts.filter(f => f.source === 'profile').length}</p>
+                <p style={{ fontSize: 11, color: '#9a7a5a', margin: 0 }}>Manuell</p>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <p style={{ fontSize: 12, color: '#9a7a5a', margin: '0 0 10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Hauttyp</p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(120px,1fr))', gap: 8, marginBottom: 22 }}>
+              {skinTypeOptions.map(option => (
+                <button key={option.value} className="p-skin-option" onClick={() => onSkinTypeChange(editSkinType === option.value ? null : option.value)}
+                  style={{ borderColor: editSkinType === option.value ? option.tone : '#E8D5C0', background: editSkinType === option.value ? '#FDF6EE' : '#fff' }}>
+                  <span style={{ display: 'block', width: 10, height: 10, borderRadius: '50%', background: option.tone, marginBottom: 8 }} />
+                  <span style={{ fontSize: 13, fontWeight: 700, color: '#1c1209' }}>{option.label}</span>
+                </button>
+              ))}
+            </div>
+
+            {editableFactGroups.map(group => (
+              <div key={group.key} style={{ marginBottom: 18 }}>
+                <p style={{ fontSize: 12, color: '#9a7a5a', margin: '0 0 8px', fontWeight: 700 }}>{group.label}</p>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  {group.values.map(value => (
+                    <button key={value} className={`p-chip ${editFacts[group.key]?.includes(value) ? 'active' : ''}`} onClick={() => onToggleFact(group.key, value)}>
+                      {factLabel(value)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+
+            {message && <p style={{ fontSize: 13, color: message.startsWith('✓') ? '#7ab87a' : '#c47a5a', margin: '0 0 12px', fontWeight: 600 }}>{message}</p>}
+            <button className="p-btn-primary" onClick={onSave} disabled={saving} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, opacity: saving ? 0.7 : 1 }}>
+              <Sparkles size={16} /> {saving ? 'Wird gespeichert…' : 'Meine Haut speichern'}
+            </button>
+          </div>
+        </div>
+      </div>
+      {activePhoto && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 220, background: 'rgba(0,0,0,0.78)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+          onClick={(e) => { if (e.target === e.currentTarget) setPhotoViewerIndex(null) }}>
+          <div style={{ width: '100%', maxWidth: 760, maxHeight: '92vh', background: '#fff', borderRadius: 22, overflow: 'hidden', boxShadow: '0 24px 70px rgba(0,0,0,0.35)', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '14px 18px', borderBottom: '1px solid #F0DCC8' }}>
+              <div>
+                <p style={{ fontSize: 13, fontWeight: 800, color: '#1c1209', margin: 0 }}>Gespeicherte Bilder</p>
+                <p style={{ fontSize: 12, color: '#9a7a5a', margin: '2px 0 0' }}>
+                  {activePhoto.source === 'chat' ? 'Chat' : 'Hautanalyse'} · {activePhoto.createdAt ? formatDate(activePhoto.createdAt) : 'Gespeichert'}
+                </p>
+              </div>
+              <button className="p-close-btn" onClick={() => setPhotoViewerIndex(null)} title="Schließen"><X size={20} /></button>
+            </div>
+            <div style={{ minHeight: 0, overflow: 'auto', background: '#1c1209', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <img src={activePhoto.imageData} alt="Gespeichertes Hautprofil" style={{ maxWidth: '100%', maxHeight: '62vh', objectFit: 'contain', display: 'block' }} />
+            </div>
+            {images.length > 1 && (
+              <div style={{ display: 'flex', gap: 10, overflowX: 'auto', padding: 14, borderTop: '1px solid #F0DCC8' }}>
+                {images.map((image, index) => (
+                  <button
+                    key={image.id || `${image.source}-${index}`}
+                    type="button"
+                    className={`p-photo-viewer-thumb ${index === photoViewerIndex ? 'active' : ''}`}
+                    onClick={() => setPhotoViewerIndex(index)}
+                    title={`${image.source === 'chat' ? 'Chat' : 'Hautanalyse'} ${image.createdAt ? formatDate(image.createdAt) : ''}`}
+                  >
+                    <img src={image.imageData} alt="" />
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function Profile() {
   const { user, token, updateUser } = useAuth()
   const navigate = useNavigate()
@@ -145,6 +353,10 @@ export default function Profile() {
   const [error,           setError]           = useState('')
   const [activeTab,       setActiveTab]       = useState<'orders' | 'reviews' | 'account'>('orders')
   const [showEditProfile, setShowEditProfile] = useState(false)
+  const [showSkinProfile, setShowSkinProfile] = useState(false)
+  const [skinProfile,     setSkinProfile]     = useState<SkinProfile | null>(null)
+  const [skinSaving,      setSkinSaving]      = useState(false)
+  const [skinMsg,         setSkinMsg]         = useState('')
 
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
   const [confirmSaveName, setConfirmSaveName] = useState(false)
@@ -153,6 +365,8 @@ export default function Profile() {
 
   const [editName,     setEditName]     = useState(user?.name || '')
   const [editGender,   setEditGender]   = useState<Gender>((user?.gender as Gender) ?? null)
+  const [editSkinType, setEditSkinType] = useState<string | null>(user?.skinType || null)
+  const [editSkinFacts, setEditSkinFacts] = useState<EditableSkinFacts>(emptyEditableFacts)
   const [currentPw,    setCurrentPw]    = useState('')
   const [newPw,        setNewPw]        = useState('')
   const [nameMsg,      setNameMsg]      = useState('')
@@ -186,9 +400,31 @@ export default function Profile() {
       .catch(() => {}).finally(() => setReviewsLoad(false))
   }, [token])
 
+  useEffect(() => {
+    if (!token) return
+    fetch(apiUrl('/api/auth/profile-context'), { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (!data) return
+        const nextProfile = {
+          skinType: data.skinType ?? null,
+          gender: data.gender ?? null,
+          facts: Array.isArray(data.facts) ? data.facts : [],
+          latestAnalysis: data.latestAnalysis ?? null,
+          latestProfileImage: data.latestProfileImage ?? null,
+          profileImages: Array.isArray(data.profileImages) ? data.profileImages : [],
+        }
+        setSkinProfile(nextProfile)
+        setEditSkinType(nextProfile.skinType || user?.skinType || null)
+        setEditSkinFacts(factsFromProfile(nextProfile))
+      })
+      .catch(() => {})
+  }, [token, user?.skinType])
+
   const latestOrder = orders[0]
   const avgRating   = userReviews.length
     ? (userReviews.reduce((s, r) => s + r.rating, 0) / userReviews.length).toFixed(1) : '—'
+  const skinFactCount = (skinProfile?.facts || []).filter(fact => fact.key !== 'skin_type').length
 
   const handleDeleteReview = async (reviewId: number) => {
     if (!token) return
@@ -240,6 +476,57 @@ export default function Profile() {
     } catch { setPwMsg('Netzwerkfehler') }
   }
 
+  const openSkinProfile = () => {
+    const nextProfile = skinProfile || { skinType: user?.skinType || null, gender: user?.gender || null, facts: [], latestAnalysis: null, latestProfileImage: null, profileImages: [] }
+    setSkinProfile(nextProfile)
+    setEditSkinType(nextProfile.skinType || user?.skinType || null)
+    setEditSkinFacts(factsFromProfile(nextProfile))
+    setSkinMsg('')
+    setShowSkinProfile(true)
+  }
+
+  const toggleSkinFact = (key: string, value: string) => {
+    setEditSkinFacts(prev => {
+      const current = prev[key] || []
+      const nextValues = current.includes(value) ? current.filter(v => v !== value) : [...current, value]
+      return { ...prev, [key]: nextValues }
+    })
+  }
+
+  const handleSaveSkinProfile = async () => {
+    if (!token) return
+    setSkinSaving(true); setSkinMsg('')
+    try {
+      const res = await fetch(apiUrl('/api/auth/skin-profile'), {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ skinType: editSkinType, facts: editSkinFacts }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setSkinMsg(data.message || 'Fehler beim Speichern')
+        return
+      }
+      if (data.user) updateUser({ ...data.user, token })
+      if (data.profile) {
+        const nextProfile = {
+          ...data.profile,
+          latestAnalysis: skinProfile?.latestAnalysis ?? null,
+          latestProfileImage: skinProfile?.latestProfileImage ?? null,
+          profileImages: skinProfile?.profileImages ?? [],
+        }
+        setSkinProfile(nextProfile)
+        setEditSkinType(data.profile.skinType ?? null)
+        setEditSkinFacts(factsFromProfile(nextProfile))
+      }
+      setSkinMsg('✓ Hautprofil gespeichert')
+    } catch {
+      setSkinMsg('Netzwerkfehler')
+    } finally {
+      setSkinSaving(false)
+    }
+  }
+
   const closeModal = () => {
     setShowEditProfile(false)
     setNameMsg(''); setNameSuccess(''); setPwMsg(''); setPwSuccess('')
@@ -247,6 +534,7 @@ export default function Profile() {
   }
 
   const firstName = user?.name?.split(' ')[0] || user?.email?.split('@')[0] || 'Nutzer'
+  const latestSkinImage = skinProfile?.latestProfileImage?.imageData || skinProfile?.latestAnalysis?.imageData || null
 
   return (
     <div className="profile-root" style={{ background: '#FDFAF6', minHeight: '100vh', padding: '0 0 60px' }}>
@@ -286,6 +574,13 @@ export default function Profile() {
               <p style={{ fontSize: 12, color: '#9a7a5a', margin: 0, fontWeight: 300 }}>{s.label}</p>
             </div>
           ))}
+          <button className="p-mirror" onClick={openSkinProfile} style={{ minHeight: 128 }}>
+            <span className="p-mirror-shine" />
+            <div className="p-mirror-content" style={{ minHeight: 128 }}>
+              <p className="p-mirror-title">meine Haut profile</p>
+              <p className="p-mirror-sub">{skinTypeLabel(skinProfile?.skinType || user?.skinType)}</p>
+            </div>
+          </button>
         </div>
 
         {/* ── Tabs ── */}
@@ -386,7 +681,7 @@ export default function Profile() {
         {/* ── ACCOUNT TAB ── */}
         {activeTab === 'account' && (
           <div className="p-fade" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(280px,1fr))', gap: 14 }}>
-            <div className="p-card" style={{ padding: 24 }}>
+            <div className="p-card" style={{ padding: 18 }}>
               <h2 style={{ fontFamily: "'Outfit',sans-serif", fontSize: 16, fontWeight: 700, color: '#1c1209', margin: '0 0 20px' }}>Kontodaten</h2>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 {[
@@ -411,7 +706,42 @@ export default function Profile() {
               </button>
             </div>
 
-            <div className="p-card" style={{ padding: 24 }}>
+            <div className="p-card" style={{ padding: 18 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, marginBottom: 18 }}>
+                <div>
+                  <h2 style={{ fontFamily: "'Outfit',sans-serif", fontSize: 16, fontWeight: 700, color: '#1c1209', margin: '0 0 6px' }}>Meine Haut</h2>
+                  <p style={{ fontSize: 13, color: '#9a7a5a', fontWeight: 300, margin: 0 }}>Dein gespeichertes Hautprofil</p>
+                </div>
+                <div style={{ width: 38, height: 38, borderRadius: 12, background: '#FDF6EE', border: '1px solid #e8c9a0', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Droplets size={18} color="#D4A574" />
+                </div>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
+                <div style={{ background: '#FDFAF6', border: '1px solid #F0DCC8', borderRadius: 14, padding: 12 }}>
+                  <p style={{ fontSize: 11, color: '#c4a882', margin: '0 0 4px', fontWeight: 600 }}>Hauttyp</p>
+                  <p style={{ fontSize: 14, color: '#1c1209', margin: 0, fontWeight: 700 }}>{skinTypeLabel(skinProfile?.skinType || user?.skinType)}</p>
+                </div>
+                <div style={{ background: '#FDFAF6', border: '1px solid #F0DCC8', borderRadius: 14, padding: 12 }}>
+                  <p style={{ fontSize: 11, color: '#c4a882', margin: '0 0 4px', fontWeight: 600 }}>Merkmale</p>
+                  <p style={{ fontSize: 14, color: '#1c1209', margin: 0, fontWeight: 700 }}>{skinFactCount}</p>
+                </div>
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 18 }}>
+                {(skinProfile?.facts || []).filter(f => f.key !== 'skin_type').slice(0, 4).map(fact => (
+                  <span key={`${fact.key}-${fact.value}`} className="p-fact-pill">{factLabel(fact.value)}</span>
+                ))}
+                {skinFactCount === 0 && <p style={{ fontSize: 13, color: '#9a7a5a', margin: 0 }}>Noch keine Details gespeichert.</p>}
+              </div>
+              <button className="p-mirror" onClick={openSkinProfile} style={{ width: '100%', minHeight: 132 }}>
+                <span className="p-mirror-shine" />
+                <div className="p-mirror-content" style={{ minHeight: 132 }}>
+                  <p className="p-mirror-title">meine Haut profile</p>
+                  <p className="p-mirror-sub">{latestSkinImage ? 'Foto gespeichert' : 'Foto nach Hautanalyse'}</p>
+                </div>
+              </button>
+            </div>
+
+            <div className="p-card" style={{ padding: 18 }}>
               <h2 style={{ fontFamily: "'Outfit',sans-serif", fontSize: 16, fontWeight: 700, color: '#1c1209', margin: '0 0 20px' }}>Letzte Bestellung</h2>
               {latestOrder ? (
                 <div>
@@ -430,7 +760,7 @@ export default function Profile() {
               )}
             </div>
 
-            <div className="p-card" style={{ padding: 24 }}>
+            <div className="p-card" style={{ padding: 18 }}>
               <h2 style={{ fontFamily: "'Outfit',sans-serif", fontSize: 16, fontWeight: 700, color: '#1c1209', margin: '0 0 12px' }}>Merkliste</h2>
               <p style={{ fontSize: 13, color: '#9a7a5a', fontWeight: 300, margin: '0 0 16px', lineHeight: 1.6 }}>
                 Du hast <strong style={{ color: '#1c1209' }}>{wishlistTotal}</strong> {wishlistTotal === 1 ? 'Produkt' : 'Produkte'} auf deiner Merkliste.
@@ -461,6 +791,20 @@ export default function Profile() {
       {confirmSaveGender && (
         <ConfirmModal title="Geschlecht ändern?" message={`Möchtest du dein Geschlecht wirklich auf "${genderLabel(editGender)}" ändern?`}
           confirmLabel="Ja, ändern" onConfirm={handleSaveGender} onCancel={() => setConfirmSaveGender(false)} />
+      )}
+
+      {showSkinProfile && (
+        <SkinProfileModal
+          profile={skinProfile}
+          editSkinType={editSkinType}
+          editFacts={editSkinFacts}
+          saving={skinSaving}
+          message={skinMsg}
+          onClose={() => setShowSkinProfile(false)}
+          onSkinTypeChange={setEditSkinType}
+          onToggleFact={toggleSkinFact}
+          onSave={handleSaveSkinProfile}
+        />
       )}
 
       {/* ── Edit Profile Modal ── */}

@@ -367,6 +367,12 @@ function extractReviewFacts(reviewText, product) {
     { value: "light_texture", terms: ["lightweight", "leicht", "轻薄", "清爽"] },
     { value: "rich_texture", terms: ["reichhaltig", "rich", "滋润", "厚重"] },
     { value: "fragrance_free", terms: ["parfumfrei", "fragrance free", "无香"] },
+    { value: "alcohol_free", terms: ["alkoholfrei", "alcohol free", "无酒精"] },
+    { value: "vegan", terms: ["vegan", "veganer", "vegane", "纯素"] },
+    { value: "non_comedogenic", terms: ["nicht komedogen", "non comedogenic", "non-comedogenic", "不致痘"] },
+    { value: "oil_free", terms: ["ölfrei", "oil free", "oil-free", "无油"] },
+    { value: "cruelty_free", terms: ["tierversuchsfrei", "cruelty free", "cruelty-free"] },
+    { value: "natural_ingredients", terms: ["natürliche inhaltsstoffe", "natural ingredients", "自然成分"] },
   ];
 
   for (const match of preferenceMatches) {

@@ -13,6 +13,17 @@ const REQUIRE_EMAIL_VERIFICATION =
 
 const { refreshUserProfileEmbedding } = require("../services/user-profile-embedding.service");
 
+const SKIN_TYPES = new Set(["Normal", "Oily", "Dry", "Combination", "Sensitive"]);
+const EDITABLE_SKIN_FACT_KEYS = [
+  "concern",
+  "skin_state",
+  "sensitivity",
+  "ingredient_avoidance",
+  "allergy",
+  "goal",
+  "preference",
+];
+
 function getJwtSecret(res) {
   if (!process.env.JWT_SECRET) {
     console.error("JWT_SECRET is not configured");
@@ -79,6 +90,26 @@ function getUserNameValidationMessage(name) {
   if (!USER_NAME_PATTERN.test(name))
     return "Der Benutzername darf nur Buchstaben, Zahlen, Leerzeichen, Unterstriche und Bindestriche enthalten";
   return null;
+}
+
+function cleanFactValue(value) {
+  if (typeof value !== "string") return null;
+  const cleaned = value.trim().slice(0, 80);
+  return cleaned || null;
+}
+
+function mapSkinProfileResponse(user, facts) {
+  return {
+    skinType: user.skinType,
+    gender: user.gender,
+    facts: facts.map((fact) => ({
+      key: fact.key,
+      value: fact.value,
+      confidence: fact.confidence,
+      source: fact.source,
+      updatedAt: fact.updatedAt,
+    })),
+  };
 }
 
 // ─── Register ─────────────────────────────────────────────────────────────────
@@ -293,7 +324,7 @@ async function getProfileContext(req, res) {
   try {
     const userId = req.user.userId;
 
-    const [user, facts, cart, wishlist] = await Promise.all([
+    const [user, facts, latestAnalysis, latestImageConversation, analysisImages, chatImageConversations, cart, wishlist] = await Promise.all([
       prisma.user.findUnique({
         where: { id: userId },
         select: {
@@ -306,6 +337,86 @@ async function getProfileContext(req, res) {
         where: { userId },
         orderBy: { updatedAt: "desc" },
         take: 30,
+      }),
+      prisma.skinAnalysis.findFirst({
+        where: { userId },
+        orderBy: { createdAt: "desc" },
+        select: {
+          id: true,
+          skinType: true,
+          dryness: true,
+          redness: true,
+          blemishes: true,
+          sensitivity: true,
+          overall: true,
+          imageData: true,
+          createdAt: true,
+        },
+      }),
+      prisma.conversation.findFirst({
+        where: {
+          userId,
+          messages: {
+            some: {
+              imageData: { not: null },
+            },
+          },
+        },
+        orderBy: { updatedAt: "desc" },
+        include: {
+          messages: {
+            where: {
+              imageData: { not: null },
+            },
+            orderBy: { createdAt: "desc" },
+            take: 1,
+            select: {
+              imageData: true,
+              content: true,
+              createdAt: true,
+            },
+          },
+        },
+      }),
+      prisma.skinAnalysis.findMany({
+        where: {
+          userId,
+          imageData: { not: null },
+        },
+        orderBy: { createdAt: "desc" },
+        take: 12,
+        select: {
+          id: true,
+          imageData: true,
+          createdAt: true,
+        },
+      }),
+      prisma.conversation.findMany({
+        where: {
+          userId,
+          messages: {
+            some: {
+              imageData: { not: null },
+            },
+          },
+        },
+        orderBy: { updatedAt: "desc" },
+        take: 12,
+        include: {
+          messages: {
+            where: {
+              imageData: { not: null },
+            },
+            orderBy: { createdAt: "desc" },
+            take: 3,
+            select: {
+              id: true,
+              imageData: true,
+              content: true,
+              createdAt: true,
+            },
+          },
+        },
       }),
       prisma.cart.findUnique({
         where: { userId },
@@ -347,16 +458,51 @@ async function getProfileContext(req, res) {
       return res.status(404).json({ message: "Benutzer nicht gefunden" });
     }
 
+    const latestChatImage = latestImageConversation?.messages?.[0] || null;
+    const latestProfileImage =
+      latestAnalysis?.imageData && (!latestChatImage || latestAnalysis.createdAt >= latestImageConversation.updatedAt)
+        ? {
+            imageData: latestAnalysis.imageData,
+            source: "skin_analysis",
+            createdAt: latestAnalysis.createdAt,
+          }
+        : latestChatImage?.imageData
+          ? {
+              imageData: latestChatImage.imageData,
+              source: "chat",
+              createdAt: latestImageConversation.updatedAt,
+            }
+          : null;
+
+    const profileImages = [
+      ...analysisImages
+        .filter((image) => image.imageData)
+        .map((image) => ({
+          id: `skin_analysis-${image.id}`,
+          imageData: image.imageData,
+          source: "skin_analysis",
+          createdAt: image.createdAt,
+        })),
+      ...chatImageConversations.flatMap((conversation) =>
+        conversation.messages
+          .filter((message) => message.imageData)
+          .map((message) => ({
+            id: `chat-${message.id}`,
+            imageData: message.imageData,
+            source: "chat",
+            createdAt: conversation.updatedAt,
+          }))
+      ),
+    ]
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .filter((image, index, all) => all.findIndex((item) => item.imageData === image.imageData) === index)
+      .slice(0, 12);
+
     return res.json({
-      skinType: user.skinType,
-      gender: user.gender,
-      facts: facts.map((fact) => ({
-        key: fact.key,
-        value: fact.value,
-        confidence: fact.confidence,
-        source: fact.source,
-        updatedAt: fact.updatedAt,
-      })),
+      ...mapSkinProfileResponse(user, facts),
+      latestAnalysis,
+      latestProfileImage,
+      profileImages,
       cart: (cart?.items || []).map((item) => ({
         id: item.product.id,
         name: item.product.name,
@@ -370,6 +516,80 @@ async function getProfileContext(req, res) {
         brand: item.product.brand,
         category: item.product.category,
       })),
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Serverfehler" });
+  }
+}
+
+async function updateSkinProfile(req, res) {
+  try {
+    const userId = req.user.userId;
+    const { skinType, facts = {} } = req.body;
+    const normalizedSkinType = skinType === null || skinType === "" ? null : skinType;
+
+    if (normalizedSkinType && !SKIN_TYPES.has(normalizedSkinType)) {
+      return res.status(400).json({ message: "Ungültiger Hauttyp" });
+    }
+
+    const nextFacts = [];
+    for (const key of EDITABLE_SKIN_FACT_KEYS) {
+      const values = Array.isArray(facts[key]) ? facts[key] : [];
+      for (const value of values) {
+        const cleaned = cleanFactValue(value);
+        if (!cleaned) continue;
+        if (nextFacts.some((fact) => fact.key === key && fact.value === cleaned)) continue;
+        nextFacts.push({
+          userId,
+          key,
+          value: cleaned,
+          source: "profile",
+          confidence: 0.9,
+          evidence: "Vom Nutzer im Profil gepflegt",
+        });
+      }
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id: userId },
+        data: { skinType: normalizedSkinType },
+      });
+
+      await tx.userSkinProfileFact.deleteMany({
+        where: {
+          userId,
+          key: { in: EDITABLE_SKIN_FACT_KEYS },
+        },
+      });
+
+      if (nextFacts.length > 0) {
+        await tx.userSkinProfileFact.createMany({
+          data: nextFacts,
+          skipDuplicates: true,
+        });
+      }
+    });
+
+    await refreshUserProfileEmbedding(userId);
+
+    const [user, savedFacts] = await Promise.all([
+      prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true, email: true, name: true, skinType: true, savedAddress: true, savedPostal: true, savedCity: true, savedCountry: true, savedPhone: true, usedWelcomeCode: true, emailVerified: true, gender: true },
+      }),
+      prisma.userSkinProfileFact.findMany({
+        where: { userId },
+        orderBy: { updatedAt: "desc" },
+        take: 30,
+      }),
+    ]);
+
+    return res.json({
+      message: "Hautprofil gespeichert",
+      user: toAuthUser(user),
+      profile: mapSkinProfileResponse(user, savedFacts),
     });
   } catch (error) {
     console.error(error);
@@ -501,4 +721,4 @@ async function updateGender(req, res) {
     return res.status(500).json({ message: 'Serverfehler' })
   }
 }
-module.exports = { register, login, getAddress, getProfileContext, updateAddress, updateSkinType, deleteSkinType, checkWelcomeCode, verifyCode, updateProfile, updatePassword, updateGender}
+module.exports = { register, login, getAddress, getProfileContext, updateSkinProfile, updateAddress, updateSkinType, deleteSkinType, checkWelcomeCode, verifyCode, updateProfile, updatePassword, updateGender}

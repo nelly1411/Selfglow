@@ -148,6 +148,25 @@ function scoreRecommendedProduct(product, user, facts) {
     reasons.push("Alkoholfrei für sensible Haut");
   }
 
+  const preferences = facts
+    .filter((fact) => fact.key === "preference")
+    .map((fact) => String(fact.value || "").toLowerCase());
+
+  if (preferences.includes("vegan") && product.vegan) {
+    bonus += 0.05;
+    reasons.push("Vegan entsprechend deiner Vorliebe");
+  }
+
+  if (preferences.includes("alcohol_free") && product.alcoholFree) {
+    bonus += 0.04;
+    reasons.push("Alkoholfrei entsprechend deiner Vorliebe");
+  }
+
+  if (preferences.includes("fragrance_free") && product.fragranceFree) {
+    bonus += 0.04;
+    reasons.push("Parfümfrei entsprechend deiner Vorliebe");
+  }
+
   const avoidances = facts
     .filter((fact) => fact.key === "ingredient_avoidance" || fact.key === "allergy")
     .map((fact) => fact.value);

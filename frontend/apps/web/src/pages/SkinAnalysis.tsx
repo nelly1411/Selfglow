@@ -218,7 +218,7 @@ export default function SkinAnalysis({ onClose, onAnalysisComplete }: SkinAnalys
         setSaved(false)
         fetch(apiUrl('/api/skin-analysis/save'), {          method:  'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body:    JSON.stringify(parsed),
+          body:    JSON.stringify({ ...parsed, imageData: compressed }),
         })
           .then(r => r.ok ? setSaved(true) : null)
           .catch(err => console.warn('Analyse konnte nicht gespeichert werden:', err))
@@ -293,7 +293,7 @@ export default function SkinAnalysis({ onClose, onAnalysisComplete }: SkinAnalys
             </div>
             <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f) }} />
             <p style={{ fontSize: 11, color: '#c4a882', textAlign: 'center', marginTop: 16, fontWeight: 300 }}>
-              Dein Foto wird nicht gespeichert und nur für die Analyse verwendet.
+              Dein Foto wird nach der Analyse in deinem Hautprofil gespeichert.
             </p>
 
             {/* ── Kein Foto? Hautproblem auswählen ── */}

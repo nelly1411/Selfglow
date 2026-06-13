@@ -7,6 +7,7 @@ const {
   login,
   getAddress,
   getProfileContext,
+  updateSkinProfile,
   updateAddress,
   updateSkinType,
   verifyCode,
@@ -22,6 +23,7 @@ router.post  ("/login",          login);
 router.post  ("/verify-code", verifyCode),
 router.get   ("/address",        authMiddleware, getAddress);
 router.get   ("/profile-context", authMiddleware, getProfileContext);
+router.patch ("/skin-profile",    authMiddleware, updateSkinProfile);
 router.patch ("/address",        authMiddleware, updateAddress);
 router.patch ("/skin-type",      authMiddleware, updateSkinType);  
 router.get   ("/confirm/:token", verifyCode);

@@ -94,6 +94,12 @@ const profileFactLabels: Record<string, string> = {
   fragrance: 'Parfum',
   alcohol: 'Alkohol',
   fragrance_free: 'parfumfreie Pflege',
+  alcohol_free: 'alkoholfreie Pflege',
+  vegan: 'vegane Produkte',
+  non_comedogenic: 'nicht komedogene Produkte',
+  oil_free: 'ölfreie Produkte',
+  cruelty_free: 'tierversuchsfreie Produkte',
+  natural_ingredients: 'natürliche Inhaltsstoffe',
   light_texture: 'leichte Texturen',
   rich_texture: 'reichhaltige Texturen',
 }
@@ -122,7 +128,8 @@ function buildPersonalizedStarterQuestions(
   const profileSkinType = profileContext?.skinType || userSkinType
   const questions: StarterQuestion[] = []
   const concerns = getFactValues(profileContext || null, ['concern', 'skin_state'])
-  const preferences = getFactValues(profileContext || null, ['preference', 'ingredient_avoidance', 'allergy'])
+  const preferences = getFactValues(profileContext || null, ['preference'])
+  const avoidances = getFactValues(profileContext || null, ['ingredient_avoidance', 'allergy'])
   const cartProduct = profileContext?.cart?.[0]
   const wishlistProduct = profileContext?.wishlist?.[0]
   const effectiveSkinLabel = profileSkinType ? skinTypeLabels[profileSkinType] || `${profileSkinType} Haut` : null
@@ -151,10 +158,15 @@ function buildPersonalizedStarterQuestions(
       label: `Routine gegen ${formatProfileFact(concerns[0])}`,
       message: `Welche Routine hilft bei ${formatProfileFact(concerns[0])}?`,
     })
+  } else if (avoidances.length > 0) {
+    questions.push({
+      label: `Produkte ohne ${formatProfileFact(avoidances[0])}`,
+      message: `Welche Produkte passen, wenn ich ${formatProfileFact(avoidances[0])} meiden möchte?`,
+    })
   } else if (preferences.length > 0) {
     questions.push({
-      label: `Produkte ohne ${formatProfileFact(preferences[0])}`,
-      message: `Welche Produkte passen, wenn ich ${formatProfileFact(preferences[0])} beachten möchte?`,
+      label: `${formatProfileFact(preferences[0])}`,
+      message: `Welche Produkte passen zu meiner Vorliebe für ${formatProfileFact(preferences[0])}?`,
     })
   } else if (wishlistProduct && effectiveSkinLabel) {
     questions.push({
