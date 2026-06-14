@@ -16,134 +16,142 @@ const CSS = `
   .confirm-overlay { animation: fadeIn 0.2s ease forwards; }
 `
 
+type QuizFact = { key: string; value: string }
+type QuizOption = { label: string; value: string; facts: QuizFact[] }
+type QuizQuestion = { id: number; question: string; options: QuizOption[] }
+
+function facts(...items: Array<[string, string]>): QuizFact[] {
+  return items.map(([key, value]) => ({ key, value }))
+}
+
 // ── 4 Fragen für Frauen ────────────────────────────────────────────────────────
-const questionsFemale = [
+const questionsFemale: QuizQuestion[] = [
   {
     id: 1,
     question: 'Wie fühlt sich deine Haut morgens nach dem Aufwachen an?',
     options: [
-      { label: 'Frisch und angenehm ausgeglichen',          value: 'Normal' },
-      { label: 'Glänzend und fettig',                       value: 'Oily' },
-      { label: 'Fest, trocken und spannend',                value: 'Dry' },
-      { label: 'T-Zone fettig, Wangen eher trocken',        value: 'Combination' },
+      { label: 'Frisch und angenehm ausgeglichen',          value: 'Normal',      facts: facts(['skin_state', 'balanced']) },
+      { label: 'Glänzend und fettig',                       value: 'Oily',        facts: facts(['skin_state', 'oily'], ['skin_state', 'shine']) },
+      { label: 'Fest, trocken und spannend',                value: 'Dry',         facts: facts(['skin_state', 'dryness'], ['skin_state', 'tightness']) },
+      { label: 'T-Zone fettig, Wangen eher trocken',        value: 'Combination', facts: facts(['skin_state', 'oily_t_zone'], ['skin_state', 'dryness']) },
     ],
   },
   {
     id: 2,
     question: 'Wie reagiert deine Haut auf neue Pflegeprodukte?',
     options: [
-      { label: 'Kaum — verträgt fast alles problemlos',      value: 'Normal' },
-      { label: 'Wird schnell noch fettiger oder glänzender', value: 'Oily' },
-      { label: 'Rötungen, Brennen oder Jucken',              value: 'Sensitive' },
-      { label: 'Spannt, schuppt oder zieht sich zusammen',   value: 'Dry' },
+      { label: 'Kaum — verträgt fast alles problemlos',      value: 'Normal',    facts: facts(['sensitivity', 'tolerant']) },
+      { label: 'Wird schnell noch fettiger oder glänzender', value: 'Oily',      facts: facts(['product_reaction', 'too_greasy'], ['skin_state', 'oily'], ['skin_state', 'shine']) },
+      { label: 'Rötungen, Brennen oder Jucken',              value: 'Sensitive', facts: facts(['sensitivity', 'sensitive'], ['concern', 'redness'], ['product_reaction', 'burning']) },
+      { label: 'Spannt, schuppt oder zieht sich zusammen',   value: 'Dry',       facts: facts(['skin_state', 'dryness'], ['skin_state', 'tightness'], ['skin_state', 'flakiness'], ['product_reaction', 'drying']) },
     ],
   },
   {
     id: 3,
     question: 'Wie oft siehst du vergrößerte Poren?',
     options: [
-      { label: 'Selten bis nie',                             value: 'Normal' },
-      { label: 'Häufig, besonders im Gesichtszentrum',       value: 'Oily' },
-      { label: 'Nur in der T-Zone',                          value: 'Combination' },
-      { label: 'Kaum sichtbar, aber Haut wirkt matt',        value: 'Dry' },
+      { label: 'Selten bis nie',                             value: 'Normal',      facts: facts(['skin_state', 'refined_pores']) },
+      { label: 'Häufig, besonders im Gesichtszentrum',       value: 'Oily',        facts: facts(['concern', 'pores'], ['skin_state', 'oily']) },
+      { label: 'Nur in der T-Zone',                          value: 'Combination', facts: facts(['concern', 'pores'], ['skin_state', 'oily_t_zone']) },
+      { label: 'Kaum sichtbar, aber Haut wirkt matt',        value: 'Dry',         facts: facts(['skin_state', 'matte'], ['skin_state', 'dryness']) },
     ],
   },
   {
     id: 4,
     question: 'Wie fühlt sich deine Haut nach der Reinigung an?',
     options: [
-      { label: 'Angenehm sauber und frisch',                 value: 'Normal' },
-      { label: 'Immer noch etwas fettig',                    value: 'Oily' },
-      { label: 'Sehr trocken und spannt stark',              value: 'Dry' },
-      { label: 'Empfindlich und leicht gereizt',             value: 'Sensitive' },
+      { label: 'Angenehm sauber und frisch',                 value: 'Normal',    facts: facts(['skin_state', 'balanced']) },
+      { label: 'Immer noch etwas fettig',                    value: 'Oily',      facts: facts(['skin_state', 'oily']) },
+      { label: 'Sehr trocken und spannt stark',              value: 'Dry',       facts: facts(['skin_state', 'dryness'], ['skin_state', 'tightness'], ['product_reaction', 'drying']) },
+      { label: 'Empfindlich und leicht gereizt',             value: 'Sensitive', facts: facts(['sensitivity', 'sensitive'], ['concern', 'redness']) },
     ],
   },
 ]
 
 // ── 4 Fragen für Männer ────────────────────────────────────────────────────────
-const questionsMale = [
+const questionsMale: QuizQuestion[] = [
   {
     id: 1,
     question: 'Wie fühlt sich deine Haut morgens nach dem Aufwachen an?',
     options: [
-      { label: 'Frisch und normal — kein Problem',           value: 'Normal' },
-      { label: 'Fettig und glänzend',                        value: 'Oily' },
-      { label: 'Trocken und spannt',                         value: 'Dry' },
-      { label: 'Stirn fettig, Wangen eher trocken',          value: 'Combination' },
+      { label: 'Frisch und normal — kein Problem',           value: 'Normal',      facts: facts(['skin_state', 'balanced']) },
+      { label: 'Fettig und glänzend',                        value: 'Oily',        facts: facts(['skin_state', 'oily'], ['skin_state', 'shine']) },
+      { label: 'Trocken und spannt',                         value: 'Dry',         facts: facts(['skin_state', 'dryness'], ['skin_state', 'tightness']) },
+      { label: 'Stirn fettig, Wangen eher trocken',          value: 'Combination', facts: facts(['skin_state', 'oily_t_zone'], ['skin_state', 'dryness']) },
     ],
   },
   {
     id: 2,
     question: 'Wie reagiert deine Haut nach dem Rasieren?',
     options: [
-      { label: 'Kein Problem, fühlt sich normal an',         value: 'Normal' },
-      { label: 'Wird schnell wieder fettig',                 value: 'Oily' },
-      { label: 'Brennt, rötet sich oder juckt',              value: 'Sensitive' },
-      { label: 'Spannt stark und fühlt sich rau an',         value: 'Dry' },
+      { label: 'Kein Problem, fühlt sich normal an',         value: 'Normal',    facts: facts(['sensitivity', 'tolerant']) },
+      { label: 'Wird schnell wieder fettig',                 value: 'Oily',      facts: facts(['product_reaction', 'too_greasy'], ['skin_state', 'oily']) },
+      { label: 'Brennt, rötet sich oder juckt',              value: 'Sensitive', facts: facts(['sensitivity', 'sensitive'], ['concern', 'redness'], ['product_reaction', 'burning']) },
+      { label: 'Spannt stark und fühlt sich rau an',         value: 'Dry',       facts: facts(['skin_state', 'dryness'], ['skin_state', 'tightness'], ['skin_state', 'rough_texture'], ['product_reaction', 'drying']) },
     ],
   },
   {
     id: 3,
     question: 'Wie oft hast du Probleme mit Unreinheiten oder Pickeln?',
     options: [
-      { label: 'Selten bis nie',                             value: 'Normal' },
-      { label: 'Häufig, besonders in der T-Zone',            value: 'Oily' },
-      { label: 'Manchmal, nur in der Stirngegend',           value: 'Combination' },
-      { label: 'Kaum, aber Haut ist oft trocken',            value: 'Dry' },
+      { label: 'Selten bis nie',                             value: 'Normal',      facts: facts(['skin_state', 'clear_skin']) },
+      { label: 'Häufig, besonders in der T-Zone',            value: 'Oily',        facts: facts(['concern', 'blemishes'], ['skin_state', 'oily_t_zone']) },
+      { label: 'Manchmal, nur in der Stirngegend',           value: 'Combination', facts: facts(['concern', 'blemishes'], ['skin_state', 'oily_t_zone']) },
+      { label: 'Kaum, aber Haut ist oft trocken',            value: 'Dry',         facts: facts(['skin_state', 'clear_skin'], ['skin_state', 'dryness']) },
     ],
   },
   {
     id: 4,
     question: 'Was passiert wenn du längere Zeit keine Feuchtigkeitscreme benutzt?',
     options: [
-      { label: 'Eigentlich nichts Besonderes',               value: 'Normal' },
-      { label: 'Haut wird noch fettiger',                    value: 'Oily' },
-      { label: 'Haut spannt und schuppt sich',               value: 'Dry' },
-      { label: 'Haut wird gereizt und empfindlich',          value: 'Sensitive' },
+      { label: 'Eigentlich nichts Besonderes',               value: 'Normal',    facts: facts(['skin_state', 'balanced']) },
+      { label: 'Haut wird noch fettiger',                    value: 'Oily',      facts: facts(['skin_state', 'oily']) },
+      { label: 'Haut spannt und schuppt sich',               value: 'Dry',       facts: facts(['skin_state', 'dryness'], ['skin_state', 'tightness'], ['skin_state', 'flakiness']) },
+      { label: 'Haut wird gereizt und empfindlich',          value: 'Sensitive', facts: facts(['sensitivity', 'sensitive'], ['concern', 'redness']) },
     ],
   },
 ]
 
 // ── 4 Fragen für Divers ────────────────────────────────────────────────────────
-const questionsDiverse = [
+const questionsDiverse: QuizQuestion[] = [
   {
     id: 1,
     question: 'Wie fühlt sich deine Haut morgens an?',
     options: [
-      { label: 'Ausgeglichen und angenehm',                  value: 'Normal' },
-      { label: 'Fettig und glänzend',                        value: 'Oily' },
-      { label: 'Trocken, spannt oder zieht',                 value: 'Dry' },
-      { label: 'Gemischt je nach Bereich',                   value: 'Combination' },
+      { label: 'Ausgeglichen und angenehm',                  value: 'Normal',      facts: facts(['skin_state', 'balanced']) },
+      { label: 'Fettig und glänzend',                        value: 'Oily',        facts: facts(['skin_state', 'oily'], ['skin_state', 'shine']) },
+      { label: 'Trocken, spannt oder zieht',                 value: 'Dry',         facts: facts(['skin_state', 'dryness'], ['skin_state', 'tightness']) },
+      { label: 'Gemischt je nach Bereich',                   value: 'Combination', facts: facts(['skin_state', 'oily_t_zone'], ['skin_state', 'dryness']) },
     ],
   },
   {
     id: 2,
     question: 'Wie reagiert deine Haut auf neue Produkte?',
     options: [
-      { label: 'Verträgt fast alles ohne Probleme',          value: 'Normal' },
-      { label: 'Wird schnell fettiger oder glänzender',      value: 'Oily' },
-      { label: 'Rötungen, Brennen oder Reizung',             value: 'Sensitive' },
-      { label: 'Spannt oder trocknet weiter aus',            value: 'Dry' },
+      { label: 'Verträgt fast alles ohne Probleme',          value: 'Normal',    facts: facts(['sensitivity', 'tolerant']) },
+      { label: 'Wird schnell fettiger oder glänzender',      value: 'Oily',      facts: facts(['product_reaction', 'too_greasy'], ['skin_state', 'oily'], ['skin_state', 'shine']) },
+      { label: 'Rötungen, Brennen oder Reizung',             value: 'Sensitive', facts: facts(['sensitivity', 'sensitive'], ['concern', 'redness'], ['product_reaction', 'burning']) },
+      { label: 'Spannt oder trocknet weiter aus',            value: 'Dry',       facts: facts(['skin_state', 'dryness'], ['skin_state', 'tightness'], ['product_reaction', 'drying']) },
     ],
   },
   {
     id: 3,
     question: 'Wie fühlst du dich nach der Gesichtsreinigung?',
     options: [
-      { label: 'Sauber und angenehm frisch',                 value: 'Normal' },
-      { label: 'Noch leicht fettig',                         value: 'Oily' },
-      { label: 'Sehr trocken und gespannt',                  value: 'Dry' },
-      { label: 'Empfindlich oder leicht gereizt',            value: 'Sensitive' },
+      { label: 'Sauber und angenehm frisch',                 value: 'Normal',    facts: facts(['skin_state', 'balanced']) },
+      { label: 'Noch leicht fettig',                         value: 'Oily',      facts: facts(['skin_state', 'oily']) },
+      { label: 'Sehr trocken und gespannt',                  value: 'Dry',       facts: facts(['skin_state', 'dryness'], ['skin_state', 'tightness'], ['product_reaction', 'drying']) },
+      { label: 'Empfindlich oder leicht gereizt',            value: 'Sensitive', facts: facts(['sensitivity', 'sensitive'], ['concern', 'redness']) },
     ],
   },
   {
     id: 4,
     question: 'Wie oft siehst du vergrößerte Poren?',
     options: [
-      { label: 'Selten bis nie',                             value: 'Normal' },
-      { label: 'Oft, besonders in Stirn und Nase',           value: 'Oily' },
-      { label: 'Nur in bestimmten Bereichen',                value: 'Combination' },
-      { label: 'Kaum — aber Haut wirkt matt',                value: 'Dry' },
+      { label: 'Selten bis nie',                             value: 'Normal',      facts: facts(['skin_state', 'refined_pores']) },
+      { label: 'Oft, besonders in Stirn und Nase',           value: 'Oily',        facts: facts(['concern', 'pores'], ['skin_state', 'oily_t_zone']) },
+      { label: 'Nur in bestimmten Bereichen',                value: 'Combination', facts: facts(['concern', 'pores'], ['skin_state', 'oily_t_zone']) },
+      { label: 'Kaum — aber Haut wirkt matt',                value: 'Dry',         facts: facts(['skin_state', 'matte'], ['skin_state', 'dryness']) },
     ],
   },
 ]
@@ -239,9 +247,21 @@ export default function SkinQuiz() {
       if (user?.token) {
         setSaving(true)
         try {
-          const res = await fetch(apiUrl('/api/auth/skin-type'), {            method: 'PATCH',
+          const quizAnswers = questions.map(question => {
+            const value = answers[question.id]
+            const option = question.options.find(item => item.value === value)
+            return {
+              questionId: question.id,
+              question: question.question,
+              answer: option?.label || '',
+              value,
+              facts: option?.facts || [],
+            }
+          }).filter(item => item.value)
+          const res = await fetch(apiUrl('/api/auth/skin-type'), {
+            method: 'PATCH',
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${user.token}` },
-            body: JSON.stringify({ skinType: skin }),
+            body: JSON.stringify({ skinType: skin, source: 'quiz', quizAnswers }),
           })
           const data = await res.json()
           if (data.user) updateUser({ ...user, ...data.user, token: user.token })

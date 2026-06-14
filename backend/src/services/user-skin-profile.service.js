@@ -13,6 +13,7 @@ const FACT_KEYS = new Set([
   "product_reaction",
   "preference",
 ]);
+const DEPRECATED_FACT_KEYS = ["quiz_answer"];
 
 const FACT_CATALOG = {
   concern: {
@@ -26,11 +27,23 @@ const FACT_CATALOG = {
     wrinkles: ["wrinkles", "wrinkle", "fine lines", "falten", "细纹", "皱纹"],
   },
   skin_state: {
-    dryness: ["dryness", "dry", "trockenheit", "trocken", "dehydrated", "紧绷", "起皮", "干"],
-    oily_t_zone: ["oily t-zone", "oily t zone", "t-zone oily", "fettige t-zone", "t区油"],
+    balanced: ["balanced", "ausgeglichen", "normal skin", "normale haut", "平衡"],
+    oily: ["oily", "fettig", "glänzend", "greasy skin", "fettige haut", "油皮", "出油"],
+    oily_t_zone: ["oily t-zone", "oily t zone", "t-zone oily", "fettige t-zone", "stirn fettig", "nase fettig", "t区油"],
+    dryness: ["dryness", "dry", "trockenheit", "trocken", "干", "干性"],
+    dehydration: ["dehydrated", "feuchtigkeitsarm", "wasserarm", "缺水"],
+    tightness: ["tightness", "spannt", "spannungsgefühl", "紧绷"],
+    flakiness: ["flaky", "flakiness", "schuppt", "schuppig", "起皮"],
+    rough_texture: ["rough", "rau", "uneven texture", "raue haut", "粗糙"],
+    shine: ["shine", "glanz", "glänzt", "shiny", "泛油光"],
+    refined_pores: ["refined pores", "small pores", "kaum sichtbare poren", "fine pores", "细腻毛孔"],
+    clear_skin: ["clear skin", "rare blemishes", "selten unreinheiten", "少长痘"],
+    matte: ["matte", "matt", "glanzlos", "哑光"],
+    combination_zones: ["combination zones", "mischhaut", "gemischt", "混合区域"],
   },
   sensitivity: {
     sensitive: ["sensitive", "sensibel", "sensible", "empfindlich", "敏感", "刺痛"],
+    tolerant: ["tolerant", "verträglich", "verträgt fast alles", "耐受"],
   },
   ingredient_avoidance: {
     fragrance: ["avoid fragrance", "without fragrance", "no fragrance", "ohne parfum", "kein parfum", "duftstofffrei", "避开香精"],
@@ -78,6 +91,7 @@ const FACT_CATALOG = {
 const ALLOWED_FACT_VALUES = Object.fromEntries(
   Object.entries(FACT_CATALOG).map(([key, values]) => [key, new Set(Object.keys(values))])
 );
+const PREFERENCE_VALUES = Object.keys(FACT_CATALOG.preference);
 
 function normalizeText(value) {
   return String(value || "").trim().toLowerCase().replace(/\s+/g, " ");
@@ -115,8 +129,11 @@ function isNegatedNear(text, term) {
   if (index < 0) return false;
 
   const before = text.slice(Math.max(0, index - 28), index);
+  const after = text.slice(index + term.length, index + term.length + 28);
   return /\b(no|not|dont|don't|without|kein|keine|nicht|avoid|meiden|ohne)\b/.test(before) ||
-    /(不要|不用|不想|避免|避开)$/.test(before);
+    /\b(no|not|dont|don't|kein|keine|nicht|avoid|meiden)\b/.test(after) ||
+    /(不要|不用|不想|避免|避开)$/.test(before) ||
+    /^(不要|不用|不想|避免|避开)/.test(after);
 }
 
 function termMatches(text, term) {
@@ -139,6 +156,22 @@ function matchCatalogFacts(message) {
   }
 
   return facts;
+}
+
+function matchNegatedPreferenceValues(message) {
+  const text = normalizeText(message);
+  const values = [];
+
+  for (const [value, terms] of Object.entries(FACT_CATALOG.preference)) {
+    if (terms.some((term) => {
+      const normalizedTerm = normalizeText(term);
+      return text.includes(normalizedTerm) && isNegatedNear(text, normalizedTerm);
+    })) {
+      values.push(value);
+    }
+  }
+
+  return [...new Set(values)];
 }
 
 function normalizeFactValue(key, value) {
@@ -272,11 +305,113 @@ function uniqueFacts(facts) {
   return result;
 }
 
-async function extractFacts(message) {
-  const heuristicFacts = extractHeuristicFacts(message);
+async function extractPreferenceFacts(message, heuristicPreferenceFacts) {
+  const heuristicNegativePreferences = matchNegatedPreferenceValues(message);
 
   if (!process.env.OPENAI_API_KEY) {
-    return uniqueFacts(heuristicFacts);
+    return {
+      positiveFacts: heuristicPreferenceFacts,
+      negativeValues: heuristicNegativePreferences,
+    };
+  }
+
+  const fallbackJson = JSON.stringify({
+    preferences: heuristicPreferenceFacts.map((fact) => ({
+      value: fact.value,
+      polarity: "positive",
+      confidence: fact.confidence,
+      evidence: fact.evidence,
+    })),
+  });
+
+  const answer = await requestOpenAI(
+    [
+      {
+        role: "system",
+        content:
+          "Classify explicit skincare product preferences from the user's message. Return only valid JSON. Do not infer. Negative preferences must not be saved as positive preferences.",
+      },
+      {
+        role: "user",
+        content: `Message:
+${message}
+
+Return JSON:
+{
+  "preferences": [
+    {
+      "value": "one allowed preference value",
+      "polarity": "positive|negative|neutral",
+      "confidence": 0.0-1.0,
+      "evidence": "short exact phrase from user"
+    }
+  ]
+}
+
+Allowed preference values:
+${PREFERENCE_VALUES.join(", ")}
+
+Rules:
+- positive means the user wants, likes, prefers, needs, or requests this preference.
+- negative means the user rejects, dislikes, avoids, or says they do not want this preference.
+- neutral means the user only asks about a product/ingredient/property without expressing a personal preference.
+- Return no item for product names, full questions, temporary browsing intent, or unknown values.
+- Save only durable user profile preferences, not every product search query.
+
+Examples:
+- "I want vegan products" -> {"value":"vegan","polarity":"positive"}
+- "ich mag vegan nicht" -> {"value":"vegan","polarity":"negative"}
+- "I don't want vegan products" -> {"value":"vegan","polarity":"negative"}
+- "Ist dieses Produkt vegan?" -> {"value":"vegan","polarity":"neutral"}
+- "ohne Alkohol bitte" -> {"value":"alcohol_free","polarity":"positive"}`,
+      },
+    ],
+    fallbackJson,
+    { maxOutputTokens: 260 }
+  );
+
+  try {
+    const parsed = JSON.parse(answer.replace(/```json|```/g, "").trim());
+    const preferences = Array.isArray(parsed.preferences) ? parsed.preferences : [];
+    const negativeValues = preferences
+      .filter((item) => item && item.polarity === "negative")
+      .map((item) => normalizeFactValue("preference", item.value))
+      .filter(Boolean);
+    const allNegativeValues = [...new Set([...heuristicNegativePreferences, ...negativeValues])];
+    const positiveFacts = preferences
+      .filter((item) => item && item.polarity === "positive")
+      .map((item) => normalizeFact({
+        key: "preference",
+        value: item.value,
+        confidence: item.confidence,
+        evidence: item.evidence,
+      }, message))
+      .filter(Boolean)
+      .filter((fact) => !allNegativeValues.includes(fact.value));
+
+    return {
+      positiveFacts,
+      negativeValues: allNegativeValues,
+    };
+  } catch {
+    return {
+      positiveFacts: heuristicPreferenceFacts,
+      negativeValues: heuristicNegativePreferences,
+    };
+  }
+}
+
+async function extractFacts(message) {
+  const heuristicFacts = extractHeuristicFacts(message);
+  const heuristicNonPreferenceFacts = heuristicFacts.filter((fact) => fact.key !== "preference");
+  const heuristicPreferenceFacts = heuristicFacts.filter((fact) => fact.key === "preference");
+  const preferenceExtraction = await extractPreferenceFacts(message, heuristicPreferenceFacts);
+
+  if (!process.env.OPENAI_API_KEY) {
+    return {
+      facts: uniqueFacts([...heuristicNonPreferenceFacts, ...preferenceExtraction.positiveFacts]),
+      negativePreferenceValues: preferenceExtraction.negativeValues,
+    };
   }
 
   const fallbackJson = JSON.stringify({ facts: heuristicFacts });
@@ -330,11 +465,18 @@ Examples:
     const facts = Array.isArray(parsed.facts) ? parsed.facts : [];
     const normalizedFacts = facts
       .map((fact) => normalizeFact(fact, message))
-      .filter(Boolean);
+      .filter(Boolean)
+      .filter((fact) => fact.key !== "preference");
 
-    return uniqueFacts([...heuristicFacts, ...normalizedFacts]);
+    return {
+      facts: uniqueFacts([...heuristicNonPreferenceFacts, ...normalizedFacts, ...preferenceExtraction.positiveFacts]),
+      negativePreferenceValues: preferenceExtraction.negativeValues,
+    };
   } catch {
-    return uniqueFacts(heuristicFacts);
+    return {
+      facts: uniqueFacts([...heuristicNonPreferenceFacts, ...preferenceExtraction.positiveFacts]),
+      negativePreferenceValues: preferenceExtraction.negativeValues,
+    };
   }
 }
 
@@ -357,6 +499,8 @@ async function saveFacts(userId, facts, source = "chat") {
   const saved = [];
 
   for (const fact of facts) {
+    if (!FACT_KEYS.has(fact.key) || DEPRECATED_FACT_KEYS.includes(fact.key)) continue;
+
     try {
       await prisma.userSkinProfileFact.upsert({
         where: {
@@ -524,24 +668,61 @@ async function captureReviewProfileFacts(userId, reviewText, product) {
 
 async function captureUserSkinProfileFromMessage(userId, message) {
   if (!userId || !looksProfileRelated(message)) {
-    return { facts: [], skinType: null };
+    return { facts: [], skinType: null, changed: false, removedPreferences: [] };
   }
 
-  const facts = await extractFacts(message);
-  if (facts.length === 0) return { facts: [], skinType: null };
+  const { facts, negativePreferenceValues } = await extractFacts(message);
+  let removedPreferences = [];
+
+  if (negativePreferenceValues.length > 0) {
+    const deleteResult = await prisma.userSkinProfileFact.deleteMany({
+      where: {
+        userId,
+        key: "preference",
+        value: { in: negativePreferenceValues },
+      },
+    });
+    if (deleteResult.count > 0) {
+      removedPreferences = negativePreferenceValues;
+    }
+  }
+
+  if (facts.length === 0) {
+    return {
+      facts: [],
+      skinType: null,
+      changed: removedPreferences.length > 0,
+      removedPreferences,
+    };
+  }
 
   const skinType = await saveSkinType(userId, facts);
   const savedFacts = await saveFacts(userId, facts);
 
-  return { facts: savedFacts, skinType };
+  return {
+    facts: savedFacts,
+    skinType,
+    changed: savedFacts.length > 0 || Boolean(skinType) || removedPreferences.length > 0,
+    removedPreferences,
+  };
 }
 
 async function getUserSkinProfileFacts(userId) {
   if (!userId) return [];
 
   try {
+    await prisma.userSkinProfileFact.deleteMany({
+      where: {
+        userId,
+        key: { in: DEPRECATED_FACT_KEYS },
+      },
+    });
+
     return await prisma.userSkinProfileFact.findMany({
-      where: { userId },
+      where: {
+        userId,
+        key: { notIn: DEPRECATED_FACT_KEYS },
+      },
       orderBy: { updatedAt: "desc" },
       take: 30,
     });

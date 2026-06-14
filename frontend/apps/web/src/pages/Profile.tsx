@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import {
   CalendarDays, Mail, MapPin, ShoppingBag, X,
   UserRound, Star, Trash2, ExternalLink, Heart,
-  Droplets, Activity, ShieldCheck, Sparkles,
+  Droplets, Activity, ShieldCheck,
 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { useWishlist } from '@/context/WishlistContext'
@@ -25,17 +25,34 @@ function formatPaymentMethod(value: string) { return ({ klarna: 'Klarna', paypal
 function parseOrderItems(items: string): OrderItem[] { try { const p = JSON.parse(items); return Array.isArray(p) ? p : [] } catch { return [] } }
 function genderLabel(g: Gender) { return g === 'female' ? '👩 Frau' : g === 'male' ? '👨 Mann' : g === 'diverse' ? '🧑 Divers' : 'Nicht angegeben' }
 function skinTypeLabel(s?: string | null) { return ({ Normal: 'Normale Haut', Oily: 'Fettige Haut', Dry: 'Trockene Haut', Combination: 'Mischhaut', Sensitive: 'Sensible Haut' } as Record<string, string>)[s || ''] || 'Nicht angegeben' }
+function factKeyLabel(key: string) {
+  return ({
+    concern: 'Hautthemen',
+    skin_state: 'Hautzustand',
+    sensitivity: 'Empfindlichkeit',
+    product_reaction: 'Reaktionen',
+    ingredient_avoidance: 'Meiden',
+    allergy: 'Allergien',
+    goal: 'Ziele',
+    preference: 'Vorlieben',
+    skin_type: 'Hauttyp',
+  } as Record<string, string>)[key] || key
+}
 function factLabel(value: string) {
   return ({
     acne: 'Akne', blemishes: 'Unreinheiten', redness: 'Rötungen', pores: 'Große Poren', dark_spots: 'Pigmentflecken',
-    dryness: 'Trockenheit', oily_t_zone: 'Ölige T-Zone', sensitive: 'Empfindlich', fragrance: 'Parfum meiden',
+    balanced: 'Ausgeglichen', oily: 'Fettig', oily_t_zone: 'Ölige T-Zone', shine: 'Glanz',
+    dryness: 'Trockenheit', dehydration: 'Feuchtigkeitsarm', tightness: 'Spannungsgefühl',
+    flakiness: 'Schuppig', rough_texture: 'Raue Textur', refined_pores: 'Feine Poren',
+    clear_skin: 'Wenig Unreinheiten', matte: 'Matt', combination_zones: 'Mischhaut-Zonen',
+    sensitive: 'Empfindlich', tolerant: 'Robust', fragrance: 'Parfum meiden',
+    burning: 'Brennen', too_greasy: 'Wird fettig', drying: 'Trocknet aus', breakout: 'Pickelreaktion',
     alcohol: 'Alkohol meiden', hydration: 'Mehr Feuchtigkeit', calming: 'Beruhigung', glow: 'Glow', anti_aging: 'Anti-Aging',
     light_texture: 'Leichte Textur', rich_texture: 'Reichhaltige Textur', fragrance_free: 'Parfumfrei',
     alcohol_free: 'Alkoholfrei', vegan: 'Vegan', non_comedogenic: 'Nicht komedogen', oil_free: 'Ölfrei',
     cruelty_free: 'Tierversuchsfrei', natural_ingredients: 'Natürliche Inhaltsstoffe',
   } as Record<string, string>)[value] || value
 }
-
 const skinTypeOptions = [
   { value: 'Normal', label: 'Normal', tone: '#7ab87a' },
   { value: 'Oily', label: 'Fettig', tone: '#D4A574' },
@@ -46,8 +63,9 @@ const skinTypeOptions = [
 
 const editableFactGroups = [
   { key: 'concern', label: 'Hautthemen', values: ['acne', 'blemishes', 'redness', 'pores', 'dark_spots'] },
-  { key: 'skin_state', label: 'Aktueller Zustand', values: ['dryness', 'oily_t_zone'] },
-  { key: 'sensitivity', label: 'Empfindlichkeit', values: ['sensitive'] },
+  { key: 'skin_state', label: 'Aktueller Zustand', values: ['balanced', 'oily', 'oily_t_zone', 'shine', 'dryness', 'dehydration', 'tightness', 'flakiness', 'rough_texture', 'combination_zones', 'refined_pores', 'clear_skin', 'matte'] },
+  { key: 'sensitivity', label: 'Empfindlichkeit', values: ['sensitive', 'tolerant'] },
+  { key: 'product_reaction', label: 'Reaktionen', values: ['burning', 'too_greasy', 'drying', 'breakout'] },
   { key: 'ingredient_avoidance', label: 'Meiden', values: ['fragrance', 'alcohol'] },
   { key: 'goal', label: 'Ziele', values: ['hydration', 'calming', 'glow', 'anti_aging'] },
   { key: 'preference', label: 'Vorlieben', values: ['light_texture', 'rich_texture', 'fragrance_free', 'alcohol_free', 'vegan', 'non_comedogenic', 'oil_free', 'cruelty_free', 'natural_ingredients'] },
@@ -111,6 +129,11 @@ const CSS = `
   .p-chip { border:1px solid #E8D5C0; background:#fff; color:#7a5c42; border-radius:999px; padding:8px 11px; font-size:12px; font-weight:600; cursor:pointer; font-family:'Outfit',sans-serif; transition:all 0.15s ease; }
   .p-chip.active { border-color:#D4A574; background:#FDF6EE; color:#1c1209; box-shadow:0 0 0 2px rgba(212,165,116,0.12); }
   .p-fact-pill { display:inline-flex; align-items:center; gap:6px; border:1px solid #F0DCC8; background:#FDF6EE; color:#7a5c42; border-radius:999px; padding:7px 10px; font-size:12px; font-weight:600; font-family:'Outfit',sans-serif; }
+  .p-fact-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); gap:12px; }
+  .p-fact-group { border:1px solid #F0DCC8; border-radius:16px; padding:14px; background:#fff; }
+  .p-fact-group-head { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; margin-bottom:10px; }
+  .p-fact-value-btn { min-height:44px; border:1px solid #E8D5C0; background:#fff; color:#7a5c42; border-radius:12px; padding:8px 10px; cursor:pointer; font-family:'Outfit',sans-serif; transition:all 0.15s ease; text-align:left; display:flex; justify-content:space-between; align-items:center; gap:8px; }
+  .p-fact-value-btn.active { border-color:#D4A574; background:#FDF6EE; color:#1c1209; box-shadow:0 0 0 2px rgba(212,165,116,0.12); }
   .p-meter { height:7px; border-radius:999px; background:#F3E4D2; overflow:hidden; }
   .p-meter-fill { height:100%; border-radius:999px; background:linear-gradient(90deg,#7ab87a,#D4A574,#c47a5a); transition:width 0.3s ease; }
   .p-mirror { position:relative; overflow:hidden; border:1px solid rgba(173,184,188,0.9); cursor:pointer; font-family:'Outfit',sans-serif; width:100%; min-height:140px; border-radius:18px; background:linear-gradient(105deg,#f8f8f6 0%,#e7eaeb 14%,#ffffff 25%,#cfd6d8 44%,#aeb9bc 53%,#dce1e2 67%,#ffffff 79%,#c4cccf 100%); box-shadow:inset 0 0 0 2px rgba(255,255,255,0.76), inset 18px 0 42px rgba(255,255,255,0.62), inset -24px 0 48px rgba(63,76,82,0.24), 0 14px 28px rgba(58,36,28,0.14); transition:transform 0.2s ease, box-shadow 0.2s ease; }
@@ -200,7 +223,7 @@ function GenderPicker({ value, onChange }: { value: Gender; onChange: (g: Gender
 
 function SkinProfileModal({
   profile, editSkinType, editFacts, saving, message,
-  onClose, onSkinTypeChange, onToggleFact, onSave,
+  onClose, onSkinTypeChange, onToggleFact,
 }: {
   profile: SkinProfile | null
   editSkinType: string | null
@@ -210,10 +233,7 @@ function SkinProfileModal({
   onClose: () => void
   onSkinTypeChange: (value: string | null) => void
   onToggleFact: (key: string, value: string) => void
-  onSave: () => void
 }) {
-  const visibleFacts = profile?.facts || []
-  const profileFacts = visibleFacts.filter(fact => fact.key !== 'skin_type')
   const latestImage = profile?.latestProfileImage?.imageData || profile?.latestAnalysis?.imageData || null
   const images = profile?.profileImages?.length
     ? profile.profileImages
@@ -222,7 +242,9 @@ function SkinProfileModal({
       : []
   const [photoViewerIndex, setPhotoViewerIndex] = useState<number | null>(null)
   const activePhoto = photoViewerIndex !== null ? images[photoViewerIndex] : null
-  const completion = Math.min(100, Math.round(((editSkinType ? 1 : 0) + Object.values(editFacts).filter(v => v.length > 0).length) / 5 * 100))
+  const selectedFactCount = Object.values(editFacts).reduce((sum, values) => sum + values.length, 0)
+  const filledFactGroups = Object.values(editFacts).filter(values => values.length > 0).length
+  const completion = Math.min(100, Math.round(((editSkinType ? 1 : 0) + filledFactGroups) / (editableFactGroups.length + 1) * 100))
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
@@ -236,70 +258,97 @@ function SkinProfileModal({
           <button className="p-close-btn" onClick={onClose} title="Schließen"><X size={20} /></button>
         </div>
 
-        <div style={{ padding: 28, display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(260px,1fr))', gap: 22 }}>
-          <div>
-            <div style={{ border: '1px solid #F0DCC8', borderRadius: 20, padding: 20, background: 'linear-gradient(135deg,#FFF9F3 0%,#fff 100%)' }}>
-              <p style={{ fontSize: 12, color: '#9a7a5a', margin: '0 0 4px', fontWeight: 600 }}>Hautprofil</p>
-              <p style={{ fontSize: 28, color: '#1c1209', margin: '0 0 14px', fontWeight: 800, letterSpacing: '-0.02em' }}>{completion}%</p>
+        <div style={{ padding: 28, display: 'flex', flexDirection: 'column', gap: 18 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(240px,1fr))', gap: 14 }}>
+            <div style={{ border: '1px solid #F0DCC8', borderRadius: 20, padding: 18, background: 'linear-gradient(135deg,#FFF9F3 0%,#fff 100%)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+                <div>
+                  <p style={{ fontSize: 12, color: '#9a7a5a', margin: '0 0 4px', fontWeight: 700 }}>Hautprofil</p>
+                  <p style={{ fontSize: 28, color: '#1c1209', margin: '0 0 12px', fontWeight: 800, letterSpacing: '-0.02em' }}>{completion}%</p>
+                </div>
+              </div>
               <div className="p-meter"><div className="p-meter-fill" style={{ width: `${completion}%` }} /></div>
-              <p style={{ fontSize: 12, color: '#9a7a5a', margin: '12px 0 0', lineHeight: 1.5 }}>Vollständigkeit deiner gespeicherten Hautinformationen für bessere Empfehlungen.</p>
-            </div>
-
-            <button
-              type="button"
-              className="p-mirror"
-              onClick={() => { if (images.length > 0) setPhotoViewerIndex(0) }}
-              style={{ cursor: images.length > 0 ? 'pointer' : 'default', marginTop: 14 }}
-            >
-              {latestImage && <img className="p-mirror-img" src={latestImage} alt="Letztes Hautprofil" />}
-              <div className="p-mirror-content">
-              </div>
-            </button>
-
-            <div style={{ marginTop: 14, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-              <div style={{ border: '1px solid #F0DCC8', borderRadius: 16, padding: 14 }}>
-                <Activity size={16} color="#D4A574" />
-                <p style={{ fontSize: 20, fontWeight: 800, color: '#1c1209', margin: '8px 0 0' }}>{profileFacts.length}</p>
-                <p style={{ fontSize: 11, color: '#9a7a5a', margin: 0 }}>Merkmale</p>
-              </div>
-              <div style={{ border: '1px solid #F0DCC8', borderRadius: 16, padding: 14 }}>
-                <ShieldCheck size={16} color="#D4A574" />
-                <p style={{ fontSize: 20, fontWeight: 800, color: '#1c1209', margin: '8px 0 0' }}>{profileFacts.filter(f => f.source === 'profile').length}</p>
-                <p style={{ fontSize: 11, color: '#9a7a5a', margin: 0 }}>Manuell</p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 12 }}>
+                <div style={{ border: '1px solid #F0DCC8', borderRadius: 12, padding: 10, background: '#fff' }}>
+                  <Activity size={15} color="#D4A574" />
+                  <p style={{ fontSize: 18, fontWeight: 800, color: '#1c1209', margin: '6px 0 0' }}>{selectedFactCount}</p>
+                  <p style={{ fontSize: 11, color: '#9a7a5a', margin: 0 }}>Ausgewählt</p>
+                </div>
+                <div style={{ border: '1px solid #F0DCC8', borderRadius: 12, padding: 10, background: '#fff' }}>
+                  <ShieldCheck size={15} color="#D4A574" />
+                  <p style={{ fontSize: 18, fontWeight: 800, color: '#1c1209', margin: '6px 0 0' }}>{filledFactGroups}</p>
+                  <p style={{ fontSize: 11, color: '#9a7a5a', margin: 0 }}>Bereiche</p>
+                </div>
               </div>
             </div>
-          </div>
 
-          <div>
-            <p style={{ fontSize: 12, color: '#9a7a5a', margin: '0 0 10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Hauttyp</p>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(120px,1fr))', gap: 8, marginBottom: 22 }}>
-              {skinTypeOptions.map(option => (
-                <button key={option.value} className="p-skin-option" onClick={() => onSkinTypeChange(editSkinType === option.value ? null : option.value)}
-                  style={{ borderColor: editSkinType === option.value ? option.tone : '#E8D5C0', background: editSkinType === option.value ? '#FDF6EE' : '#fff' }}>
-                  <span style={{ display: 'block', width: 10, height: 10, borderRadius: '50%', background: option.tone, marginBottom: 8 }} />
-                  <span style={{ fontSize: 13, fontWeight: 700, color: '#1c1209' }}>{option.label}</span>
-                </button>
-              ))}
-            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(190px,1fr))', gap: 14 }}>
+              <button
+                type="button"
+                className="p-mirror"
+                onClick={() => { if (images.length > 0) setPhotoViewerIndex(0) }}
+                style={{ cursor: images.length > 0 ? 'pointer' : 'default', minHeight: 150 }}
+              >
+                {latestImage && <img className="p-mirror-img" src={latestImage} alt="Letztes Hautprofil" />}
+                <span className="p-mirror-shine" />
+              </button>
 
-            {editableFactGroups.map(group => (
-              <div key={group.key} style={{ marginBottom: 18 }}>
-                <p style={{ fontSize: 12, color: '#9a7a5a', margin: '0 0 8px', fontWeight: 700 }}>{group.label}</p>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                  {group.values.map(value => (
-                    <button key={value} className={`p-chip ${editFacts[group.key]?.includes(value) ? 'active' : ''}`} onClick={() => onToggleFact(group.key, value)}>
-                      {factLabel(value)}
+              <div style={{ border: '1px solid #F0DCC8', borderRadius: 16, padding: 14, background: '#fff' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                  <p style={{ fontSize: 12, color: '#9a7a5a', margin: 0, fontWeight: 800 }}>{factKeyLabel('skin_type')}</p>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(88px,1fr))', gap: 8 }}>
+                  {skinTypeOptions.map(option => (
+                    <button key={option.value} className="p-skin-option" onClick={() => onSkinTypeChange(editSkinType === option.value ? null : option.value)}
+                      style={{ borderColor: editSkinType === option.value ? option.tone : '#E8D5C0', background: editSkinType === option.value ? '#FDF6EE' : '#fff', padding: '10px 9px' }}>
+                      <span style={{ display: 'block', width: 9, height: 9, borderRadius: '50%', background: option.tone, marginBottom: 6 }} />
+                      <span style={{ fontSize: 12, fontWeight: 700, color: '#1c1209' }}>{option.label}</span>
                     </button>
                   ))}
                 </div>
               </div>
-            ))}
-
-            {message && <p style={{ fontSize: 13, color: message.startsWith('✓') ? '#7ab87a' : '#c47a5a', margin: '0 0 12px', fontWeight: 600 }}>{message}</p>}
-            <button className="p-btn-primary" onClick={onSave} disabled={saving} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, opacity: saving ? 0.7 : 1 }}>
-              <Sparkles size={16} /> {saving ? 'Wird gespeichert…' : 'Meine Haut speichern'}
-            </button>
+            </div>
           </div>
+
+          <div className="p-fact-grid">
+            {editableFactGroups.map(group => {
+              const selectedValues = editFacts[group.key] || []
+              return (
+                <section key={group.key} className="p-fact-group">
+                  <div className="p-fact-group-head">
+                    <div>
+                      <p style={{ fontSize: 13, color: '#1c1209', margin: '0 0 4px', fontWeight: 800 }}>{factKeyLabel(group.key)}</p>
+                    </div>
+                    <span style={{ fontSize: 11, color: '#9a7a5a', fontWeight: 800 }}>{selectedValues.length}/{group.values.length}</span>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(132px,1fr))', gap: 8 }}>
+                    {group.values.map(value => {
+                      const selected = selectedValues.includes(value)
+                      return (
+                        <button
+                          key={value}
+                          type="button"
+                          className={`p-fact-value-btn ${selected ? 'active' : ''}`}
+                          onClick={() => onToggleFact(group.key, value)}
+                          title={`${group.key}: ${value}`}
+                        >
+                          <span>
+                            <span style={{ display: 'block', fontSize: 12, fontWeight: 800 }}>{factLabel(value)}</span>
+                          </span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </section>
+              )
+            })}
+          </div>
+
+          {(saving || message) && (
+            <p style={{ fontSize: 13, color: message.startsWith('✓') || saving ? '#7ab87a' : '#c47a5a', margin: 0, fontWeight: 600 }}>
+              {saving ? 'Wird gespeichert…' : message}
+            </p>
+          )}
         </div>
       </div>
       {activePhoto && (
@@ -485,22 +534,14 @@ export default function Profile() {
     setShowSkinProfile(true)
   }
 
-  const toggleSkinFact = (key: string, value: string) => {
-    setEditSkinFacts(prev => {
-      const current = prev[key] || []
-      const nextValues = current.includes(value) ? current.filter(v => v !== value) : [...current, value]
-      return { ...prev, [key]: nextValues }
-    })
-  }
-
-  const handleSaveSkinProfile = async () => {
+  const saveSkinProfile = async (nextSkinType = editSkinType, nextFacts = editSkinFacts) => {
     if (!token) return
     setSkinSaving(true); setSkinMsg('')
     try {
       const res = await fetch(apiUrl('/api/auth/skin-profile'), {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ skinType: editSkinType, facts: editSkinFacts }),
+        body: JSON.stringify({ skinType: nextSkinType, facts: nextFacts }),
       })
       const data = await res.json()
       if (!res.ok) {
@@ -519,12 +560,25 @@ export default function Profile() {
         setEditSkinType(data.profile.skinType ?? null)
         setEditSkinFacts(factsFromProfile(nextProfile))
       }
-      setSkinMsg('✓ Hautprofil gespeichert')
+      setSkinMsg('✓ Automatisch gespeichert')
     } catch {
       setSkinMsg('Netzwerkfehler')
     } finally {
       setSkinSaving(false)
     }
+  }
+
+  const handleSkinTypeChange = (value: string | null) => {
+    setEditSkinType(value)
+    void saveSkinProfile(value, editSkinFacts)
+  }
+
+  const toggleSkinFact = (key: string, value: string) => {
+    const current = editSkinFacts[key] || []
+    const nextValues = current.includes(value) ? current.filter(v => v !== value) : [...current, value]
+    const nextFacts = { ...editSkinFacts, [key]: nextValues }
+    setEditSkinFacts(nextFacts)
+    void saveSkinProfile(editSkinType, nextFacts)
   }
 
   const closeModal = () => {
@@ -534,7 +588,6 @@ export default function Profile() {
   }
 
   const firstName = user?.name?.split(' ')[0] || user?.email?.split('@')[0] || 'Nutzer'
-  const latestSkinImage = skinProfile?.latestProfileImage?.imageData || skinProfile?.latestAnalysis?.imageData || null
 
   return (
     <div className="profile-root" style={{ background: '#FDFAF6', minHeight: '100vh', padding: '0 0 60px' }}>
@@ -577,8 +630,7 @@ export default function Profile() {
           <button className="p-mirror" onClick={openSkinProfile} style={{ minHeight: 128 }}>
             <span className="p-mirror-shine" />
             <div className="p-mirror-content" style={{ minHeight: 128 }}>
-              <p className="p-mirror-title">meine Haut profile</p>
-              <p className="p-mirror-sub">{skinTypeLabel(skinProfile?.skinType || user?.skinType)}</p>
+              <p className="p-mirror-title">meine Haut Profile</p>
             </div>
           </button>
         </div>
@@ -709,7 +761,7 @@ export default function Profile() {
             <div className="p-card" style={{ padding: 18 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, marginBottom: 18 }}>
                 <div>
-                  <h2 style={{ fontFamily: "'Outfit',sans-serif", fontSize: 16, fontWeight: 700, color: '#1c1209', margin: '0 0 6px' }}>Meine Haut</h2>
+                  <h2 style={{ fontFamily: "'Outfit',sans-serif", fontSize: 16, fontWeight: 700, color: '#1c1209', margin: '0 0 6px' }}>Meine Haut Profile</h2>
                   <p style={{ fontSize: 13, color: '#9a7a5a', fontWeight: 300, margin: 0 }}>Dein gespeichertes Hautprofil</p>
                 </div>
                 <div style={{ width: 38, height: 38, borderRadius: 12, background: '#FDF6EE', border: '1px solid #e8c9a0', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -735,8 +787,7 @@ export default function Profile() {
               <button className="p-mirror" onClick={openSkinProfile} style={{ width: '100%', minHeight: 132 }}>
                 <span className="p-mirror-shine" />
                 <div className="p-mirror-content" style={{ minHeight: 132 }}>
-                  <p className="p-mirror-title">meine Haut profile</p>
-                  <p className="p-mirror-sub">{latestSkinImage ? 'Foto gespeichert' : 'Foto nach Hautanalyse'}</p>
+                  <p className="p-mirror-title">meine Haut</p>
                 </div>
               </button>
             </div>
@@ -801,9 +852,8 @@ export default function Profile() {
           saving={skinSaving}
           message={skinMsg}
           onClose={() => setShowSkinProfile(false)}
-          onSkinTypeChange={setEditSkinType}
+          onSkinTypeChange={handleSkinTypeChange}
           onToggleFact={toggleSkinFact}
-          onSave={handleSaveSkinProfile}
         />
       )}
 

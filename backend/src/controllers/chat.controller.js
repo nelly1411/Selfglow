@@ -90,7 +90,7 @@ async function createChatResponse(req, res) {
 
     const safeWeather = weather && typeof weather === "object" ? weather : null;
     const capturedProfile = await captureUserSkinProfileFromMessage(req.user?.userId, message);
-    if (capturedProfile.facts.length > 0 || capturedProfile.skinType) {
+    if (capturedProfile.changed || capturedProfile.facts.length > 0 || capturedProfile.skinType) {
       await refreshUserProfileEmbedding(req.user.userId);
     }
     const userProfile = await getUserProfileContext(req.user?.userId);
@@ -142,7 +142,7 @@ async function createChatResponseStream(req, res) {
 
     const safeWeather = weather && typeof weather === "object" ? weather : null;
     const capturedProfile = await captureUserSkinProfileFromMessage(req.user?.userId, message);
-    if (capturedProfile.facts.length > 0 || capturedProfile.skinType) {
+    if (capturedProfile.changed || capturedProfile.facts.length > 0 || capturedProfile.skinType) {
       await refreshUserProfileEmbedding(req.user.userId);
     }
     const userProfile = await getUserProfileContext(req.user?.userId);
