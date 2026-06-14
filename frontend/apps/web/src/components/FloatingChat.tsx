@@ -5,7 +5,7 @@ import { Bot, MessageCircle, Send, User, X } from 'lucide-react'
 import { Button } from '@workspace/ui/components/button'
 import { cn } from '@workspace/ui/lib/utils'
 import { apiUrl } from '@/lib/api'
-import { initialMessages, useChat, type ChatProduct, type Message } from '@/context/ChatContext'
+import { useChat, type ChatProduct, type Message } from '@/context/ChatContext'
 import { useAuth } from '@/context/AuthContext'
 
 type CurrentProduct = {
@@ -173,7 +173,7 @@ export default function FloatingChat({
     [productHistoryMessages, productVisibleCount]
   )
   const visibleMessages = useMemo(
-    () => isProductChat ? productSessionMessages : messages,
+    () => isProductChat ? productSessionMessages : messages.filter((message) => !isStoredWelcomeMessage(message)),
     [isProductChat, messages, productSessionMessages]
   )
   const hasOlderProductMessages =
@@ -184,30 +184,11 @@ export default function FloatingChat({
   }, [routeKey])
 
   useEffect(() => {
-    if (!isOpen) return
+    if (!isOpen || !isProductChat) return
 
-    if (isProductChat) {
-      setProductHistoryCount(productMessages.length)
-      setProductVisibleCount(PRODUCT_HISTORY_PAGE_SIZE)
-      return
-    }
-
-    if (!activeConversation) return
-
-    const hasWelcomeAtBottom =
-      activeConversation.messages[activeConversation.messages.length - 1]?.id === 'welcome'
-
-    if (hasWelcomeAtBottom) return
-
-    setChatState((state) => ({
-      ...state,
-      conversations: state.conversations.map((conversation) =>
-        conversation.id !== state.activeConversationId
-          ? conversation
-          : { ...conversation, messages: [...conversation.messages, initialMessages[0]] }
-      ),
-    }))
-  }, [isOpen, isProductChat, productMessages.length, activeConversation, setChatState])
+    setProductHistoryCount(productMessages.length)
+    setProductVisibleCount(PRODUCT_HISTORY_PAGE_SIZE)
+  }, [isOpen, isProductChat, productMessages.length])
 
   useEffect(() => {
     if (!currentProductId) {
@@ -329,7 +310,9 @@ export default function FloatingChat({
     if (!trimmed || isLoading || (!isProductChatForRequest && !activeConversation)) return
 
     const conversationId = chatState.activeConversationId
-    const sourceMessages = isProductChatForRequest ? productMessages : messages
+    const sourceMessages = isProductChatForRequest
+      ? productMessages
+      : messages.filter((message) => !isStoredWelcomeMessage(message))
     const userMessage: Message = { id: crypto.randomUUID(), role: 'user', content: trimmed }
     const assistantMessageId = crypto.randomUUID()
     const assistantMessage: Message = { id: assistantMessageId, role: 'assistant', content: '' }
@@ -347,7 +330,11 @@ export default function FloatingChat({
         assistantMessage,
       ])
     } else {
-      updateUiOnly(conversationId, (msgs) => [...msgs, userMessage, assistantMessage])
+      updateUiOnly(conversationId, (msgs) => [
+        ...msgs.filter((message) => !isStoredWelcomeMessage(message)),
+        userMessage,
+        assistantMessage,
+      ])
     }
     setInput('')
     setError(null)
@@ -602,11 +589,12 @@ export default function FloatingChat({
               renderChatMessage(message)
             )}
 
-            {!isProductChat && visibleMessages.map((message, index) => (
+            {!isProductChat && visibleMessages.length === 0 && !isLoading && (
+              renderChatMessage({ id: 'floating-welcome', role: 'assistant', content: SHORT_WELCOME_MESSAGE })
+            )}
+
+            {!isProductChat && visibleMessages.map((message) => (
               <div key={message.id} className="space-y-3">
-                {message.id === 'welcome' && index > 0 && (
-                  <HistoryDivider />
-                )}
                 {renderChatMessage(message)}
               </div>
             ))}

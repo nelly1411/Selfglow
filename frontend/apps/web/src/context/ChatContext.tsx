@@ -193,8 +193,7 @@ useEffect(() => {
             id:        c.id,
             title:     c.title,
             updatedAt: c.updatedAt,
-            // Welcome ist der Start der neuen Sitzung und steht unter dem Verlauf.
-            messages:  dbMessages.length > 0 ? [...dbMessages, initialMessages[0]] : initialMessages,
+            messages:  dbMessages,
           }
         })
 

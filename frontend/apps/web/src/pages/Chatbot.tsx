@@ -270,7 +270,7 @@ function HistoryDivider() {
   return (
     <div className="flex items-center gap-2 py-1 text-xs text-muted-foreground">
       <span className="h-px flex-1 bg-[#E8D5C0]" />
-      <span>--- Chatverlauf ---</span>
+      <span>Chatverlauf -</span>
       <span className="h-px flex-1 bg-[#E8D5C0]" />
     </div>
   )
@@ -301,6 +301,7 @@ export default function Chatbot() {
   const [glowSources, setGlowSources] = useState<Record<string, string>>({})
   const [weatherAnimation, setWeatherAnimation] = useState<string | null>(null)
   const [profileContext, setProfileContext] = useState<ProfileContext | null>(null)
+  const [reopenedConversationId, setReopenedConversationId] = useState<string | null>(null)
   const messagesContainerRef = useRef<HTMLDivElement | null>(null)
 
   const messages = activeConversation?.messages ?? initialMessages
@@ -350,18 +351,21 @@ export default function Chatbot() {
 
   function startNewConversation() {
     if (isLoading) return
+    setReopenedConversationId(null)
     startNewConversationCtx()
     setError(null)
   }
 
   function selectConversation(id: string) {
     if (isLoading) return
+    setReopenedConversationId(id)
     selectConversationCtx(id)
     setError(null)
   }
 
   function deleteConversation(id: string) {
     if (isLoading) return
+    if (reopenedConversationId === id) setReopenedConversationId(null)
     deleteConversationCtx(id)
     setError(null)
   }
@@ -720,9 +724,8 @@ export default function Chatbot() {
                 </div>
               )}
               <div ref={messagesContainerRef} className="flex-1 space-y-3 overflow-y-auto p-3 md:p-4">
-                {messages.map((message, index) => (
+                {messages.map((message) => (
                   <div key={message.id} className="space-y-2">
-                    {message.id === 'welcome' && index > 0 && <HistoryDivider />}
                     <div className={cn('flex gap-2', message.role === 'user' ? 'justify-end' : 'justify-start')}>
                       {message.role === 'assistant' && (
                         <div className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#F5E6D3]">
@@ -807,6 +810,10 @@ export default function Chatbot() {
                     )}
                   </div>
                 ))}
+
+                {reopenedConversationId === chatState.activeConversationId && messages.length > 0 && (
+                  <HistoryDivider />
+                )}
 
                 {isLoading && messages[messages.length - 1]?.role === 'user' && (
                   <div className="flex gap-2">
