@@ -23,6 +23,7 @@ const EDITABLE_SKIN_FACT_KEYS = [
   "goal",
   "preference",
 ];
+const PROFILE_FACT_REPLACE_KEYS = [...EDITABLE_SKIN_FACT_KEYS, "skin_type"];
 
 function getJwtSecret(res) {
   if (!process.env.JWT_SECRET) {
@@ -534,6 +535,17 @@ async function updateSkinProfile(req, res) {
     }
 
     const nextFacts = [];
+    if (normalizedSkinType) {
+      nextFacts.push({
+        userId,
+        key: "skin_type",
+        value: normalizedSkinType,
+        source: "profile",
+        confidence: 0.9,
+        evidence: "Vom Nutzer im Profil gepflegt",
+      });
+    }
+
     for (const key of EDITABLE_SKIN_FACT_KEYS) {
       const values = Array.isArray(facts[key]) ? facts[key] : [];
       for (const value of values) {
@@ -560,7 +572,7 @@ async function updateSkinProfile(req, res) {
       await tx.userSkinProfileFact.deleteMany({
         where: {
           userId,
-          key: { in: EDITABLE_SKIN_FACT_KEYS },
+          key: { in: PROFILE_FACT_REPLACE_KEYS },
         },
       });
 
@@ -623,11 +635,35 @@ async function updateSkinType(req, res) {
   try {
     const { skinType } = req.body;
     if (!skinType) return res.status(400).json({ message: "skinType fehlt" });
+    if (!SKIN_TYPES.has(skinType)) return res.status(400).json({ message: "Ungültiger Hauttyp" });
 
-    const updatedUser = await prisma.user.update({
-      where: { id: req.user.userId },
-      data:  { skinType },
+    const updatedUser = await prisma.$transaction(async (tx) => {
+      const user = await tx.user.update({
+        where: { id: req.user.userId },
+        data:  { skinType },
+      });
+
+      await tx.userSkinProfileFact.deleteMany({
+        where: {
+          userId: req.user.userId,
+          key: "skin_type",
+        },
+      });
+
+      await tx.userSkinProfileFact.create({
+        data: {
+          userId: req.user.userId,
+          key: "skin_type",
+          value: skinType,
+          source: "profile",
+          confidence: 0.9,
+          evidence: "Vom Nutzer im Profil gepflegt",
+        },
+      });
+
+      return user;
     });
+
     await refreshUserProfileEmbedding(req.user.userId);
     return res.json({ message: "Hauttyp gespeichert", user: toAuthUser(updatedUser) });
   } catch (error) {
@@ -639,9 +675,20 @@ async function updateSkinType(req, res) {
 
 async function deleteSkinType(req, res) {
   try {
-    const updatedUser = await prisma.user.update({
-      where: { id: req.user.userId },
-      data:  { skinType: null },
+    const updatedUser = await prisma.$transaction(async (tx) => {
+      const user = await tx.user.update({
+        where: { id: req.user.userId },
+        data:  { skinType: null },
+      });
+
+      await tx.userSkinProfileFact.deleteMany({
+        where: {
+          userId: req.user.userId,
+          key: "skin_type",
+        },
+      });
+
+      return user;
     })
     await refreshUserProfileEmbedding(req.user.userId)
     return res.json({ message: 'Hauttyp gelöscht', user: toAuthUser(updatedUser) })
