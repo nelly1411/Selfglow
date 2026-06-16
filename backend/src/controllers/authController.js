@@ -12,6 +12,7 @@ const REQUIRE_EMAIL_VERIFICATION =
   process.env.REQUIRE_EMAIL_VERIFICATION === "true";
 
 const { refreshUserProfileEmbedding } = require("../services/user-profile-embedding.service");
+const { getCurrentSkinTypeFromFacts } = require("../services/user-skin-profile.service");
 
 const SKIN_TYPES = new Set(["Normal", "Oily", "Dry", "Combination", "Sensitive"]);
 const SKIN_TYPE_FACT_SOURCES = new Set(["profile", "quiz"]);
@@ -215,8 +216,10 @@ function buildQuizAnswerFacts(userId, quizAnswers) {
 }
 
 function mapSkinProfileResponse(user, facts) {
+  const currentSkinType = getCurrentSkinTypeFromFacts(facts);
+
   return {
-    skinType: user.skinType,
+    skinType: currentSkinType,
     gender: user.gender,
     facts: facts
       .filter((fact) => !DEPRECATED_SKIN_FACT_KEYS.includes(fact.key))
@@ -584,6 +587,15 @@ async function getProfileContext(req, res) {
 
     if (!user) {
       return res.status(404).json({ message: "Benutzer nicht gefunden" });
+    }
+
+    const currentSkinType = getCurrentSkinTypeFromFacts(facts);
+    if ((user.skinType || null) !== (currentSkinType || null)) {
+      await prisma.user.update({
+        where: { id: userId },
+        data: { skinType: currentSkinType },
+      });
+      user.skinType = currentSkinType;
     }
 
     const latestChatImage = latestImageConversation?.messages?.[0] || null;

@@ -40,17 +40,19 @@ function factKeyLabel(key: string) {
 }
 function factLabel(value: string) {
   return ({
-    acne: 'Akne', blemishes: 'Unreinheiten', redness: 'Rötungen', pores: 'Große Poren', dark_spots: 'Pigmentflecken',
+    acne: 'Akne', blemishes: 'Unreinheiten', redness: 'Rötungen', pores: 'Große Poren',
+    blackheads: 'Mitesser', dark_spots: 'Pigmentflecken', dark_circles: 'Augenringe', wrinkles: 'Falten',
     balanced: 'Ausgeglichen', oily: 'Fettig', oily_t_zone: 'Ölige T-Zone', shine: 'Glanz',
-    dryness: 'Trockenheit', dehydration: 'Feuchtigkeitsarm', tightness: 'Spannungsgefühl',
-    flakiness: 'Schuppig', rough_texture: 'Raue Textur', refined_pores: 'Feine Poren',
-    clear_skin: 'Wenig Unreinheiten', matte: 'Matt', combination_zones: 'Mischhaut-Zonen',
-    sensitive: 'Empfindlich', tolerant: 'Robust', fragrance: 'Parfum meiden',
+    dryness: 'Trockenheit', dehydration: 'Feuchtigkeitsarm', tightness: 'Spannungsgefühl', flakiness: 'Schuppig',
+    rough_texture: 'Raue Textur', matte: 'Matt',
+    sensitive: 'Empfindlich', tolerant: 'Robust', fragrance: 'Parfum',
     burning: 'Brennen', too_greasy: 'Wird fettig', drying: 'Trocknet aus', breakout: 'Pickelreaktion',
-    alcohol: 'Alkohol meiden', hydration: 'Mehr Feuchtigkeit', calming: 'Beruhigung', glow: 'Glow', anti_aging: 'Anti-Aging',
-    light_texture: 'Leichte Textur', rich_texture: 'Reichhaltige Textur', fragrance_free: 'Parfumfrei',
-    alcohol_free: 'Alkoholfrei', vegan: 'Vegan', non_comedogenic: 'Nicht komedogen', oil_free: 'Ölfrei',
-    cruelty_free: 'Tierversuchsfrei', natural_ingredients: 'Natürliche Inhaltsstoffe',
+    alcohol: 'Alkohol', retinol: 'Retinol', vitamin_c: 'Vitamin C', niacinamide: 'Niacinamid',
+    hydration: 'Mehr Feuchtigkeit', calming: 'Beruhigung', glow: 'Glow', anti_aging: 'Anti-Aging',
+    barrier_support: 'Hautbarriere', sun_protection: 'Sonnenschutz', brightening: 'Aufhellung',
+    light_texture: 'Leichte Textur', rich_texture: 'Reichhaltige Textur', vegan: 'Vegan',
+    non_comedogenic: 'Nicht komedogen', oil_free: 'Ölfrei', cruelty_free: 'Tierversuchsfrei',
+    natural_ingredients: 'Natürliche Inhaltsstoffe',
   } as Record<string, string>)[value] || value
 }
 const skinTypeOptions = [
@@ -62,14 +64,19 @@ const skinTypeOptions = [
 ]
 
 const editableFactGroups = [
-  { key: 'concern', label: 'Hautthemen', values: ['acne', 'blemishes', 'redness', 'pores', 'dark_spots'] },
-  { key: 'skin_state', label: 'Aktueller Zustand', values: ['balanced', 'oily', 'oily_t_zone', 'shine', 'dryness', 'dehydration', 'tightness', 'flakiness', 'rough_texture', 'combination_zones', 'refined_pores', 'clear_skin', 'matte'] },
+  { key: 'concern', label: 'Hautthemen', values: ['acne', 'blemishes', 'blackheads', 'redness', 'pores', 'dark_spots', 'dark_circles', 'wrinkles'] },
+  { key: 'skin_state', label: 'Aktueller Zustand', values: ['balanced', 'oily', 'oily_t_zone', 'shine', 'dryness', 'dehydration', 'tightness', 'flakiness', 'rough_texture', 'matte'] },
   { key: 'sensitivity', label: 'Empfindlichkeit', values: ['sensitive', 'tolerant'] },
   { key: 'product_reaction', label: 'Reaktionen', values: ['burning', 'too_greasy', 'drying', 'breakout'] },
-  { key: 'ingredient_avoidance', label: 'Meiden', values: ['fragrance', 'alcohol'] },
-  { key: 'goal', label: 'Ziele', values: ['hydration', 'calming', 'glow', 'anti_aging'] },
-  { key: 'preference', label: 'Vorlieben', values: ['light_texture', 'rich_texture', 'fragrance_free', 'alcohol_free', 'vegan', 'non_comedogenic', 'oil_free', 'cruelty_free', 'natural_ingredients'] },
+  { key: 'ingredient_avoidance', label: 'Meiden', values: ['fragrance', 'alcohol', 'retinol', 'vitamin_c'] },
+  { key: 'allergy', label: 'Allergien', values: ['fragrance', 'alcohol', 'retinol', 'niacinamide', 'vitamin_c'] },
+  { key: 'goal', label: 'Ziele', values: ['hydration', 'calming', 'glow', 'anti_aging', 'barrier_support', 'sun_protection', 'brightening'] },
+  { key: 'preference', label: 'Produkt-Vorlieben', values: ['light_texture', 'rich_texture', 'vegan', 'non_comedogenic', 'oil_free', 'cruelty_free', 'natural_ingredients'] },
 ]
+
+const editableFactValuesByKey = Object.fromEntries(
+  editableFactGroups.map(group => [group.key, new Set(group.values)])
+)
 
 function emptyEditableFacts(): EditableSkinFacts {
   return Object.fromEntries(editableFactGroups.map(group => [group.key, []]))
@@ -79,7 +86,9 @@ function factsFromProfile(profile: SkinProfile | null): EditableSkinFacts {
   const next = emptyEditableFacts()
   if (!profile) return next
   for (const fact of profile.facts) {
-    if (next[fact.key] && !next[fact.key].includes(fact.value)) next[fact.key].push(fact.value)
+    if (next[fact.key] && editableFactValuesByKey[fact.key]?.has(fact.value) && !next[fact.key].includes(fact.value)) {
+      next[fact.key].push(fact.value)
+    }
   }
   return next
 }

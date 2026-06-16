@@ -188,13 +188,15 @@ export default function Home() {
   const [recommendedProducts, setRecommendedProducts] = useState<RecommendedProduct[]>([])
   const [recommendationPage, setRecommendationPage] = useState(0)
   const [recommendationsLoading, setRecommendationsLoading] = useState(false)
+  const [profileSkinType, setProfileSkinType] = useState<string | null>(null)
+  const [profileGender, setProfileGender] = useState<string | null>(null)
   const styleRef = useRef<HTMLStyleElement | null>(null)
   const { user, token, updateUser } = useAuth()
   const navigate = useNavigate()
 
   const firstName  = user?.name?.split(' ')[0] || user?.email?.split('@')[0] || null
-  const skinType   = user?.skinType || null
-  const gender     = user?.gender ?? null
+  const skinType   = profileSkinType ?? user?.skinType ?? null
+  const gender     = profileGender ?? user?.gender ?? null
   const greeting   = getGreeting(gender)
   const categories = getCategoriesForGender(gender)
 
@@ -205,6 +207,43 @@ export default function Home() {
     styleRef.current = el
     return () => { if (styleRef.current) document.head.removeChild(styleRef.current) }
   }, [])
+
+  useEffect(() => {
+    async function fetchProfileContext() {
+      if (!token) {
+        setProfileSkinType(null)
+        setProfileGender(null)
+        return
+      }
+
+      try {
+        const res = await fetch(apiUrl('/api/auth/profile-context'), {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+
+        if (!res.ok) return
+
+        const data = await res.json()
+        const nextSkinType = data.skinType ?? null
+        const nextGender = data.gender ?? null
+
+        setProfileSkinType(nextSkinType)
+        setProfileGender(nextGender)
+
+        if (user && (user.skinType !== nextSkinType || user.gender !== nextGender)) {
+          updateUser({
+            ...user,
+            skinType: nextSkinType,
+            gender: nextGender,
+          })
+        }
+      } catch (err) {
+        console.error(err)
+      }
+    }
+
+    fetchProfileContext()
+  }, [token, user?.id, user?.skinType, user?.gender, updateUser])
 
   useEffect(() => {
     async function fetchRecommendations() {
@@ -303,6 +342,7 @@ export default function Home() {
                             method: 'DELETE', headers: { Authorization: `Bearer ${t}` },
                           })
                           const data = await res.json()
+                          setProfileSkinType(null)
                           if (data.user) updateUser({ ...user!, ...data.user, token: t })
                           else updateUser({ ...user!, skinType: null, token: t })
                         } catch (err) { console.error(err) }

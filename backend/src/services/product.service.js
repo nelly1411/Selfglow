@@ -1,6 +1,6 @@
 const prisma = require("../config/prisma");
 const { refreshUserProfileEmbedding } = require("./user-profile-embedding.service");
-const { getUserSkinProfileFacts } = require("./user-skin-profile.service");
+const { getUserSkinProfileFacts, getCurrentSkinTypeFromFacts } = require("./user-skin-profile.service");
 
 function toBool(value) {
   return String(value).trim().toLowerCase() === "true";
@@ -156,11 +156,12 @@ function scoreRecommendedProduct(product, user, facts) {
   let bonus = 0;
   const reasons = [];
   const bullets = [];
+  const effectiveSkinType = getCurrentSkinTypeFromFacts(facts) || user.skinType;
 
-  if (user.skinType && hasTextMatch(product.skinTypes, [user.skinType])) {
+  if (effectiveSkinType && hasTextMatch(product.skinTypes, [effectiveSkinType])) {
     bonus += 0.12;
-    reasons.push(`Passt zu deinem Hauttyp: ${user.skinType}`);
-    bullets.push(SKIN_TYPE_LABELS[user.skinType] || user.skinType);
+    reasons.push(`Passt zu deinem Hauttyp: ${effectiveSkinType}`);
+    bullets.push(SKIN_TYPE_LABELS[effectiveSkinType] || effectiveSkinType);
   }
 
   const concerns = facts

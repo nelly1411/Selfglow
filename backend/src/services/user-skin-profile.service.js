@@ -480,16 +480,53 @@ Examples:
   }
 }
 
-async function saveSkinType(userId, facts) {
+function getCurrentSkinTypeFromFacts(facts) {
   const skinTypeFact = facts
     .filter((fact) => fact.key === "skin_type" && SKIN_TYPES.has(fact.value))
-    .sort((a, b) => b.confidence - a.confidence)[0];
+    .sort((a, b) => {
+      const aTime = new Date(a.updatedAt || a.createdAt || 0).getTime();
+      const bTime = new Date(b.updatedAt || b.createdAt || 0).getTime();
+      if (aTime !== bTime) return bTime - aTime;
+      return Number(b.confidence || 0) - Number(a.confidence || 0);
+    })[0];
+
+  return skinTypeFact?.value || null;
+}
+
+function getBestExtractedSkinTypeFact(facts) {
+  return facts
+    .filter((fact) => fact.key === "skin_type" && SKIN_TYPES.has(fact.value))
+    .sort((a, b) => Number(b.confidence || 0) - Number(a.confidence || 0))[0] || null;
+}
+
+async function saveSkinType(userId, facts, source = "chat") {
+  const skinTypeFact = getBestExtractedSkinTypeFact(facts);
 
   if (!skinTypeFact || skinTypeFact.confidence < 0.72) return null;
 
-  await prisma.user.update({
-    where: { id: userId },
-    data: { skinType: skinTypeFact.value },
+  await prisma.$transaction(async (tx) => {
+    await tx.user.update({
+      where: { id: userId },
+      data: { skinType: skinTypeFact.value },
+    });
+
+    await tx.userSkinProfileFact.deleteMany({
+      where: {
+        userId,
+        key: "skin_type",
+      },
+    });
+
+    await tx.userSkinProfileFact.create({
+      data: {
+        userId,
+        key: "skin_type",
+        value: skinTypeFact.value,
+        source,
+        confidence: skinTypeFact.confidence,
+        evidence: skinTypeFact.evidence,
+      },
+    });
   });
 
   return skinTypeFact.value;
@@ -500,6 +537,7 @@ async function saveFacts(userId, facts, source = "chat") {
 
   for (const fact of facts) {
     if (!FACT_KEYS.has(fact.key) || DEPRECATED_FACT_KEYS.includes(fact.key)) continue;
+    if (fact.key === "skin_type") continue;
 
     try {
       await prisma.userSkinProfileFact.upsert({
@@ -597,7 +635,7 @@ async function captureSkinAnalysisProfileFacts(userId, analysis) {
   const facts = buildSkinAnalysisFacts(analysis);
   if (facts.length === 0) return { facts: [], skinType: null };
 
-  const skinType = await saveSkinType(userId, facts);
+  const skinType = await saveSkinType(userId, facts, "skin_analysis");
   const savedFacts = await saveFacts(userId, facts, "skin_analysis");
 
   return { facts: savedFacts, skinType };
@@ -660,7 +698,7 @@ async function captureReviewProfileFacts(userId, reviewText, product) {
   const facts = extractReviewFacts(reviewText, product);
   if (facts.length === 0) return { facts: [], skinType: null };
 
-  const skinType = await saveSkinType(userId, facts);
+  const skinType = await saveSkinType(userId, facts, "review");
   const savedFacts = await saveFacts(userId, facts, "review");
 
   return { facts: savedFacts, skinType };
@@ -737,4 +775,5 @@ module.exports = {
   captureSkinAnalysisProfileFacts,
   captureReviewProfileFacts,
   getUserSkinProfileFacts,
+  getCurrentSkinTypeFromFacts,
 };

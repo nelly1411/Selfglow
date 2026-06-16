@@ -302,7 +302,7 @@ export default function Chatbot() {
     isLoadingHistory,
     weather,
   } = useChat()
-  const { token, user } = useAuth()
+  const { token, user, updateUser } = useAuth()
 
   const [isLoading, setIsLoading] = useState(false)
   const [explainingMessageId, setExplainingMessageId] = useState<string | null>(null)
@@ -336,7 +336,16 @@ export default function Chatbot() {
         return
       }
 
-      setProfileContext(await response.json())
+      const data = await response.json()
+      setProfileContext(data)
+
+      if (user && (data.skinType !== user.skinType || data.gender !== user.gender)) {
+        updateUser({
+          ...user,
+          skinType: data.skinType ?? null,
+          gender: data.gender ?? null,
+        })
+      }
     } catch (err) {
       console.error(err)
       setProfileContext(null)
