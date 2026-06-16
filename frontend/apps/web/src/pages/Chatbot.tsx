@@ -199,7 +199,6 @@ function buildPersonalizedStarterQuestions(
       questions.push({ label: 'Hautbarriere stärken', message: 'Wie kann ich meine Hautbarriere mit einer einfachen Routine unterstützen?' })
     }
   }
-
   if (questions.length === 0) {
     questions.push({ label: 'Passende Produkte', message: 'Welche Produkte passen zu meinem aktuellen Hautprofil?' })
     questions.push({ label: 'Einfache Routine', message: 'Hilf mir, eine einfache Hautpflegeroutine zusammenzustellen.' })
@@ -302,11 +301,8 @@ export default function Chatbot() {
     weather,
     fetchWeather,
   } = useChat()
-<<<<<<< HEAD
-=======
-  const { token, user } = useAuth()
->>>>>>> 0ae650cf4677bbb9d15704fde76a0da900060d04
 
+  const { token, user } = useAuth()
   const [isLoading, setIsLoading] = useState(false)
   const [explainingMessageId, setExplainingMessageId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
