@@ -69,6 +69,7 @@ type RecommendedProduct = {
   imageUrl?: string | null
   rating?: number | null
   recommendationReason?: string | null
+  recommendationBullets?: string[]
 }
 
 const skinLabels: Record<string, string> = {
@@ -439,9 +440,30 @@ export default function Home() {
                       <p style={{ fontSize: 10, color: '#9a7a5a', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {product.brand}
                       </p>
-                      <p style={{ fontSize: 9, color: '#7a5c42', margin: '2px 0 0', lineHeight: 1.35, minHeight: 24, overflow: 'hidden' }}>
-                        {product.recommendationReason || 'Basierend auf deinem Hautprofil empfohlen'}
-                      </p>
+                      {product.recommendationBullets && product.recommendationBullets.length > 0 && (
+                        <div style={{ display: 'flex', flexWrap: 'nowrap', gap: 4, marginTop: 2, overflow: 'hidden', minHeight: 18 }}>
+                          {product.recommendationBullets.slice(0, 4).map((bullet) => (
+                            <span
+                              key={bullet}
+                              style={{
+                                flex: '0 0 auto',
+                                borderRadius: 999,
+                                background: '#FDF7F0',
+                                padding: '2px 7px',
+                                fontSize: 9,
+                                lineHeight: '14px',
+                                color: '#7A5A3A',
+                                maxWidth: 78,
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              {bullet}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                       <div style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                         <span style={{ fontSize: 12, fontWeight: 800, color: '#1c1209' }}>
                           {product.price.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}

@@ -116,22 +116,63 @@ function hasTextMatch(source, targets) {
   return targets.some((target) => text.includes(String(target).toLowerCase()));
 }
 
+const SKIN_TYPE_LABELS = {
+  Normal: "Normale Haut",
+  Oily: "Fettige Haut",
+  Dry: "Trockene Haut",
+  Combination: "Mischhaut",
+  Sensitive: "Sensible Haut",
+};
+
+const FACT_LABELS = {
+  acne: "Akne",
+  blemishes: "Unreinheiten",
+  redness: "Rötungen",
+  pores: "Poren",
+  blackheads: "Mitesser",
+  dark_spots: "Pigmentflecken",
+  dark_circles: "Augenringe",
+  wrinkles: "Falten",
+  balanced: "Balance",
+  oily: "Fettig",
+  oily_t_zone: "T-Zone",
+  dryness: "Feuchtigkeit",
+  dehydration: "Feuchtigkeit",
+  tightness: "Spannung",
+  flakiness: "Schuppen",
+  rough_texture: "Textur",
+  shine: "Glanz",
+  refined_pores: "Poren",
+  clear_skin: "Klare Haut",
+  matte: "Matt",
+  combination_zones: "Mischhaut",
+};
+
+function getFactLabel(value) {
+  return FACT_LABELS[value] || String(value || "").replace(/_/g, " ");
+}
+
 function scoreRecommendedProduct(product, user, facts) {
   let bonus = 0;
   const reasons = [];
+  const bullets = [];
 
   if (user.skinType && hasTextMatch(product.skinTypes, [user.skinType])) {
     bonus += 0.12;
     reasons.push(`Passt zu deinem Hauttyp: ${user.skinType}`);
+    bullets.push(SKIN_TYPE_LABELS[user.skinType] || user.skinType);
   }
 
   const concerns = facts
     .filter((fact) => fact.key === "concern" || fact.key === "skin_state")
     .map((fact) => fact.value);
 
-  if (concerns.length > 0 && hasTextMatch(product.concerns, concerns)) {
+  const matchedConcerns = concerns.filter((concern) => hasTextMatch(product.concerns, [concern]));
+
+  if (matchedConcerns.length > 0) {
     bonus += 0.1;
     reasons.push("Passt zu deinen Hautbedürfnissen");
+    bullets.push(...matchedConcerns.map(getFactLabel));
   }
 
   const sensitive = facts.some(
@@ -141,11 +182,13 @@ function scoreRecommendedProduct(product, user, facts) {
   if (sensitive && product.fragranceFree) {
     bonus += 0.06;
     reasons.push("Parfümfrei für sensible Haut");
+    bullets.push("Parfümfrei");
   }
 
   if (sensitive && product.alcoholFree) {
     bonus += 0.04;
     reasons.push("Alkoholfrei für sensible Haut");
+    bullets.push("Alkoholfrei");
   }
 
   const preferences = facts
@@ -155,16 +198,19 @@ function scoreRecommendedProduct(product, user, facts) {
   if (preferences.includes("vegan") && product.vegan) {
     bonus += 0.05;
     reasons.push("Vegan entsprechend deiner Vorliebe");
+    bullets.push("Vegan");
   }
 
   if (preferences.includes("alcohol_free") && product.alcoholFree) {
     bonus += 0.04;
     reasons.push("Alkoholfrei entsprechend deiner Vorliebe");
+    bullets.push("Alkoholfrei");
   }
 
   if (preferences.includes("fragrance_free") && product.fragranceFree) {
     bonus += 0.04;
     reasons.push("Parfümfrei entsprechend deiner Vorliebe");
+    bullets.push("Parfümfrei");
   }
 
   const avoidances = facts
@@ -177,12 +223,14 @@ function scoreRecommendedProduct(product, user, facts) {
     if (ingredients.some((ingredient) => ingredient.includes(String(avoidance).toLowerCase()))) {
       bonus -= 0.3;
       reasons.push(`Achtung: enthält möglicherweise ${avoidance}`);
+      bullets.push("Hinweis");
     }
   }
 
   return {
     bonus,
     reason: reasons[0] || "Basierend auf deinem Hautprofil empfohlen",
+    bullets: [...new Set(bullets)].slice(0, 4),
   };
 }
 
@@ -226,6 +274,7 @@ async function getRecommendedProductsForUser(userId, options = {}) {
         similarity,
         recommendationScore: similarity + scoring.bonus,
         recommendationReason: scoring.reason,
+        recommendationBullets: scoring.bullets,
       };
     })
     .sort((a, b) => b.recommendationScore - a.recommendationScore)
