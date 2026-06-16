@@ -605,21 +605,36 @@ async function saveSkinType(userId, facts, source = "chat") {
       data: { skinType: skinTypeFact.value },
     });
 
-    await tx.userSkinProfileFact.deleteMany({
+    await tx.userSkinProfileFact.updateMany({
       where: {
         userId,
         key: "skin_type",
       },
+      data: { isActive: false },
     });
 
-    await tx.userSkinProfileFact.create({
-      data: {
+    await tx.userSkinProfileFact.upsert({
+      where: {
+        userId_key_value: {
+          userId,
+          key: "skin_type",
+          value: skinTypeFact.value,
+        },
+      },
+      create: {
         userId,
         key: "skin_type",
         value: skinTypeFact.value,
         source,
         confidence: skinTypeFact.confidence,
         evidence: skinTypeFact.evidence,
+        isActive: true,
+      },
+      update: {
+        source,
+        confidence: skinTypeFact.confidence,
+        evidence: skinTypeFact.evidence,
+        isActive: true,
       },
     });
   });
@@ -650,11 +665,13 @@ async function saveFacts(userId, facts, source = "chat") {
           source,
           confidence: fact.confidence,
           evidence: fact.evidence,
+          isActive: true,
         },
         update: {
           source,
           confidence: fact.confidence,
           evidence: fact.evidence,
+          isActive: true,
         },
       });
       saved.push(fact);
@@ -808,12 +825,14 @@ async function captureUserSkinProfileFromMessage(userId, message) {
   let removedPreferences = [];
 
   if (negativePreferenceValues.length > 0) {
-    const deleteResult = await prisma.userSkinProfileFact.deleteMany({
+    const deleteResult = await prisma.userSkinProfileFact.updateMany({
       where: {
         userId,
         key: "preference",
         value: { in: negativePreferenceValues },
+        isActive: true,
       },
+      data: { isActive: false },
     });
     if (deleteResult.count > 0) {
       removedPreferences = negativePreferenceValues;
@@ -844,17 +863,19 @@ async function getUserSkinProfileFacts(userId) {
   if (!userId) return [];
 
   try {
-    await prisma.userSkinProfileFact.deleteMany({
+    await prisma.userSkinProfileFact.updateMany({
       where: {
         userId,
         key: { in: DEPRECATED_FACT_KEYS },
       },
+      data: { isActive: false },
     });
 
     return await prisma.userSkinProfileFact.findMany({
       where: {
         userId,
         key: { notIn: DEPRECATED_FACT_KEYS },
+        isActive: true,
       },
       orderBy: { updatedAt: "desc" },
       take: 30,
