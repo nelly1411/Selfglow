@@ -50,9 +50,9 @@ function factLabel(value: string) {
     alcohol: 'Alkohol', retinol: 'Retinol', vitamin_c: 'Vitamin C', niacinamide: 'Niacinamid',
     hydration: 'Mehr Feuchtigkeit', calming: 'Beruhigung', glow: 'Glow', anti_aging: 'Anti-Aging',
     barrier_support: 'Hautbarriere', sun_protection: 'Sonnenschutz', brightening: 'Aufhellung',
-    light_texture: 'Leichte Textur', rich_texture: 'Reichhaltige Textur', vegan: 'Vegan',
-    non_comedogenic: 'Nicht komedogen', oil_free: 'Ölfrei', cruelty_free: 'Tierversuchsfrei',
-    natural_ingredients: 'Natürliche Inhaltsstoffe',
+    light_texture: 'Leichte Textur', rich_texture: 'Reichhaltige Textur', fragrance_free: 'Parfümfrei',
+    alcohol_free: 'Alkoholfrei', vegan: 'Vegan', non_comedogenic: 'Nicht komedogen',
+    oil_free: 'Ölfrei', cruelty_free: 'Tierversuchsfrei', natural_ingredients: 'Natürliche Inhaltsstoffe',
   } as Record<string, string>)[value] || value
 }
 const skinTypeOptions = [
@@ -67,11 +67,11 @@ const editableFactGroups = [
   { key: 'concern', label: 'Hautthemen', values: ['acne', 'blemishes', 'blackheads', 'redness', 'pores', 'dark_spots', 'dark_circles', 'wrinkles'] },
   { key: 'skin_state', label: 'Aktueller Zustand', values: ['balanced', 'oily', 'oily_t_zone', 'shine', 'dryness', 'dehydration', 'tightness', 'flakiness', 'rough_texture', 'matte'] },
   { key: 'sensitivity', label: 'Empfindlichkeit', values: ['sensitive', 'tolerant'] },
+  { key: 'preference', label: 'Produkt-Vorlieben', values: ['light_texture', 'rich_texture', 'fragrance_free', 'alcohol_free', 'vegan', 'non_comedogenic', 'oil_free', 'cruelty_free', 'natural_ingredients'] },
   { key: 'product_reaction', label: 'Reaktionen', values: ['burning', 'too_greasy', 'drying', 'breakout'] },
   { key: 'ingredient_avoidance', label: 'Meiden', values: ['fragrance', 'alcohol', 'retinol', 'vitamin_c'] },
   { key: 'allergy', label: 'Allergien', values: ['fragrance', 'alcohol', 'retinol', 'niacinamide', 'vitamin_c'] },
   { key: 'goal', label: 'Ziele', values: ['hydration', 'calming', 'glow', 'anti_aging', 'barrier_support', 'sun_protection', 'brightening'] },
-  { key: 'preference', label: 'Produkt-Vorlieben', values: ['light_texture', 'rich_texture', 'vegan', 'non_comedogenic', 'oil_free', 'cruelty_free', 'natural_ingredients'] },
 ]
 
 const editableFactValuesByKey = Object.fromEntries(
@@ -133,15 +133,15 @@ const CSS = `
   .p-close-btn { background:none; border:none; cursor:pointer; color:#9a7a5a; padding:6px; border-radius:8px; display:flex; align-items:center; transition:all 0.2s; }
   .p-close-btn:hover { color:#1c1209; background:#F0DCC8; }
   .p-gender-btn { flex:1; padding:10px 8px; border-radius:12px; cursor:pointer; transition:all 0.15s ease; display:flex; flex-direction:column; align-items:center; gap:4px; font-family:'Outfit',sans-serif; }
-  .p-skin-option { border:1.5px solid #E8D5C0; background:#fff; border-radius:14px; padding:12px 10px; cursor:pointer; font-family:'Outfit',sans-serif; transition:all 0.15s ease; text-align:left; }
+  .p-skin-option { border:1.5px solid #E8D5C0; background:#fff; border-radius:12px; padding:8px 9px; cursor:pointer; font-family:'Outfit',sans-serif; transition:all 0.15s ease; text-align:left; }
   .p-skin-option:hover { border-color:#D4A574; background:#FDF6EE; }
   .p-chip { border:1px solid #E8D5C0; background:#fff; color:#7a5c42; border-radius:999px; padding:8px 11px; font-size:12px; font-weight:600; cursor:pointer; font-family:'Outfit',sans-serif; transition:all 0.15s ease; }
   .p-chip.active { border-color:#D4A574; background:#FDF6EE; color:#1c1209; box-shadow:0 0 0 2px rgba(212,165,116,0.12); }
   .p-fact-pill { display:inline-flex; align-items:center; gap:6px; border:1px solid #F0DCC8; background:#FDF6EE; color:#7a5c42; border-radius:999px; padding:7px 10px; font-size:12px; font-weight:600; font-family:'Outfit',sans-serif; }
-  .p-fact-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); gap:12px; }
-  .p-fact-group { border:1px solid #F0DCC8; border-radius:16px; padding:14px; background:#fff; }
-  .p-fact-group-head { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; margin-bottom:10px; }
-  .p-fact-value-btn { min-height:44px; border:1px solid #E8D5C0; background:#fff; color:#7a5c42; border-radius:12px; padding:8px 10px; cursor:pointer; font-family:'Outfit',sans-serif; transition:all 0.15s ease; text-align:left; display:flex; justify-content:space-between; align-items:center; gap:8px; }
+  .p-fact-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:8px; }
+  .p-fact-group { border:1px solid #F0DCC8; border-radius:14px; padding:10px; background:#fff; }
+  .p-fact-group-head { display:flex; justify-content:space-between; align-items:flex-start; gap:8px; margin-bottom:7px; }
+  .p-fact-value-btn { min-height:34px; border:1px solid #E8D5C0; background:#fff; color:#7a5c42; border-radius:10px; padding:6px 8px; cursor:pointer; font-family:'Outfit',sans-serif; transition:all 0.15s ease; text-align:left; display:flex; justify-content:space-between; align-items:center; gap:6px; }
   .p-fact-value-btn.active { border-color:#D4A574; background:#FDF6EE; color:#1c1209; box-shadow:0 0 0 2px rgba(212,165,116,0.12); }
   .p-meter { height:7px; border-radius:999px; background:#F3E4D2; overflow:hidden; }
   .p-meter-fill { height:100%; border-radius:999px; background:linear-gradient(90deg,#7ab87a,#D4A574,#c47a5a); transition:width 0.3s ease; }
@@ -267,9 +267,9 @@ function SkinProfileModal({
           <button className="p-close-btn" onClick={onClose} title="Schließen"><X size={20} /></button>
         </div>
 
-        <div style={{ padding: 28, display: 'flex', flexDirection: 'column', gap: 18 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(240px,1fr))', gap: 14 }}>
-            <div style={{ border: '1px solid #F0DCC8', borderRadius: 20, padding: 18, background: 'linear-gradient(135deg,#FFF9F3 0%,#fff 100%)' }}>
+        <div style={{ padding: 22, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(240px,1fr))', gap: 10 }}>
+            <div style={{ border: '1px solid #F0DCC8', borderRadius: 18, padding: 14, background: 'linear-gradient(135deg,#FFF9F3 0%,#fff 100%)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
                 <div>
                   <p style={{ fontSize: 12, color: '#9a7a5a', margin: '0 0 4px', fontWeight: 700 }}>Hautprofil</p>
@@ -277,13 +277,13 @@ function SkinProfileModal({
                 </div>
               </div>
               <div className="p-meter"><div className="p-meter-fill" style={{ width: `${completion}%` }} /></div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 12 }}>
-                <div style={{ border: '1px solid #F0DCC8', borderRadius: 12, padding: 10, background: '#fff' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginTop: 10 }}>
+                <div style={{ border: '1px solid #F0DCC8', borderRadius: 12, padding: 8, background: '#fff' }}>
                   <Activity size={15} color="#D4A574" />
                   <p style={{ fontSize: 18, fontWeight: 800, color: '#1c1209', margin: '6px 0 0' }}>{selectedFactCount}</p>
                   <p style={{ fontSize: 11, color: '#9a7a5a', margin: 0 }}>Ausgewählt</p>
                 </div>
-                <div style={{ border: '1px solid #F0DCC8', borderRadius: 12, padding: 10, background: '#fff' }}>
+                <div style={{ border: '1px solid #F0DCC8', borderRadius: 12, padding: 8, background: '#fff' }}>
                   <ShieldCheck size={15} color="#D4A574" />
                   <p style={{ fontSize: 18, fontWeight: 800, color: '#1c1209', margin: '6px 0 0' }}>{filledFactGroups}</p>
                   <p style={{ fontSize: 11, color: '#9a7a5a', margin: 0 }}>Bereiche</p>
@@ -291,7 +291,7 @@ function SkinProfileModal({
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(190px,1fr))', gap: 14 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(190px,1fr))', gap: 10 }}>
               <button
                 type="button"
                 className="p-mirror"
@@ -302,15 +302,15 @@ function SkinProfileModal({
                 <span className="p-mirror-shine" />
               </button>
 
-              <div style={{ border: '1px solid #F0DCC8', borderRadius: 16, padding: 14, background: '#fff' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+              <div style={{ border: '1px solid #F0DCC8', borderRadius: 14, padding: 10, background: '#fff' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 7 }}>
                   <p style={{ fontSize: 12, color: '#9a7a5a', margin: 0, fontWeight: 800 }}>{factKeyLabel('skin_type')}</p>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(88px,1fr))', gap: 8 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(78px,1fr))', gap: 6 }}>
                   {skinTypeOptions.map(option => (
                     <button key={option.value} className="p-skin-option" onClick={() => onSkinTypeChange(editSkinType === option.value ? null : option.value)}
-                      style={{ borderColor: editSkinType === option.value ? option.tone : '#E8D5C0', background: editSkinType === option.value ? '#FDF6EE' : '#fff', padding: '10px 9px' }}>
-                      <span style={{ display: 'block', width: 9, height: 9, borderRadius: '50%', background: option.tone, marginBottom: 6 }} />
+                      style={{ borderColor: editSkinType === option.value ? option.tone : '#E8D5C0', background: editSkinType === option.value ? '#FDF6EE' : '#fff' }}>
+                      <span style={{ display: 'block', width: 8, height: 8, borderRadius: '50%', background: option.tone, marginBottom: 4 }} />
                       <span style={{ fontSize: 12, fontWeight: 700, color: '#1c1209' }}>{option.label}</span>
                     </button>
                   ))}
@@ -330,7 +330,7 @@ function SkinProfileModal({
                     </div>
                     <span style={{ fontSize: 11, color: '#9a7a5a', fontWeight: 800 }}>{selectedValues.length}/{group.values.length}</span>
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(132px,1fr))', gap: 8 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(104px,1fr))', gap: 6 }}>
                     {group.values.map(value => {
                       const selected = selectedValues.includes(value)
                       return (
@@ -342,7 +342,7 @@ function SkinProfileModal({
                           title={`${group.key}: ${value}`}
                         >
                           <span>
-                            <span style={{ display: 'block', fontSize: 12, fontWeight: 800 }}>{factLabel(value)}</span>
+                            <span style={{ display: 'block', fontSize: 11, fontWeight: 800 }}>{factLabel(value)}</span>
                           </span>
                         </button>
                       )
@@ -458,26 +458,50 @@ export default function Profile() {
       .catch(() => {}).finally(() => setReviewsLoad(false))
   }, [token])
 
-  useEffect(() => {
+  async function loadSkinProfileContext() {
     if (!token) return
-    fetch(apiUrl('/api/auth/profile-context'), { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.ok ? r.json() : null)
-      .then(data => {
-        if (!data) return
-        const nextProfile = {
-          skinType: data.skinType ?? null,
-          gender: data.gender ?? null,
-          facts: Array.isArray(data.facts) ? data.facts : [],
-          latestAnalysis: data.latestAnalysis ?? null,
-          latestProfileImage: data.latestProfileImage ?? null,
-          profileImages: Array.isArray(data.profileImages) ? data.profileImages : [],
-        }
-        setSkinProfile(nextProfile)
-        setEditSkinType(nextProfile.skinType || user?.skinType || null)
-        setEditSkinFacts(factsFromProfile(nextProfile))
-      })
-      .catch(() => {})
+    try {
+      const response = await fetch(apiUrl('/api/auth/profile-context'), { headers: { Authorization: `Bearer ${token}` } })
+      const data = response.ok ? await response.json() : null
+      if (!data) return
+      const nextProfile = {
+        skinType: data.skinType ?? null,
+        gender: data.gender ?? null,
+        facts: Array.isArray(data.facts) ? data.facts : [],
+        latestAnalysis: data.latestAnalysis ?? null,
+        latestProfileImage: data.latestProfileImage ?? null,
+        profileImages: Array.isArray(data.profileImages) ? data.profileImages : [],
+      }
+      setSkinProfile(nextProfile)
+      setEditSkinType(nextProfile.skinType || user?.skinType || null)
+      setEditSkinFacts(factsFromProfile(nextProfile))
+
+      if (user && (user.skinType !== nextProfile.skinType || user.gender !== nextProfile.gender)) {
+        updateUser({
+          ...user,
+          skinType: nextProfile.skinType,
+          gender: (nextProfile.gender as Gender) ?? null,
+        })
+      }
+    } catch {}
+  }
+
+  useEffect(() => {
+    loadSkinProfileContext()
   }, [token, user?.skinType])
+
+  useEffect(() => {
+    function handleRefresh() {
+      if (document.visibilityState === 'visible') loadSkinProfileContext()
+    }
+
+    window.addEventListener('focus', handleRefresh)
+    document.addEventListener('visibilitychange', handleRefresh)
+    return () => {
+      window.removeEventListener('focus', handleRefresh)
+      document.removeEventListener('visibilitychange', handleRefresh)
+    }
+  }, [token, user?.skinType, user?.gender])
 
   const latestOrder = orders[0]
   const avgRating   = userReviews.length

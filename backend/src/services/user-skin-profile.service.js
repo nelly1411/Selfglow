@@ -59,7 +59,7 @@ const FACT_CATALOG = {
     vitamin_c: ["allergic to vitamin c", "allergy to vitamin c", "维c过敏"],
   },
   goal: {
-    hydration: ["hydration", "hydrate", "moisture", "moisturizing", "feuchtigkeit", "保湿", "补水"],
+    hydration: ["hydration", "hydrate", "moisture", "moisturizing", "feuchtigkeit", "feutigkeit", "feuchtigkiet", "mehr feuchtigkeit", "mehr feutigkeit", "保湿", "补水"],
     calming: ["calming", "calm", "soothing", "beruhigung", "beruhigen", "舒缓"],
     glow: ["glow", "radiance", "glowing", "strahlen", "strahlend", "亮泽"],
     anti_aging: ["anti-aging", "anti aging", "anti-age", "aging", "wrinkle care", "falten", "抗老"],
@@ -94,7 +94,13 @@ const ALLOWED_FACT_VALUES = Object.fromEntries(
 const PREFERENCE_VALUES = Object.keys(FACT_CATALOG.preference);
 
 function normalizeText(value) {
-  return String(value || "").trim().toLowerCase().replace(/\s+/g, " ");
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase()
+    .replace(/ß/g, "ss")
+    .replace(/\s+/g, " ");
 }
 
 function isFactTableUnavailable(error) {
@@ -136,10 +142,97 @@ function isNegatedNear(text, term) {
     /^(不要|不用|不想|避免|避开)/.test(after);
 }
 
-function termMatches(text, term) {
+function getEditDistance(a, b, maxDistance) {
+  if (Math.abs(a.length - b.length) > maxDistance) return maxDistance + 1;
+
+  let previous = Array.from({ length: b.length + 1 }, (_, index) => index);
+
+  for (let i = 1; i <= a.length; i += 1) {
+    const current = [i];
+    let rowMin = current[0];
+
+    for (let j = 1; j <= b.length; j += 1) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      const value = Math.min(
+        previous[j] + 1,
+        current[j - 1] + 1,
+        previous[j - 1] + cost
+      );
+      current[j] = value;
+      rowMin = Math.min(rowMin, value);
+    }
+
+    if (rowMin > maxDistance) return maxDistance + 1;
+    previous = current;
+  }
+
+  return previous[b.length];
+}
+
+function getFuzzyThreshold(term) {
+  const length = term.replace(/\s+/g, "").length;
+  if (length < 4) return 0;
+  if (length < 6) return 1;
+  if (length < 8) return 2;
+  return 2;
+}
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function hasExactTerm(text, normalizedTerm) {
+  if (!/^[a-z0-9 ]+$/i.test(normalizedTerm)) {
+    return text.includes(normalizedTerm);
+  }
+
+  const pattern = new RegExp(`(^|[^\\p{L}\\p{N}])${escapeRegExp(normalizedTerm)}($|[^\\p{L}\\p{N}])`, "u");
+  return pattern.test(text);
+}
+
+function getPhraseCandidates(text, wordCount) {
+  const words = text.match(/[\p{L}\p{N}]+/gu) || [];
+  const candidates = [];
+
+  for (let i = 0; i <= words.length - wordCount; i += 1) {
+    candidates.push(words.slice(i, i + wordCount).join(" "));
+  }
+
+  return candidates;
+}
+
+function fuzzyTermMatches(text, normalizedTerm) {
+  const threshold = getFuzzyThreshold(normalizedTerm);
+  if (threshold === 0) return false;
+
+  const wordCount = normalizedTerm.split(/\s+/).filter(Boolean).length;
+  const termCompact = normalizedTerm.replace(/\s+/g, "");
+
+  return getPhraseCandidates(text, wordCount).some((candidate) => {
+    const candidateCompact = candidate.replace(/\s+/g, "");
+    if (Math.abs(candidateCompact.length - termCompact.length) > threshold) return false;
+    return getEditDistance(candidateCompact, termCompact, threshold) <= threshold &&
+      !isNegatedNear(text, candidate);
+  });
+}
+
+function termMatchType(text, term) {
   const normalizedTerm = normalizeText(term);
-  if (!normalizedTerm || !text.includes(normalizedTerm)) return false;
-  return !isNegatedNear(text, normalizedTerm);
+  if (!normalizedTerm) return null;
+
+  if (hasExactTerm(text, normalizedTerm)) {
+    return isNegatedNear(text, normalizedTerm) ? null : "exact";
+  }
+
+  if (fuzzyTermMatches(text, normalizedTerm)) {
+    return "fuzzy";
+  }
+
+  return null;
+}
+
+function termMatches(text, term) {
+  return Boolean(termMatchType(text, term));
 }
 
 function matchCatalogFacts(message) {
@@ -149,8 +242,10 @@ function matchCatalogFacts(message) {
 
   for (const [key, values] of Object.entries(FACT_CATALOG)) {
     for (const [value, terms] of Object.entries(values)) {
-      if (terms.some((term) => termMatches(text, term))) {
-        facts.push({ key, value, confidence: 0.78, evidence });
+      const matchType = terms.map((term) => termMatchType(text, term)).find(Boolean);
+
+      if (matchType) {
+        facts.push({ key, value, confidence: matchType === "exact" ? 0.78 : 0.7, evidence });
       }
     }
   }
