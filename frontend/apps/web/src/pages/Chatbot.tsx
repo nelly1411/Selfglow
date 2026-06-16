@@ -23,33 +23,6 @@ type WeatherData = {
   promptContext?: string
 }
 
-type ProfileContextFact = {
-  key: string
-  value: string
-}
-
-type ProfileContextProduct = {
-  id: number
-  name: string
-  brand: string
-  category: string
-  quantity?: number
-}
-
-type ProfileContext = {
-  skinType?: string | null
-  gender?: string | null
-  facts: ProfileContextFact[]
-  cart: ProfileContextProduct[]
-  wishlist: ProfileContextProduct[]
-}
-
-type StarterQuestion = {
-  label: string
-  message: string
-  contextProductIds?: number[]
-}
-
 function getWeatherEmoji(weatherMain?: string, temp?: number): string {
   if (!weatherMain) return '🌡️'
   const w = weatherMain.toLowerCase()
@@ -74,145 +47,11 @@ function getWeatherRecommendationPrompt(weather: WeatherData): string {
   return `${emoji} Es ist ${weather.temp !== undefined ? weather.temp + '°C' : 'aktuell'} und ${weather.weatherMain?.toLowerCase() || 'bewölkt'} bei ${weather.humidity ?? '?'}% Luftfeuchtigkeit. Welche Hautpflegeprodukte empfiehlst du mir für dieses Wetter?`
 }
 
-const skinTypeLabels: Record<string, string> = {
-  Normal: 'normale Haut',
-  Oily: 'fettige Haut',
-  Dry: 'trockene Haut',
-  Sensitive: 'sensible Haut',
-  Combination: 'Mischhaut',
-}
-
-const profileFactLabels: Record<string, string> = {
-  acne: 'Unreinheiten',
-  blemishes: 'Unreinheiten',
-  redness: 'Rötungen',
-  pores: 'großen Poren',
-  dark_spots: 'Pigmentflecken',
-  balanced: 'ausgeglichener Haut',
-  oily: 'fettiger Haut',
-  oily_t_zone: 'öliger T-Zone',
-  shine: 'Glanz',
-  dryness: 'Trockenheit',
-  dehydration: 'feuchtigkeitsarmer Haut',
-  tightness: 'Spannungsgefühl',
-  flakiness: 'schuppiger Haut',
-  rough_texture: 'rauer Hauttextur',
-  refined_pores: 'feinen Poren',
-  clear_skin: 'wenigen Unreinheiten',
-  matte: 'matter Haut',
-  combination_zones: 'Mischhaut-Zonen',
-  sensitive: 'sensibler Haut',
-  tolerant: 'robuster Haut',
-  fragrance: 'Parfum',
-  alcohol: 'Alkohol',
-  fragrance_free: 'parfumfreie Pflege',
-  alcohol_free: 'alkoholfreie Pflege',
-  vegan: 'vegane Produkte',
-  non_comedogenic: 'nicht komedogene Produkte',
-  oil_free: 'ölfreie Produkte',
-  cruelty_free: 'tierversuchsfreie Produkte',
-  natural_ingredients: 'natürliche Inhaltsstoffe',
-  light_texture: 'leichte Texturen',
-  rich_texture: 'reichhaltige Texturen',
-}
-
-function formatProfileFact(value: string) {
-  return profileFactLabels[value] || value.replace(/_/g, ' ')
-}
-
-function compactProductName(value: string) {
-  const text = value.replace(/\s+/g, ' ').trim()
-  return text.length > 22 ? `${text.slice(0, 22)}...` : text
-}
-
-function getFactValues(profileContext: ProfileContext | null, keys: string[]) {
-  return (profileContext?.facts || [])
-    .filter((fact) => keys.includes(fact.key))
-    .map((fact) => fact.value)
-    .filter(Boolean)
-}
-
-function buildPersonalizedStarterQuestions(
-  userSkinType?: string | null,
-  weather?: WeatherData | null,
-  profileContext?: ProfileContext | null
-) {
-  const profileSkinType = profileContext?.skinType || userSkinType
-  const questions: StarterQuestion[] = []
-  const concerns = getFactValues(profileContext || null, ['concern', 'skin_state'])
-  const preferences = getFactValues(profileContext || null, ['preference'])
-  const avoidances = getFactValues(profileContext || null, ['ingredient_avoidance', 'allergy'])
-  const cartProduct = profileContext?.cart?.[0]
-  const wishlistProduct = profileContext?.wishlist?.[0]
-  const effectiveSkinLabel = profileSkinType ? skinTypeLabels[profileSkinType] || `${profileSkinType} Haut` : null
-
-  if (cartProduct && effectiveSkinLabel) {
-    questions.push({
-      label: `Passt ${compactProductName(cartProduct.name)}?`,
-      message: `Passt ${cartProduct.name} zu ${effectiveSkinLabel}? Bitte prüfe Inhaltsstoffe, Hauttyp und Anwendung.`,
-      contextProductIds: [cartProduct.id],
-    })
-  } else if (cartProduct) {
-    questions.push({
-      label: `${compactProductName(cartProduct.name)} anwenden`,
-      message: `Wie wende ich ${cartProduct.name} sinnvoll in meiner Routine an?`,
-      contextProductIds: [cartProduct.id],
-    })
-  } else if (effectiveSkinLabel) {
-    questions.push({
-      label: `Produkte für ${effectiveSkinLabel}`,
-      message: `Welche Produkte passen zu ${effectiveSkinLabel}?`,
-    })
-  }
-
-  if (concerns.length > 0) {
-    questions.push({
-      label: `Routine gegen ${formatProfileFact(concerns[0])}`,
-      message: `Welche Routine hilft bei ${formatProfileFact(concerns[0])}?`,
-    })
-  } else if (avoidances.length > 0) {
-    questions.push({
-      label: `Produkte ohne ${formatProfileFact(avoidances[0])}`,
-      message: `Welche Produkte passen, wenn ich ${formatProfileFact(avoidances[0])} meiden möchte?`,
-    })
-  } else if (preferences.length > 0) {
-    questions.push({
-      label: `${formatProfileFact(preferences[0])}`,
-      message: `Welche Produkte passen zu meiner Vorliebe für ${formatProfileFact(preferences[0])}?`,
-    })
-  } else if (wishlistProduct && effectiveSkinLabel) {
-    questions.push({
-      label: `Passt ${compactProductName(wishlistProduct.name)}?`,
-      message: `Passt ${wishlistProduct.name} zu ${effectiveSkinLabel}? Bitte prüfe Inhaltsstoffe, Hauttyp und Anwendung.`,
-      contextProductIds: [wishlistProduct.id],
-    })
-  } else if (effectiveSkinLabel) {
-    if (profileSkinType === 'Oily') {
-      questions.push({ label: 'Leichte Routine', message: 'Welche leichte Routine hilft bei fettiger Haut und Unreinheiten?' })
-    } else if (profileSkinType === 'Dry') {
-      questions.push({ label: 'Mehr Feuchtigkeit', message: 'Welche feuchtigkeitsspendende Routine passt zu trockener Haut?' })
-    } else if (profileSkinType === 'Sensitive') {
-      questions.push({ label: 'Parfumfreie Pflege', message: 'Welche parfumfreien Produkte sind für sensible Haut geeignet?' })
-    } else if (profileSkinType === 'Combination') {
-      questions.push({ label: 'Routine für Mischhaut', message: 'Wie kombiniere ich Pflege für ölige und trockene Hautpartien?' })
-    } else {
-      questions.push({ label: 'Hautbarriere stärken', message: 'Wie kann ich meine Hautbarriere mit einer einfachen Routine unterstützen?' })
-    }
-  }
-
-  if (questions.length === 0) {
-    questions.push({ label: 'Passende Produkte', message: 'Welche Produkte passen zu meinem aktuellen Hautprofil?' })
-    questions.push({ label: 'Einfache Routine', message: 'Hilf mir, eine einfache Hautpflegeroutine zusammenzustellen.' })
-  }
-
-  if (weather?.temp !== undefined || weather?.humidity !== undefined || weather?.weatherMain) {
-    questions.push({ label: 'Wetter-Tipps', message: getWeatherRecommendationPrompt(weather) })
-  } else {
-    questions.push({ label: 'Morgens oder abends?', message: 'Welche Produkte sollte ich morgens und abends kombinieren?' })
-  }
-
-  return questions.slice(0, 3)
-}
+const starterQuestions = [
+  'Ich habe ölige Haut und suche etwas gegen Unreinheiten.',
+  'Welche parfumfreien Produkte passen zu empfindlicher Haut?',
+  'Ich brauche eine einfache vegane Hautpflegeroutine.',
+]
 
 const medicalDisclaimer = 'hinweis: dies ist keine medizinische diagnose.'
 const legacyMedicalDisclaimer = 'Das ist keine medizinische Diagnose, sondern eine Produktempfehlung auf Basis deiner Anfrage.'
@@ -278,16 +117,6 @@ function getLatestRecommendedProductIds(messages: Message[]) {
   return []
 }
 
-function HistoryDivider() {
-  return (
-    <div className="flex items-center gap-2 py-1 text-xs text-muted-foreground">
-      <span className="h-px flex-1 bg-[#E8D5C0]" />
-      <span>Chatverlauf -</span>
-      <span className="h-px flex-1 bg-[#E8D5C0]" />
-    </div>
-  )
-}
-
 export default function Chatbot() {
   const {
     chatState, setChatState,
@@ -302,10 +131,6 @@ export default function Chatbot() {
     weather,
     fetchWeather,
   } = useChat()
-<<<<<<< HEAD
-=======
-  const { token, user } = useAuth()
->>>>>>> 0ae650cf4677bbb9d15704fde76a0da900060d04
 
   const [isLoading, setIsLoading] = useState(false)
   const [explainingMessageId, setExplainingMessageId] = useState<string | null>(null)
@@ -316,47 +141,17 @@ export default function Chatbot() {
   const [glowLoadingForMsg, setGlowLoadingForMsg] = useState<string | null>(null)
   const [glowSources, setGlowSources] = useState<Record<string, string>>({})
   const [weatherAnimation, setWeatherAnimation] = useState<string | null>(null)
-  const [profileContext, setProfileContext] = useState<ProfileContext | null>(null)
-  const [reopenedConversationId, setReopenedConversationId] = useState<string | null>(null)
   const messagesContainerRef = useRef<HTMLDivElement | null>(null)
   const weatherRef = useRef<object | null>(weather)
   useEffect(() => { weatherRef.current = weather }, [weather])
 
   const messages = activeConversation?.messages ?? initialMessages
-  const personalizedStarterQuestions = buildPersonalizedStarterQuestions(user?.skinType, weather as WeatherData | null, profileContext)
-
-  async function refreshProfileContext() {
-    if (!token) {
-      setProfileContext(null)
-      return
-    }
-
-    try {
-      const response = await fetch(apiUrl('/api/auth/profile-context'), {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-
-      if (!response.ok) {
-        setProfileContext(null)
-        return
-      }
-
-      setProfileContext(await response.json())
-    } catch (err) {
-      console.error(err)
-      setProfileContext(null)
-    }
-  }
 
   useEffect(() => {
     if (messagesContainerRef.current) {
       messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight
     }
   }, [messages, isLoading, explainingMessageId, isGeneratingGlow])
-
-  useEffect(() => {
-    refreshProfileContext()
-  }, [token])
 
   function updateUiOnly(conversationId: string, updater: (msgs: Message[]) => Message[]) {
     setChatState((s) => ({
@@ -369,21 +164,18 @@ export default function Chatbot() {
 
   function startNewConversation() {
     if (isLoading) return
-    setReopenedConversationId(null)
     startNewConversationCtx()
     setError(null)
   }
 
   function selectConversation(id: string) {
     if (isLoading) return
-    setReopenedConversationId(id)
     selectConversationCtx(id)
     setError(null)
   }
 
   function deleteConversation(id: string) {
     if (isLoading) return
-    if (reopenedConversationId === id) setReopenedConversationId(null)
     deleteConversationCtx(id)
     setError(null)
   }
@@ -415,7 +207,7 @@ export default function Chatbot() {
     }
   }
 
-  async function sendMessage(messageText: string, extraContextProductIds: number[] = []) {
+  async function sendMessage(messageText: string) {
     const trimmed = messageText.trim()
     if (!trimmed || isLoading) return
 
@@ -425,10 +217,7 @@ export default function Chatbot() {
     const assistantMessage: Message = { id: assistantMessageId, role: 'assistant', content: '' }
 
     const chatHistory = [...messages, userMessage].slice(-4).map((m) => ({ role: m.role, content: m.content }))
-    const contextProductIds = Array.from(new Set([
-      ...extraContextProductIds,
-      ...getLatestRecommendedProductIds(messages),
-    ])).slice(0, 3)
+    const contextProductIds = getLatestRecommendedProductIds(messages)
 
     updateUiOnly(conversationId, (msgs) => [...msgs, userMessage, assistantMessage])
     setInput('')
@@ -486,7 +275,6 @@ export default function Chatbot() {
         )
       )
       if (updated) saveConversationToDb(updated)
-      await refreshProfileContext()
 
     } catch (err) {
       console.error(err)
@@ -884,10 +672,6 @@ export default function Chatbot() {
                   </div>
                 ))}
 
-                {reopenedConversationId === chatState.activeConversationId && messages.length > 0 && (
-                  <HistoryDivider />
-                )}
-
                 {isLoading && messages[messages.length - 1]?.role === 'user' && (
                   <div className="flex gap-2">
                     <div className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#F5E6D3]">
@@ -933,10 +717,10 @@ export default function Chatbot() {
             <section className="rounded-lg border border-border bg-background p-4">
               <h2 className="mb-3 text-sm font-semibold text-foreground">Schnell starten</h2>
               <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
-                {personalizedStarterQuestions.map((q) => (
-                  <button key={q.label} type="button" onClick={() => sendMessage(q.message, q.contextProductIds || [])} disabled={isLoading}
+                {starterQuestions.map((q) => (
+                  <button key={q} type="button" onClick={() => sendMessage(q)} disabled={isLoading}
                     className="w-full rounded-lg border border-border px-3 py-2 text-left text-sm transition-colors hover:border-[#D4A574] hover:bg-[#FBFAF7] disabled:cursor-not-allowed disabled:opacity-60">
-                    {q.label}
+                    {q}
                   </button>
                 ))}
               </div>

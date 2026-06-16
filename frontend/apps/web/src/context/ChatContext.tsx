@@ -191,7 +191,6 @@ export function ChatProvider({ children }: { children: ReactNode }) {
               canExplainProducts: Array.isArray(m.products) && m.products.length > 0,
             }))
 
-<<<<<<< HEAD
           return {
             id:        c.id,
             title:     c.title,
@@ -199,15 +198,6 @@ export function ChatProvider({ children }: { children: ReactNode }) {
             messages:  [initialMessages[0], ...dbMessages],
           }
         })
-=======
-          return {
-            id:        c.id,
-            title:     c.title,
-            updatedAt: c.updatedAt,
-            messages:  dbMessages,
-          }
-        })
->>>>>>> 0ae650cf4677bbb9d15704fde76a0da900060d04
 
         setChatState({
           conversations:        dbConversations,
