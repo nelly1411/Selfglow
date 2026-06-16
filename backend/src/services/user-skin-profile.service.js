@@ -13,6 +13,89 @@ const FACT_KEYS = new Set([
   "product_reaction",
   "preference",
 ]);
+const DEPRECATED_FACT_KEYS = ["quiz_answer"];
+
+const FACT_CATALOG = {
+  concern: {
+    acne: ["acne", "akne", "pickel", "pimple", "pimples", "breakout", "breakouts", "痘", "粉刺"],
+    blemishes: ["blemishes", "unreinheiten", "imperfections", "瑕疵"],
+    redness: ["redness", "rötung", "roetung", "red skin", "泛红", "红"],
+    pores: ["pores", "poren", "large pores", "毛孔"],
+    blackheads: ["blackheads", "blackhead", "mitesser", "黑头"],
+    dark_spots: ["dark spots", "dark spot", "pigmentflecken", "hyperpigmentation", "色沉", "色斑"],
+    dark_circles: ["dark circles", "dark circle", "augenringe", "黑眼圈"],
+    wrinkles: ["wrinkles", "wrinkle", "fine lines", "falten", "细纹", "皱纹"],
+  },
+  skin_state: {
+    balanced: ["balanced", "ausgeglichen", "normal skin", "normale haut", "平衡"],
+    oily: ["oily", "fettig", "glänzend", "greasy skin", "fettige haut", "油皮", "出油"],
+    oily_t_zone: ["oily t-zone", "oily t zone", "t-zone oily", "fettige t-zone", "stirn fettig", "nase fettig", "t区油"],
+    dryness: ["dryness", "dry", "trockenheit", "trocken", "干", "干性"],
+    dehydration: ["dehydrated", "feuchtigkeitsarm", "wasserarm", "缺水"],
+    tightness: ["tightness", "spannt", "spannungsgefühl", "紧绷"],
+    flakiness: ["flaky", "flakiness", "schuppt", "schuppig", "起皮"],
+    rough_texture: ["rough", "rau", "uneven texture", "raue haut", "粗糙"],
+    shine: ["shine", "glanz", "glänzt", "shiny", "泛油光"],
+    refined_pores: ["refined pores", "small pores", "kaum sichtbare poren", "fine pores", "细腻毛孔"],
+    clear_skin: ["clear skin", "rare blemishes", "selten unreinheiten", "少长痘"],
+    matte: ["matte", "matt", "glanzlos", "哑光"],
+    combination_zones: ["combination zones", "mischhaut", "gemischt", "混合区域"],
+  },
+  sensitivity: {
+    sensitive: ["sensitive", "sensibel", "sensible", "empfindlich", "敏感", "刺痛"],
+    tolerant: ["tolerant", "verträglich", "verträgt fast alles", "耐受"],
+  },
+  ingredient_avoidance: {
+    fragrance: ["avoid fragrance", "without fragrance", "no fragrance", "ohne parfum", "kein parfum", "duftstofffrei", "避开香精"],
+    alcohol: ["avoid alcohol", "without alcohol", "no alcohol", "ohne alkohol", "kein alkohol", "避开酒精"],
+    retinol: ["avoid retinol", "without retinol", "no retinol", "ohne retinol", "kein retinol", "不用视黄醇"],
+    vitamin_c: ["avoid vitamin c", "without vitamin c", "no vitamin c", "ohne vitamin c", "kein vitamin c", "不用维c"],
+  },
+  allergy: {
+    fragrance: ["allergic to fragrance", "allergy to fragrance", "allergisch gegen parfum", "香精过敏"],
+    alcohol: ["allergic to alcohol", "allergy to alcohol", "allergisch gegen alkohol", "酒精过敏"],
+    retinol: ["allergic to retinol", "allergy to retinol", "视黄醇过敏"],
+    niacinamide: ["allergic to niacinamide", "allergy to niacinamide", "niacinamid allergie", "烟酰胺过敏"],
+    vitamin_c: ["allergic to vitamin c", "allergy to vitamin c", "维c过敏"],
+  },
+  goal: {
+    hydration: ["hydration", "hydrate", "moisture", "moisturizing", "feuchtigkeit", "保湿", "补水"],
+    calming: ["calming", "calm", "soothing", "beruhigung", "beruhigen", "舒缓"],
+    glow: ["glow", "radiance", "glowing", "strahlen", "strahlend", "亮泽"],
+    anti_aging: ["anti-aging", "anti aging", "anti-age", "aging", "wrinkle care", "falten", "抗老"],
+    barrier_support: ["barrier", "skin barrier", "hautbarriere", "barriere", "屏障"],
+    exfoliation: ["exfoliation", "exfoliate", "peeling", "aha", "bha", "salicylic", "salicyl", "刷酸", "水杨酸"],
+    brightening: ["brightening", "aufhellung", "vitamin c", "vitamin-c", "提亮"],
+    sun_protection: ["spf", "sunscreen", "sun protection", "sonnenschutz", "防晒"],
+  },
+  product_reaction: {
+    burning: ["burning", "stinging", "sticht", "brennen", "刺痛", "灼热"],
+    breakout: ["breakout", "break out", "pickel bekommen", "长痘", "爆痘"],
+    redness: ["redness after", "causes redness", "rötung", "泛红"],
+    too_greasy: ["too greasy", "zu fettig", "油腻", "太油"],
+    drying: ["drying", "austrocknend", "austrocknet", "拔干", "太干"],
+  },
+  preference: {
+    light_texture: ["lightweight", "light texture", "leichte textur", "leicht", "清爽", "轻薄"],
+    rich_texture: ["rich texture", "reichhaltig", "滋润", "厚重"],
+    fragrance_free: ["fragrance free", "fragrance-free", "parfumfrei", "duftstofffrei", "无香"],
+    alcohol_free: ["alcohol free", "alcohol-free", "alkoholfrei", "无酒精"],
+    vegan: ["vegan", "veganer", "vegane", "纯素"],
+    non_comedogenic: ["non comedogenic", "non-comedogenic", "nicht komedogen", "不致痘"],
+    oil_free: ["oil free", "oil-free", "ölfrei", "oelfrei", "无油"],
+    cruelty_free: ["cruelty free", "cruelty-free", "tierversuchsfrei"],
+    natural_ingredients: ["natural ingredients", "natürliche inhaltsstoffe", "naturkosmetik", "自然成分"],
+  },
+};
+
+const ALLOWED_FACT_VALUES = Object.fromEntries(
+  Object.entries(FACT_CATALOG).map(([key, values]) => [key, new Set(Object.keys(values))])
+);
+const PREFERENCE_VALUES = Object.keys(FACT_CATALOG.preference);
+
+function normalizeText(value) {
+  return String(value || "").trim().toLowerCase().replace(/\s+/g, " ");
+}
 
 function isFactTableUnavailable(error) {
   return (
@@ -23,7 +106,7 @@ function isFactTableUnavailable(error) {
 }
 
 function normalizeSkinType(value) {
-  const text = String(value || "").trim().toLowerCase();
+  const text = normalizeText(value);
 
   if (["normal", "normale haut", "normal skin", "正常"].includes(text)) return "Normal";
   if (["oily", "fettig", "fettige haut", "油", "油性", "油皮"].includes(text)) return "Oily";
@@ -41,8 +124,76 @@ function normalizeSkinType(value) {
   return null;
 }
 
+function isNegatedNear(text, term) {
+  const index = text.indexOf(term);
+  if (index < 0) return false;
+
+  const before = text.slice(Math.max(0, index - 28), index);
+  const after = text.slice(index + term.length, index + term.length + 28);
+  return /\b(no|not|dont|don't|without|kein|keine|nicht|avoid|meiden|ohne)\b/.test(before) ||
+    /\b(no|not|dont|don't|kein|keine|nicht|avoid|meiden)\b/.test(after) ||
+    /(不要|不用|不想|避免|避开)$/.test(before) ||
+    /^(不要|不用|不想|避免|避开)/.test(after);
+}
+
+function termMatches(text, term) {
+  const normalizedTerm = normalizeText(term);
+  if (!normalizedTerm || !text.includes(normalizedTerm)) return false;
+  return !isNegatedNear(text, normalizedTerm);
+}
+
+function matchCatalogFacts(message) {
+  const text = normalizeText(message);
+  const evidence = String(message || "").slice(0, 240);
+  const facts = [];
+
+  for (const [key, values] of Object.entries(FACT_CATALOG)) {
+    for (const [value, terms] of Object.entries(values)) {
+      if (terms.some((term) => termMatches(text, term))) {
+        facts.push({ key, value, confidence: 0.78, evidence });
+      }
+    }
+  }
+
+  return facts;
+}
+
+function matchNegatedPreferenceValues(message) {
+  const text = normalizeText(message);
+  const values = [];
+
+  for (const [value, terms] of Object.entries(FACT_CATALOG.preference)) {
+    if (terms.some((term) => {
+      const normalizedTerm = normalizeText(term);
+      return text.includes(normalizedTerm) && isNegatedNear(text, normalizedTerm);
+    })) {
+      values.push(value);
+    }
+  }
+
+  return [...new Set(values)];
+}
+
+function normalizeFactValue(key, value) {
+  if (key === "skin_type") return normalizeSkinType(value);
+
+  const text = normalizeText(value).replace(/[\s-]+/g, "_");
+  const allowedValues = ALLOWED_FACT_VALUES[key];
+  if (!allowedValues) return null;
+  if (allowedValues.has(text)) return text;
+
+  const catalog = FACT_CATALOG[key] || {};
+  for (const [canonicalValue, terms] of Object.entries(catalog)) {
+    if (canonicalValue === text || terms.some((term) => normalizeText(term).replace(/[\s-]+/g, "_") === text)) {
+      return canonicalValue;
+    }
+  }
+
+  return null;
+}
+
 function looksProfileRelated(message) {
-  const text = String(message || "").toLowerCase();
+  const text = normalizeText(message);
   const terms = [
     "my skin",
     "skin type",
@@ -52,6 +203,26 @@ function looksProfileRelated(message) {
     "acne",
     "pimple",
     "redness",
+    "product",
+    "products",
+    "preference",
+    "prefer",
+    "i want",
+    "i need",
+    "looking for",
+    "searching for",
+    "vegan",
+    "fragrance free",
+    "fragrance-free",
+    "alcohol free",
+    "alcohol-free",
+    "non comedogenic",
+    "non-comedogenic",
+    "oil free",
+    "oil-free",
+    "cruelty free",
+    "cruelty-free",
+    "natural ingredients",
     "allergy",
     "allergic",
     "avoid",
@@ -64,30 +235,29 @@ function looksProfileRelated(message) {
     "pickel",
     "akne",
     "rötung",
+    "produkt",
+    "produkte",
+    "vorliebe",
+    "vegan",
+    "parfumfrei",
+    "alkoholfrei",
+    "nicht komedogen",
+    "ölfrei",
+    "tierversuchsfrei",
+    "naturkosmetik",
     "allerg",
     "vertragen",
-    "肤质",
-    "皮肤",
-    "敏感",
-    "干皮",
-    "干性",
-    "油皮",
-    "油性",
-    "混合皮",
-    "痘",
-    "泛红",
-    "过敏",
-    "不耐受",
-    "避开",
+    ...Object.values(FACT_CATALOG)
+      .flatMap((values) => Object.values(values))
+      .flat()
   ];
 
-  return terms.some((term) => text.includes(term));
+  return terms.some((term) => text.includes(normalizeText(term)));
 }
 
 function extractHeuristicFacts(message) {
   const text = String(message || "");
-  const lower = text.toLowerCase();
-  const facts = [];
+  const facts = matchCatalogFacts(text);
   const skinType = normalizeSkinType(text);
 
   if (skinType) {
@@ -99,33 +269,7 @@ function extractHeuristicFacts(message) {
     });
   }
 
-  const concernMatches = [
-    { value: "acne", terms: ["acne", "akne", "pickel", "pimple", "breakout", "痘", "粉刺"] },
-    { value: "redness", terms: ["redness", "rötung", "red", "泛红", "红"] },
-    { value: "pores", terms: ["pores", "poren", "毛孔"] },
-    { value: "dark_spots", terms: ["dark spots", "pigment", "色沉", "斑"] },
-  ];
-
-  for (const match of concernMatches) {
-    if (match.terms.some((term) => lower.includes(term))) {
-      facts.push({
-        key: "concern",
-        value: match.value,
-        confidence: 0.76,
-        evidence: text.slice(0, 240),
-      });
-    }
-  }
-
-  if (["dry", "trocken", "干", "紧绷", "起皮"].some((term) => lower.includes(term))) {
-    facts.push({ key: "skin_state", value: "dryness", confidence: 0.76, evidence: text.slice(0, 240) });
-  }
-
-  if (["sensitive", "sensibel", "empfindlich", "敏感", "刺痛"].some((term) => lower.includes(term))) {
-    facts.push({ key: "sensitivity", value: "sensitive", confidence: 0.78, evidence: text.slice(0, 240) });
-  }
-
-  return facts;
+  return uniqueFacts(facts);
 }
 
 function normalizeFact(fact, message) {
@@ -136,7 +280,7 @@ function normalizeFact(fact, message) {
 
   if (!FACT_KEYS.has(key) || !rawValue) return null;
 
-  const value = key === "skin_type" ? normalizeSkinType(rawValue) : rawValue.slice(0, 80);
+  const value = normalizeFactValue(key, rawValue);
   if (!value) return null;
 
   return {
@@ -161,11 +305,113 @@ function uniqueFacts(facts) {
   return result;
 }
 
-async function extractFacts(message) {
-  const heuristicFacts = extractHeuristicFacts(message);
+async function extractPreferenceFacts(message, heuristicPreferenceFacts) {
+  const heuristicNegativePreferences = matchNegatedPreferenceValues(message);
 
   if (!process.env.OPENAI_API_KEY) {
-    return uniqueFacts(heuristicFacts);
+    return {
+      positiveFacts: heuristicPreferenceFacts,
+      negativeValues: heuristicNegativePreferences,
+    };
+  }
+
+  const fallbackJson = JSON.stringify({
+    preferences: heuristicPreferenceFacts.map((fact) => ({
+      value: fact.value,
+      polarity: "positive",
+      confidence: fact.confidence,
+      evidence: fact.evidence,
+    })),
+  });
+
+  const answer = await requestOpenAI(
+    [
+      {
+        role: "system",
+        content:
+          "Classify explicit skincare product preferences from the user's message. Return only valid JSON. Do not infer. Negative preferences must not be saved as positive preferences.",
+      },
+      {
+        role: "user",
+        content: `Message:
+${message}
+
+Return JSON:
+{
+  "preferences": [
+    {
+      "value": "one allowed preference value",
+      "polarity": "positive|negative|neutral",
+      "confidence": 0.0-1.0,
+      "evidence": "short exact phrase from user"
+    }
+  ]
+}
+
+Allowed preference values:
+${PREFERENCE_VALUES.join(", ")}
+
+Rules:
+- positive means the user wants, likes, prefers, needs, or requests this preference.
+- negative means the user rejects, dislikes, avoids, or says they do not want this preference.
+- neutral means the user only asks about a product/ingredient/property without expressing a personal preference.
+- Return no item for product names, full questions, temporary browsing intent, or unknown values.
+- Save only durable user profile preferences, not every product search query.
+
+Examples:
+- "I want vegan products" -> {"value":"vegan","polarity":"positive"}
+- "ich mag vegan nicht" -> {"value":"vegan","polarity":"negative"}
+- "I don't want vegan products" -> {"value":"vegan","polarity":"negative"}
+- "Ist dieses Produkt vegan?" -> {"value":"vegan","polarity":"neutral"}
+- "ohne Alkohol bitte" -> {"value":"alcohol_free","polarity":"positive"}`,
+      },
+    ],
+    fallbackJson,
+    { maxOutputTokens: 260 }
+  );
+
+  try {
+    const parsed = JSON.parse(answer.replace(/```json|```/g, "").trim());
+    const preferences = Array.isArray(parsed.preferences) ? parsed.preferences : [];
+    const negativeValues = preferences
+      .filter((item) => item && item.polarity === "negative")
+      .map((item) => normalizeFactValue("preference", item.value))
+      .filter(Boolean);
+    const allNegativeValues = [...new Set([...heuristicNegativePreferences, ...negativeValues])];
+    const positiveFacts = preferences
+      .filter((item) => item && item.polarity === "positive")
+      .map((item) => normalizeFact({
+        key: "preference",
+        value: item.value,
+        confidence: item.confidence,
+        evidence: item.evidence,
+      }, message))
+      .filter(Boolean)
+      .filter((fact) => !allNegativeValues.includes(fact.value));
+
+    return {
+      positiveFacts,
+      negativeValues: allNegativeValues,
+    };
+  } catch {
+    return {
+      positiveFacts: heuristicPreferenceFacts,
+      negativeValues: heuristicNegativePreferences,
+    };
+  }
+}
+
+async function extractFacts(message) {
+  const heuristicFacts = extractHeuristicFacts(message);
+  const heuristicNonPreferenceFacts = heuristicFacts.filter((fact) => fact.key !== "preference");
+  const heuristicPreferenceFacts = heuristicFacts.filter((fact) => fact.key === "preference");
+  const preferenceExtraction = await extractPreferenceFacts(message, heuristicPreferenceFacts);
+
+  if (!process.env.OPENAI_API_KEY) {
+    return {
+      facts: uniqueFacts([...heuristicNonPreferenceFacts, ...preferenceExtraction.positiveFacts]),
+      negativePreferenceValues: preferenceExtraction.negativeValues,
+    };
   }
 
   const fallbackJson = JSON.stringify({ facts: heuristicFacts });
@@ -174,7 +420,7 @@ async function extractFacts(message) {
       {
         role: "system",
         content:
-          "Extract only explicit skincare profile facts from the user's message. Do not infer. Return valid JSON only.",
+          "Extract only explicit, durable skincare profile facts from the user's message. Do not infer. Do not store product names, full questions, temporary shopping intent, or unknown values. Return valid JSON only.",
       },
       {
         role: "user",
@@ -186,7 +432,7 @@ Return JSON:
   "facts": [
     {
       "key": "skin_type|concern|skin_state|sensitivity|ingredient_avoidance|allergy|goal|product_reaction|preference",
-      "value": "short normalized value",
+      "value": "one allowed value listed below",
       "confidence": 0.0-1.0,
       "evidence": "short exact phrase from user"
     }
@@ -194,10 +440,20 @@ Return JSON:
 }
 
 Allowed skin_type values: Normal, Oily, Dry, Combination, Sensitive.
+Allowed concern values: acne, blemishes, redness, pores, blackheads, dark_spots, dark_circles, wrinkles.
+Allowed skin_state values: dryness, oily_t_zone.
+Allowed sensitivity values: sensitive.
+Allowed ingredient_avoidance values: fragrance, alcohol, retinol, vitamin_c.
+Allowed allergy values: fragrance, alcohol, retinol, niacinamide, vitamin_c.
+Allowed goal values: hydration, calming, glow, anti_aging, barrier_support, exfoliation, brightening, sun_protection.
+Allowed product_reaction values: burning, breakout, redness, too_greasy, drying.
+Allowed preference values: light_texture, rich_texture, fragrance_free, alcohol_free, vegan, non_comedogenic, oil_free, cruelty_free, natural_ingredients.
 Examples:
 - "我是敏感肌" -> {"key":"skin_type","value":"Sensitive"}
 - "meine Haut ist sehr trocken" -> {"key":"skin_type","value":"Dry"}
-- "I break out from fragrance" -> {"key":"ingredient_avoidance","value":"fragrance"}, {"key":"concern","value":"acne"}`,
+- "I want vegan products" -> {"key":"preference","value":"vegan"}
+- "I break out from fragrance" -> {"key":"ingredient_avoidance","value":"fragrance"}, {"key":"product_reaction","value":"breakout"}
+- "Does product X suit oily skin?" -> {"key":"skin_type","value":"Oily"} only if the user states oily skin as their own skin type; otherwise return no facts.`,
       },
     ],
     fallbackJson,
@@ -209,11 +465,18 @@ Examples:
     const facts = Array.isArray(parsed.facts) ? parsed.facts : [];
     const normalizedFacts = facts
       .map((fact) => normalizeFact(fact, message))
-      .filter(Boolean);
+      .filter(Boolean)
+      .filter((fact) => fact.key !== "preference");
 
-    return uniqueFacts([...heuristicFacts, ...normalizedFacts]);
+    return {
+      facts: uniqueFacts([...heuristicNonPreferenceFacts, ...normalizedFacts, ...preferenceExtraction.positiveFacts]),
+      negativePreferenceValues: preferenceExtraction.negativeValues,
+    };
   } catch {
-    return uniqueFacts(heuristicFacts);
+    return {
+      facts: uniqueFacts([...heuristicNonPreferenceFacts, ...preferenceExtraction.positiveFacts]),
+      negativePreferenceValues: preferenceExtraction.negativeValues,
+    };
   }
 }
 
@@ -236,6 +499,8 @@ async function saveFacts(userId, facts, source = "chat") {
   const saved = [];
 
   for (const fact of facts) {
+    if (!FACT_KEYS.has(fact.key) || DEPRECATED_FACT_KEYS.includes(fact.key)) continue;
+
     try {
       await prisma.userSkinProfileFact.upsert({
         where: {
@@ -367,6 +632,12 @@ function extractReviewFacts(reviewText, product) {
     { value: "light_texture", terms: ["lightweight", "leicht", "轻薄", "清爽"] },
     { value: "rich_texture", terms: ["reichhaltig", "rich", "滋润", "厚重"] },
     { value: "fragrance_free", terms: ["parfumfrei", "fragrance free", "无香"] },
+    { value: "alcohol_free", terms: ["alkoholfrei", "alcohol free", "无酒精"] },
+    { value: "vegan", terms: ["vegan", "veganer", "vegane", "纯素"] },
+    { value: "non_comedogenic", terms: ["nicht komedogen", "non comedogenic", "non-comedogenic", "不致痘"] },
+    { value: "oil_free", terms: ["ölfrei", "oil free", "oil-free", "无油"] },
+    { value: "cruelty_free", terms: ["tierversuchsfrei", "cruelty free", "cruelty-free"] },
+    { value: "natural_ingredients", terms: ["natürliche inhaltsstoffe", "natural ingredients", "自然成分"] },
   ];
 
   for (const match of preferenceMatches) {
@@ -397,24 +668,61 @@ async function captureReviewProfileFacts(userId, reviewText, product) {
 
 async function captureUserSkinProfileFromMessage(userId, message) {
   if (!userId || !looksProfileRelated(message)) {
-    return { facts: [], skinType: null };
+    return { facts: [], skinType: null, changed: false, removedPreferences: [] };
   }
 
-  const facts = await extractFacts(message);
-  if (facts.length === 0) return { facts: [], skinType: null };
+  const { facts, negativePreferenceValues } = await extractFacts(message);
+  let removedPreferences = [];
+
+  if (negativePreferenceValues.length > 0) {
+    const deleteResult = await prisma.userSkinProfileFact.deleteMany({
+      where: {
+        userId,
+        key: "preference",
+        value: { in: negativePreferenceValues },
+      },
+    });
+    if (deleteResult.count > 0) {
+      removedPreferences = negativePreferenceValues;
+    }
+  }
+
+  if (facts.length === 0) {
+    return {
+      facts: [],
+      skinType: null,
+      changed: removedPreferences.length > 0,
+      removedPreferences,
+    };
+  }
 
   const skinType = await saveSkinType(userId, facts);
   const savedFacts = await saveFacts(userId, facts);
 
-  return { facts: savedFacts, skinType };
+  return {
+    facts: savedFacts,
+    skinType,
+    changed: savedFacts.length > 0 || Boolean(skinType) || removedPreferences.length > 0,
+    removedPreferences,
+  };
 }
 
 async function getUserSkinProfileFacts(userId) {
   if (!userId) return [];
 
   try {
+    await prisma.userSkinProfileFact.deleteMany({
+      where: {
+        userId,
+        key: { in: DEPRECATED_FACT_KEYS },
+      },
+    });
+
     return await prisma.userSkinProfileFact.findMany({
-      where: { userId },
+      where: {
+        userId,
+        key: { notIn: DEPRECATED_FACT_KEYS },
+      },
       orderBy: { updatedAt: "desc" },
       take: 30,
     });

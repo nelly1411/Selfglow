@@ -193,8 +193,7 @@ useEffect(() => {
             id:        c.id,
             title:     c.title,
             updatedAt: c.updatedAt,
-            // Welcome immer als erste Nachricht einfügen
-            messages:  [initialMessages[0], ...dbMessages],
+            messages:  dbMessages,
           }
         })
 
