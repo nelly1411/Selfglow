@@ -63,12 +63,12 @@ function getWeatherEmoji(weatherMain?: string, temp?: number): string {
   return '🌡️'
 }
 
-/*function getWeatherMessage(weather: WeatherData): string {
+function getWeatherMessage(weather: WeatherData): string {
   const emoji = getWeatherEmoji(weather.weatherMain, weather.temp)
   const temp = weather.temp !== undefined ? `${weather.temp}°C` : ''
   const humidity = weather.humidity !== undefined ? `${weather.humidity}% Luftfeuchtigkeit` : ''
   return [emoji, temp, humidity].filter(Boolean).join(' · ')
-}*/
+}
 
 function getWeatherRecommendationPrompt(weather: WeatherData): string {
   const emoji = getWeatherEmoji(weather.weatherMain, weather.temp)
@@ -200,7 +200,6 @@ function buildPersonalizedStarterQuestions(
       questions.push({ label: 'Hautbarriere stärken', message: 'Wie kann ich meine Hautbarriere mit einer einfachen Routine unterstützen?' })
     }
   }
-
   if (questions.length === 0) {
     questions.push({ label: 'Passende Produkte', message: 'Welche Produkte passen zu meinem aktuellen Hautprofil?' })
     questions.push({ label: 'Einfache Routine', message: 'Hilf mir, eine einfache Hautpflegeroutine zusammenzustellen.' })
@@ -301,21 +300,23 @@ export default function Chatbot() {
     saveConversationToDb,
     isLoadingHistory,
     weather,
+    fetchWeather,
   } = useChat()
   const { token, user, updateUser } = useAuth()
-
   const [isLoading, setIsLoading] = useState(false)
   const [explainingMessageId, setExplainingMessageId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [showAnalysis, setShowAnalysis] = useState(false)
   const [conversationToDelete, setConversationToDelete] = useState<string | null>(null)
-  const [isGeneratingGlow] = useState(false)
+  const [isGeneratingGlow, setIsGeneratingGlow] = useState(false)
   const [glowLoadingForMsg, setGlowLoadingForMsg] = useState<string | null>(null)
   const [glowSources, setGlowSources] = useState<Record<string, string>>({})
   const [weatherAnimation, setWeatherAnimation] = useState<string | null>(null)
   const [profileContext, setProfileContext] = useState<ProfileContext | null>(null)
   const [reopenedConversationId, setReopenedConversationId] = useState<string | null>(null)
   const messagesContainerRef = useRef<HTMLDivElement | null>(null)
+  const weatherRef = useRef<object | null>(weather)
+  useEffect(() => { weatherRef.current = weather }, [weather])
 
   const messages = activeConversation?.messages ?? initialMessages
   const personalizedStarterQuestions = buildPersonalizedStarterQuestions(user?.skinType, weather as WeatherData | null, profileContext)
@@ -442,10 +443,7 @@ export default function Chatbot() {
     try {
       const response = await fetch(apiUrl('/api/chat/stream'), {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: trimmed, history: chatHistory, contextProductIds, weather }),
       })
       if (!response.ok) throw new Error('Die KI-Beratung konnte gerade nicht antworten.')
@@ -577,25 +575,69 @@ export default function Chatbot() {
                 const hint = (result as any).multipleFaces
                   ? '\n\n⚠️ Im Bild wurden mehrere Gesichter erkannt. Für eine genaue Analyse empfehle ich ein einzelnes Foto von dir.'
                   : ''
-                const assistantContent = `Hautanalyse abgeschlossen ✨\n\n**Hauttyp:** ${result.skinType}\n\nTrockenheit: ${result.dryness}% · Rötungen: ${result.redness}% · Unreinheiten: ${result.blemishes}% · Sensibilität: ${result.sensitivity}%\n\n${result.overall}${hint}\n\nDu kannst mir jetzt Fragen zu deiner Hautanalyse stellen oder ein weiteres Bild hochladen.`
+                const assistantContent = `Hautanalyse abgeschlossen ✨\n\n**Hauttyp:** ${result.skinType}\n\nTrockenheit: ${result.dryness}% · Rötungen: ${result.redness}% · Unreinheiten: ${result.blemishes}% · Sensibilität: ${result.sensitivity}%\n\n${result.overall}${hint}`
                 const assistantMsgId = crypto.randomUUID()
                 const isRealPhoto = imageData && imageData.startsWith('data:image')
                 const userMsg: Message = { id: crypto.randomUUID(), role: 'user', content: '📸 Hautanalyse gestartet', imageUrl: imageData ?? null }
-                // glowSourceUrl in content verstecken damit Button es nutzen kann
                 const assistantMsg: Message = {
                   id: assistantMsgId,
                   role: 'assistant',
                   content: assistantContent,
-                  // imageUrl missbrauchen wir nicht — stattdessen speichern wir das Quellbild separat
                 }
                 const conversationId = chatState.activeConversationId
                 const updated = applyMessages(conversationId, (msgs) => [...msgs, userMsg, assistantMsg])
                 if (updated) saveConversationToDb(updated)
                 setShowAnalysis(false)
-                // Quellbild für Glow-Button im State merken (msgId → imageData)
+                // Quellbild für Glow-Button im State merken
                 if (isRealPhoto) {
                   setGlowSources(prev => ({ ...prev, [assistantMsgId]: imageData! }))
                 }
+                // Automatisch Produkte basierend auf Hautanalyse suchen
+                const skinTypeMap: Record<string, string> = {
+                  Normal: 'normale Haut', Oily: 'fettige Haut', Dry: 'trockene Haut',
+                  Combination: 'Mischhaut', Sensitive: 'sensible Haut',
+                }
+                const concerns: string[] = []
+                if (result.redness >= 50) concerns.push('Rötungen')
+                if (result.blemishes >= 50) concerns.push('Unreinheiten')
+                if (result.dryness >= 50) concerns.push('Trockenheit')
+                if (result.sensitivity >= 50) concerns.push('empfindliche Haut')
+                const skinLabel = skinTypeMap[result.skinType] || result.skinType
+            const productQuery = concerns.length > 0
+                  ? `Hauttyp: ${skinLabel}. Probleme: ${concerns.join(', ')}. Empfehle passende Produkte.`
+                  : `Hauttyp: ${skinLabel}. Empfehle passende Produkte.`
+
+                setTimeout(async () => {
+                  const productMsgId = crypto.randomUUID()
+                  const productMsg: Message = { id: productMsgId, role: 'assistant', content: '' }
+                  applyMessages(conversationId, (msgs) => [...msgs, productMsg])
+                  setIsLoading(true)
+                  try {
+                    const r = await fetch(apiUrl('/api/chat/stream'), {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ message: productQuery, history: [], contextProductIds: [], weather }),
+                    })
+                    if (!r.ok || !r.body) return
+                    const reader = r.body.getReader()
+                    const decoder = new TextDecoder()
+                    let buf = '', finalAns = '', finalProds: ChatProduct[] = [], finalExplain = false
+                    while (true) {
+                      const { done, value } = await reader.read()
+                      buf += decoder.decode(value, { stream: !done })
+                      const evts = buf.split('\n\n'); buf = evts.pop() ?? ''
+                      for (const evt of evts) {
+                        const p = parseSseEvent(evt); if (!p) continue
+                        if (p.event === 'delta' && p.data.text)
+                          applyMessages(conversationId, (msgs) => msgs.map((m) => m.id === productMsgId ? { ...m, content: m.content + p.data.text! } : m))
+                        if (p.event === 'done') { finalAns = p.data.answer ?? ''; finalProds = p.data.products ?? []; finalExplain = p.data.canExplainProducts ?? false }
+                      }
+                      if (done) break
+                    }
+                    const fin = applyMessages(conversationId, (msgs) => msgs.map((m) => m.id === productMsgId ? { ...m, content: finalAns || m.content, products: finalProds, canExplainProducts: finalExplain } : m))
+                    if (fin) saveConversationToDb(fin)
+                  } catch { } finally { setIsLoading(false) }
+                }, 400)
               }}
             />
           </div>
@@ -625,22 +667,36 @@ export default function Chatbot() {
             </button>
 
             {/* ── Wetter-Widget ── */}
-            {weather && (
-              <button
-                type="button"
-                disabled={isLoading}
-                onClick={() => {
-                  const w = weather as WeatherData
-                  setWeatherAnimation(w.weatherMain?.toLowerCase() ?? 'clouds')
-                  setTimeout(() => setWeatherAnimation(null), 10000)
-                  sendMessage(getWeatherRecommendationPrompt(w))
+            <button
+              type="button"
+              disabled={isLoading}
+              onClick={() => {
+                  if (!weather) {
+                    // Noch kein Wetter → Standort holen, dann senden
+                    fetchWeather()
+                    // Warten bis Wetter da ist, dann automatisch senden
+                    const interval = setInterval(() => {
+                      const w = weather as WeatherData | null
+                      if (w?.weatherMain) {
+                        clearInterval(interval)
+                        setWeatherAnimation(w.weatherMain.toLowerCase())
+                        setTimeout(() => setWeatherAnimation(null), 10000)
+                        sendMessage(getWeatherRecommendationPrompt(w))
+                      }
+                    }, 500)
+                    setTimeout(() => clearInterval(interval), 10000)
+                  } else {
+                    const w = weather as WeatherData
+                    setWeatherAnimation(w.weatherMain?.toLowerCase() ?? 'clouds')
+                    setTimeout(() => setWeatherAnimation(null), 10000)
+                    sendMessage(getWeatherRecommendationPrompt(w))
+                  }
                 }}
-                className="mb-3 flex h-9 w-full items-center justify-between gap-2 rounded-full border border-[#e0c9a8] bg-[#FDF6EE] px-4 text-sm font-medium text-[#A97745] transition-colors hover:bg-[#F5E6D3] disabled:opacity-60"
-              >
-                <span>🌤️ Wetter-Tipps</span>
-                <span className="text-xs opacity-70">→</span>
-              </button>
-            )}
+              className="mb-3 flex h-9 w-full items-center justify-between gap-2 rounded-full border border-[#e0c9a8] bg-[#FDF6EE] px-4 text-sm font-medium text-[#A97745] transition-colors hover:bg-[#F5E6D3] disabled:opacity-60"
+            >
+              <span>🌤️ Wetter-Tipps</span>
+              <span className="text-xs opacity-70">→</span>
+            </button>
 
             <h2 className="mb-3 text-sm font-semibold text-foreground">Chatverlauf</h2>
             {isLoadingHistory && <p className="mb-2 text-xs text-muted-foreground">Chats werden geladen...</p>}

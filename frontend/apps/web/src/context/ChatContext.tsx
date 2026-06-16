@@ -53,8 +53,9 @@ type ChatContextType = {
   applyMessages: (conversationId: string, updater: (msgs: Message[]) => Message[]) => Conversation | null
   saveConversationToDb: (conversation: Conversation) => void
   deleteConversationFromDb: (id: string) => void
-isLoadingHistory: boolean
+  isLoadingHistory: boolean
   weather: object | null
+  fetchWeather: () => void
 }
 
 export const initialMessages: Message[] = [
@@ -116,21 +117,24 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const [input, setInput] = useState('')
   const [isLoadingHistory, setIsLoadingHistory] = useState(false)
   const [weather, setWeather] = useState<object | null>(null)
-useEffect(() => {
-  if (!navigator.geolocation) return
-  navigator.geolocation.getCurrentPosition(
-    async (pos) => {
-      try {
-        const { latitude: lat, longitude: lon } = pos.coords
-        const res = await fetch(apiUrl(`/api/weather?lat=${lat}&lon=${lon}`))
-        if (!res.ok) return
-        const data = await res.json()
-        if (data.weather) setWeather(data.weather)
-      } catch { /* ignore */ }
-    },
-    () => { /* Standort abgelehnt */ }
-  )
-}, [])
+
+  // Wetter erst beim Button-Klick holen — nicht beim App-Start
+  const fetchWeather = useCallback(() => {
+    if (!navigator.geolocation) return
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const { latitude: lat, longitude: lon } = pos.coords
+          const res = await fetch(apiUrl(`/api/weather?lat=${lat}&lon=${lon}`))
+          if (!res.ok) return
+          const data = await res.json()
+          if (data.weather) setWeather(data.weather)
+        } catch { /* ignore */ }
+      },
+      () => { /* Standort abgelehnt */ }
+    )
+  }, [])
+
   const loadedForToken = useRef<string | null>(null)
   const saving = useRef<Record<string, boolean>>({})
   const pending = useRef<Record<string, Conversation>>({})
@@ -176,8 +180,6 @@ useEffect(() => {
         }
 
         const dbConversations: Conversation[] = data.map((c) => {
-          // Nachrichten aus DB — createdAt ist bereits sortiert (orderBy asc im Backend)
-          // Welcome-Nachrichten filtern (werden frisch eingefügt)
           const dbMessages: Message[] = (c.messages ?? [])
             .filter((m: any) => !isWelcomeMessage({ id: m.id, content: m.content }))
             .map((m: any) => ({
@@ -193,7 +195,7 @@ useEffect(() => {
             id:        c.id,
             title:     c.title,
             updatedAt: c.updatedAt,
-            messages:  dbMessages,
+            messages:  [initialMessages[0], ...dbMessages],
           }
         })
 
@@ -212,7 +214,7 @@ useEffect(() => {
     return () => { controller.abort(); loadedForToken.current = null }
   }, [token, isLoggedIn])
 
-  // ── applyMessages: liest immer aktuellen Stand via Ref ───────────────────
+  // ── applyMessages ─────────────────────────────────────────────────────────
   const applyMessages = useCallback(
     (conversationId: string, updater: (msgs: Message[]) => Message[]): Conversation | null => {
       const current = chatStateRef.current
@@ -239,10 +241,7 @@ useEffect(() => {
 
   // ── HTTP Save ─────────────────────────────────────────────────────────────
   const execSave = useCallback(async (conv: Conversation, tok: string) => {
-    // Welcome-Nachricht niemals speichern
-    const messagesToSave = conv.messages.filter(
-      (m) => !isWelcomeMessage(m)
-    )
+    const messagesToSave = conv.messages.filter((m) => !isWelcomeMessage(m))
 
     const processedMessages = await Promise.all(
       messagesToSave.map(async (m) => {
@@ -269,7 +268,7 @@ useEffect(() => {
     }
   }, [])
 
-  // ── Save-Queue: neuester Stand gewinnt immer ──────────────────────────────
+  // ── Save-Queue ────────────────────────────────────────────────────────────
   const saveConversationToDb = useCallback(async (conv: Conversation) => {
     if (!token) return
     const id = conv.id
@@ -336,10 +335,11 @@ useEffect(() => {
       chatState, setChatState,
       activeConversation, messages,
       input, setInput,
-    startNewConversation, selectConversation, deleteConversation,
+      startNewConversation, selectConversation, deleteConversation,
       applyMessages, saveConversationToDb, deleteConversationFromDb,
       isLoadingHistory,
       weather,
+      fetchWeather,
     }}>
       {children}
     </ChatContext.Provider>
