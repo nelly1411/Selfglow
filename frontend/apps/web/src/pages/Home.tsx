@@ -48,7 +48,28 @@ const CSS = `
   .greet-widget { animation: fadeSlideUp 0.5s ease forwards; }
   .greet-option { transition: all 0.2s ease; cursor: pointer; border: 1.5px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.1); backdrop-filter: blur(8px); }
   .greet-option:hover { background: rgba(255,255,255,0.2); border-color: #D4A574; transform: translateX(4px); }
+  .rec-card { transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease; }
+  .rec-card:hover { transform: translateY(-4px); box-shadow: 0 16px 42px rgba(28,18,9,0.12); border-color: #e8c9a0; }
+  .rec-card img { transition: transform 0.45s cubic-bezier(0.25,0.46,0.45,0.94); }
+  .rec-card:hover img { transform: scale(1.05); }
+  @media (max-width: 900px) {
+    .home-rec-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  }
+  @media (max-width: 560px) {
+    .home-rec-grid { grid-template-columns: 1fr !important; }
+  }
 `
+
+type RecommendedProduct = {
+  id: number
+  name: string
+  brand: string
+  category: string
+  price: number
+  imageUrl?: string | null
+  rating?: number | null
+  recommendationReason?: string | null
+}
 
 const skinLabels: Record<string, string> = {
   Normal:      'Normale Haut',
@@ -163,8 +184,11 @@ const optionStyle = {
 export default function Home() {
   const [email, setEmail]    = useState('')
   const [subscribed, setSub] = useState(false)
+  const [recommendedProducts, setRecommendedProducts] = useState<RecommendedProduct[]>([])
+  const [recommendationPage, setRecommendationPage] = useState(0)
+  const [recommendationsLoading, setRecommendationsLoading] = useState(false)
   const styleRef = useRef<HTMLStyleElement | null>(null)
-  const { user, updateUser } = useAuth()
+  const { user, token, updateUser } = useAuth()
   const navigate = useNavigate()
 
   const firstName  = user?.name?.split(' ')[0] || user?.email?.split('@')[0] || null
@@ -180,6 +204,52 @@ export default function Home() {
     styleRef.current = el
     return () => { if (styleRef.current) document.head.removeChild(styleRef.current) }
   }, [])
+
+  useEffect(() => {
+    async function fetchRecommendations() {
+      if (!token) {
+        setRecommendedProducts([])
+        return
+      }
+
+      try {
+        setRecommendationsLoading(true)
+        const res = await fetch(apiUrl('/api/products/recommendations/me?limit=12'), {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+
+        if (!res.ok) {
+          setRecommendedProducts([])
+          return
+        }
+
+        const data = await res.json()
+        setRecommendedProducts(Array.isArray(data.products) ? data.products : [])
+      } catch (err) {
+        console.error(err)
+        setRecommendedProducts([])
+      } finally {
+        setRecommendationsLoading(false)
+      }
+    }
+
+    fetchRecommendations()
+  }, [token, skinType, gender])
+
+  const showRecommendations = Boolean(token) && recommendedProducts.length > 0
+  const recommendationTarget = skinType
+    ? skinLabels[skinType] || skinType
+    : 'deine Haut'
+  const recommendedPageSize = 5
+  const recommendationPageCount = Math.ceil(recommendedProducts.length / recommendedPageSize)
+  const visibleRecommendedProducts = recommendedProducts.slice(
+    recommendationPage * recommendedPageSize,
+    recommendationPage * recommendedPageSize + recommendedPageSize
+  )
+
+  useEffect(() => {
+    setRecommendationPage(0)
+  }, [recommendedProducts.length])
 
   return (
     <div className="home-root overflow-x-hidden">
@@ -329,23 +399,92 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── SKIN TYPE STRIP ── */}
-      <section style={{ background: '#fff', padding: '64px 28px' }}>
-        <div style={{ maxWidth: 1200, margin: '0 auto' }}>
-          <div style={{ marginBottom: 40 }}>
-            <p style={{ fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#C4925A', marginBottom: 6, fontWeight: 500 }}>Für dich personalisiert</p>
-            <h2 style={{ fontFamily: "'Outfit', sans-serif", fontSize: 'clamp(22px, 2.8vw, 34px)', fontWeight: 700, margin: 0, letterSpacing: '-0.02em' }}>Welcher Hauttyp bist du?</h2>
+      {/* ── PERSONALIZED STRIP ── */}
+      <section style={{ background: '#fff', padding: showRecommendations ? '38px 28px' : '64px 28px' }}>
+        <div style={{ maxWidth: showRecommendations ? 1040 : 1200, margin: '0 auto' }}>
+          <div style={{ marginBottom: showRecommendations ? 20 : 40 }}>
+            {!showRecommendations && (
+              <p style={{ fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#C4925A', marginBottom: 6, fontWeight: 500 }}>
+                Hauttyp entdecken
+              </p>
+            )}
+            <h2 style={{ fontFamily: "'Outfit', sans-serif", fontSize: showRecommendations ? 'clamp(18px, 2vw, 24px)' : 'clamp(22px, 2.8vw, 34px)', fontWeight: 700, margin: 0, letterSpacing: '-0.02em' }}>
+              {showRecommendations ? `Für ${recommendationTarget}` : 'Welcher Hauttyp bist du?'}
+            </h2>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
-            {(gender === 'male' ? skinTypesMale : (!gender || gender === 'diverse') ? skinTypesDiverse : skinTypes).map((t) => (
-              <Link to={`/shop?skinType=${encodeURIComponent(t.value)}`} key={t.value} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, textDecoration: 'none', flex: '1 1 100px' }}>
-                <div className="skin-circle" style={{ width: 100, height: 100, borderRadius: '50%', overflow: 'hidden' }}>
-                  <img src={t.img} alt={t.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                </div>
-                <span style={{ fontSize: 12, fontWeight: 500, color: '#7a5c42', letterSpacing: '0.04em', textAlign: 'center' }}>{t.name}</span>
-              </Link>
-            ))}
-          </div>
+          {showRecommendations ? (
+            <div style={{ position: 'relative' }}>
+              <div className="home-rec-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: 12 }}>
+                {visibleRecommendedProducts.map((product) => (
+                  <Link
+                    to={`/product/${product.id}`}
+                    key={product.id}
+                    className="rec-card"
+                    style={{ minWidth: 0, border: '1px solid #F0DCC8', borderRadius: 12, overflow: 'hidden', background: '#fff', textDecoration: 'none', color: '#1c1209', display: 'flex', flexDirection: 'column' }}
+                  >
+                    <div style={{ aspectRatio: '1 / 0.72', background: '#fff', overflow: 'hidden' }}>
+                      <img
+                        src={product.imageUrl || 'https://placehold.co/300x300?text=SelfGlow'}
+                        alt={product.name}
+                        style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block', padding: 8 }}
+                      />
+                    </div>
+                    <div style={{ padding: '9px 10px 11px', display: 'flex', flexDirection: 'column', gap: 4, flex: 1 }}>
+                      <p style={{ fontSize: 9, letterSpacing: '0.13em', textTransform: 'uppercase', color: '#C4925A', margin: 0, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {product.category}
+                      </p>
+                      <h3 style={{ fontSize: 12, lineHeight: 1.25, fontWeight: 700, margin: 0, color: '#1c1209', minHeight: 30, overflow: 'hidden' }}>
+                        {product.name}
+                      </h3>
+                      <p style={{ fontSize: 10, color: '#9a7a5a', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {product.brand}
+                      </p>
+                      <p style={{ fontSize: 9, color: '#7a5c42', margin: '2px 0 0', lineHeight: 1.35, minHeight: 24, overflow: 'hidden' }}>
+                        {product.recommendationReason || 'Basierend auf deinem Hautprofil empfohlen'}
+                      </p>
+                      <div style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                        <span style={{ fontSize: 12, fontWeight: 800, color: '#1c1209' }}>
+                          {product.price.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}
+                        </span>
+                        <ArrowRight size={13} color="#D4A574" />
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+                {recommendationPage > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setRecommendationPage((page) => Math.max(0, page - 1))}
+                    aria-label="Vorherige Empfehlungen anzeigen"
+                    style={{ position: 'absolute', top: '50%', left: -18, transform: 'translateY(-50%)', width: 36, height: 36, borderRadius: '50%', border: '1px solid #F0DCC8', background: '#fff', boxShadow: '0 8px 24px rgba(28,18,9,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', zIndex: 2 }}
+                  >
+                    <ArrowRight size={18} color="#D4A574" style={{ transform: 'rotate(180deg)' }} />
+                  </button>
+                )}
+                {recommendationPageCount > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => setRecommendationPage((page) => (page + 1) % recommendationPageCount)}
+                    aria-label="Weitere Empfehlungen anzeigen"
+                    style={{ position: 'absolute', top: '50%', right: -18, transform: 'translateY(-50%)', width: 36, height: 36, borderRadius: '50%', border: '1px solid #F0DCC8', background: '#fff', boxShadow: '0 8px 24px rgba(28,18,9,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', zIndex: 2 }}
+                  >
+                    <ArrowRight size={18} color="#D4A574" />
+                  </button>
+                )}
+            </div>
+          ) : (
+            <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16, opacity: recommendationsLoading ? 0.65 : 1 }}>
+              {(gender === 'male' ? skinTypesMale : (!gender || gender === 'diverse') ? skinTypesDiverse : skinTypes).map((t) => (
+                <Link to={`/shop?skinType=${encodeURIComponent(t.value)}`} key={t.value} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, textDecoration: 'none', flex: '1 1 100px' }}>
+                  <div className="skin-circle" style={{ width: 100, height: 100, borderRadius: '50%', overflow: 'hidden' }}>
+                    <img src={t.img} alt={t.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  </div>
+                  <span style={{ fontSize: 12, fontWeight: 500, color: '#7a5c42', letterSpacing: '0.04em', textAlign: 'center' }}>{t.name}</span>
+                </Link>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 

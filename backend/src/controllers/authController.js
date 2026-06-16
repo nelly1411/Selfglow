@@ -11,6 +11,47 @@ const USER_NAME_PATTERN        = /^[A-Za-z0-9 _-]+$/;
 const REQUIRE_EMAIL_VERIFICATION =
   process.env.REQUIRE_EMAIL_VERIFICATION === "true";
 
+const { refreshUserProfileEmbedding } = require("../services/user-profile-embedding.service");
+
+const SKIN_TYPES = new Set(["Normal", "Oily", "Dry", "Combination", "Sensitive"]);
+const SKIN_TYPE_FACT_SOURCES = new Set(["profile", "quiz"]);
+const EDITABLE_SKIN_FACT_KEYS = [
+  "concern",
+  "skin_state",
+  "sensitivity",
+  "ingredient_avoidance",
+  "allergy",
+  "goal",
+  "product_reaction",
+  "preference",
+];
+const PROFILE_FACT_REPLACE_KEYS = [...EDITABLE_SKIN_FACT_KEYS, "skin_type"];
+const DEPRECATED_SKIN_FACT_KEYS = ["quiz_answer"];
+const QUIZ_FACT_VALUES = {
+  concern: new Set(["acne", "blemishes", "redness", "pores", "blackheads", "dark_spots", "dark_circles", "wrinkles"]),
+  skin_state: new Set([
+    "balanced",
+    "oily",
+    "oily_t_zone",
+    "dryness",
+    "dehydration",
+    "tightness",
+    "flakiness",
+    "rough_texture",
+    "shine",
+    "refined_pores",
+    "clear_skin",
+    "matte",
+    "combination_zones",
+  ]),
+  sensitivity: new Set(["sensitive", "tolerant"]),
+  product_reaction: new Set(["burning", "breakout", "redness", "too_greasy", "drying"]),
+  preference: new Set(["light_texture", "rich_texture", "fragrance_free", "alcohol_free", "vegan", "non_comedogenic", "oil_free", "cruelty_free", "natural_ingredients"]),
+  goal: new Set(["hydration", "calming", "glow", "anti_aging", "barrier_support", "exfoliation", "brightening", "sun_protection"]),
+  ingredient_avoidance: new Set(["fragrance", "alcohol", "retinol", "vitamin_c"]),
+  allergy: new Set(["fragrance", "alcohol", "retinol", "niacinamide", "vitamin_c"]),
+};
+
 function getJwtSecret(res) {
   if (!process.env.JWT_SECRET) {
     console.error("JWT_SECRET is not configured");
@@ -77,6 +118,116 @@ function getUserNameValidationMessage(name) {
   if (!USER_NAME_PATTERN.test(name))
     return "Der Benutzername darf nur Buchstaben, Zahlen, Leerzeichen, Unterstriche und Bindestriche enthalten";
   return null;
+}
+
+function cleanFactValue(value) {
+  if (typeof value !== "string") return null;
+  const cleaned = value.trim().slice(0, 80);
+  return cleaned || null;
+}
+
+function buildQuizAnswerFacts(userId, quizAnswers) {
+  if (!Array.isArray(quizAnswers)) return [];
+
+  const includesAny = (text, terms) => terms.some((term) => text.includes(term));
+  const getQuestionCategory = (text) => {
+    if (includesAny(text, ["morgens", "aufwachen"])) return "morning_feel";
+    if (includesAny(text, ["neue pflegeprodukte", "neue produkte", "rasieren"])) return "reaction";
+    if (includesAny(text, ["poren"])) return "pores";
+    if (includesAny(text, ["reinigung", "gesichtsreinigung"])) return "cleansing";
+    if (includesAny(text, ["unreinheiten", "pickeln"])) return "blemishes";
+    if (includesAny(text, ["feuchtigkeitscreme"])) return "moisturizer_gap";
+    return "general";
+  };
+  const nextFacts = [];
+  const addFact = (key, value, evidence) => {
+    if (!key || !value) return;
+    if (!QUIZ_FACT_VALUES[key]?.has(value)) return;
+    if (nextFacts.some((fact) => fact.key === key && fact.value === value)) return;
+    nextFacts.push({
+      userId,
+      key,
+      value,
+      source: "quiz",
+      confidence: 0.86,
+      evidence: evidence.slice(0, 240),
+    });
+  };
+
+  for (const answer of quizAnswers) {
+    if (!cleanFactValue(answer?.value)) continue;
+
+    const question = String(answer?.question || "").trim();
+    const selectedAnswer = String(answer?.answer || "").trim();
+    const evidence = [question, selectedAnswer].filter(Boolean).join(" -> ");
+    const questionText = question.toLowerCase();
+    const answerText = selectedAnswer.toLowerCase();
+    const answerValue = String(answer?.value || "").trim();
+    const category = getQuestionCategory(questionText);
+    const explicitFacts = Array.isArray(answer?.facts) ? answer.facts : [];
+
+    if (explicitFacts.length > 0) {
+      for (const fact of explicitFacts) {
+        addFact(cleanFactValue(fact?.key), cleanFactValue(fact?.value), evidence);
+      }
+      continue;
+    }
+
+    if (answerValue === "Normal") {
+      if (category === "reaction") addFact("sensitivity", "tolerant", evidence);
+      else if (category === "pores") addFact("skin_state", "refined_pores", evidence);
+      else if (category === "blemishes") addFact("skin_state", "clear_skin", evidence);
+      else addFact("skin_state", "balanced", evidence);
+    }
+
+    if (answerValue === "Oily") {
+      addFact("skin_state", includesAny(answerText, ["t-zone", "stirn", "nase"]) ? "oily_t_zone" : "oily", evidence);
+      if (includesAny(answerText, ["glänz", "glanz"])) addFact("skin_state", "shine", evidence);
+      if (category === "reaction") addFact("product_reaction", "too_greasy", evidence);
+      if (category === "pores") addFact("concern", "pores", evidence);
+      if (category === "blemishes") addFact("concern", "blemishes", evidence);
+    }
+
+    if (answerValue === "Dry") {
+      addFact("skin_state", "dryness", evidence);
+      if (category === "pores") addFact("skin_state", "matte", evidence);
+      if (includesAny(answerText, ["spannt", "spannend", "zieht"])) addFact("skin_state", "tightness", evidence);
+      if (includesAny(answerText, ["schuppt", "schuppig"])) addFact("skin_state", "flakiness", evidence);
+      if (includesAny(answerText, ["rau"])) addFact("skin_state", "rough_texture", evidence);
+      if (["reaction", "cleansing", "moisturizer_gap"].includes(category)) addFact("product_reaction", "drying", evidence);
+    }
+
+    if (answerValue === "Sensitive") {
+      addFact("sensitivity", "sensitive", evidence);
+      addFact("concern", "redness", evidence);
+      if (includesAny(answerText, ["brenn", "sticht", "juck"])) addFact("product_reaction", "burning", evidence);
+    }
+
+    if (answerValue === "Combination") {
+      addFact("skin_state", "combination_zones", evidence);
+      addFact("skin_state", "oily_t_zone", evidence);
+      addFact("skin_state", "dryness", evidence);
+      if (["pores", "blemishes"].includes(category)) addFact("concern", category === "pores" ? "pores" : "blemishes", evidence);
+    }
+  }
+
+  return nextFacts;
+}
+
+function mapSkinProfileResponse(user, facts) {
+  return {
+    skinType: user.skinType,
+    gender: user.gender,
+    facts: facts
+      .filter((fact) => !DEPRECATED_SKIN_FACT_KEYS.includes(fact.key))
+      .map((fact) => ({
+        key: fact.key,
+        value: fact.value,
+        confidence: fact.confidence,
+        source: fact.source,
+        updatedAt: fact.updatedAt,
+      })),
+  };
 }
 
 // ─── Register ─────────────────────────────────────────────────────────────────
@@ -287,6 +438,307 @@ async function getAddress(req, res) {
   }
 }
 
+async function getProfileContext(req, res) {
+  try {
+    const userId = req.user.userId;
+
+    await prisma.userSkinProfileFact.deleteMany({
+      where: {
+        userId,
+        key: { in: DEPRECATED_SKIN_FACT_KEYS },
+      },
+    });
+
+    const [user, facts, latestAnalysis, latestImageConversation, analysisImages, chatImageConversations, cart, wishlist] = await Promise.all([
+      prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+          id: true,
+          skinType: true,
+          gender: true,
+        },
+      }),
+      prisma.userSkinProfileFact.findMany({
+        where: {
+          userId,
+          key: { notIn: DEPRECATED_SKIN_FACT_KEYS },
+        },
+        orderBy: { updatedAt: "desc" },
+        take: 30,
+      }),
+      prisma.skinAnalysis.findFirst({
+        where: { userId },
+        orderBy: { createdAt: "desc" },
+        select: {
+          id: true,
+          skinType: true,
+          dryness: true,
+          redness: true,
+          blemishes: true,
+          sensitivity: true,
+          overall: true,
+          imageData: true,
+          createdAt: true,
+        },
+      }),
+      prisma.conversation.findFirst({
+        where: {
+          userId,
+          messages: {
+            some: {
+              imageData: { not: null },
+            },
+          },
+        },
+        orderBy: { updatedAt: "desc" },
+        include: {
+          messages: {
+            where: {
+              imageData: { not: null },
+            },
+            orderBy: { createdAt: "desc" },
+            take: 1,
+            select: {
+              imageData: true,
+              content: true,
+              createdAt: true,
+            },
+          },
+        },
+      }),
+      prisma.skinAnalysis.findMany({
+        where: {
+          userId,
+          imageData: { not: null },
+        },
+        orderBy: { createdAt: "desc" },
+        take: 12,
+        select: {
+          id: true,
+          imageData: true,
+          createdAt: true,
+        },
+      }),
+      prisma.conversation.findMany({
+        where: {
+          userId,
+          messages: {
+            some: {
+              imageData: { not: null },
+            },
+          },
+        },
+        orderBy: { updatedAt: "desc" },
+        take: 12,
+        include: {
+          messages: {
+            where: {
+              imageData: { not: null },
+            },
+            orderBy: { createdAt: "desc" },
+            take: 3,
+            select: {
+              id: true,
+              imageData: true,
+              content: true,
+              createdAt: true,
+            },
+          },
+        },
+      }),
+      prisma.cart.findUnique({
+        where: { userId },
+        include: {
+          items: {
+            take: 5,
+            orderBy: { updatedAt: "desc" },
+            include: {
+              product: {
+                select: {
+                  id: true,
+                  name: true,
+                  brand: true,
+                  category: true,
+                },
+              },
+            },
+          },
+        },
+      }),
+      prisma.wishlistItem.findMany({
+        where: { userId },
+        take: 5,
+        orderBy: { createdAt: "desc" },
+        include: {
+          product: {
+            select: {
+              id: true,
+              name: true,
+              brand: true,
+              category: true,
+            },
+          },
+        },
+      }),
+    ]);
+
+    if (!user) {
+      return res.status(404).json({ message: "Benutzer nicht gefunden" });
+    }
+
+    const latestChatImage = latestImageConversation?.messages?.[0] || null;
+    const latestProfileImage =
+      latestAnalysis?.imageData && (!latestChatImage || latestAnalysis.createdAt >= latestImageConversation.updatedAt)
+        ? {
+            imageData: latestAnalysis.imageData,
+            source: "skin_analysis",
+            createdAt: latestAnalysis.createdAt,
+          }
+        : latestChatImage?.imageData
+          ? {
+              imageData: latestChatImage.imageData,
+              source: "chat",
+              createdAt: latestImageConversation.updatedAt,
+            }
+          : null;
+
+    const profileImages = [
+      ...analysisImages
+        .filter((image) => image.imageData)
+        .map((image) => ({
+          id: `skin_analysis-${image.id}`,
+          imageData: image.imageData,
+          source: "skin_analysis",
+          createdAt: image.createdAt,
+        })),
+      ...chatImageConversations.flatMap((conversation) =>
+        conversation.messages
+          .filter((message) => message.imageData)
+          .map((message) => ({
+            id: `chat-${message.id}`,
+            imageData: message.imageData,
+            source: "chat",
+            createdAt: conversation.updatedAt,
+          }))
+      ),
+    ]
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .filter((image, index, all) => all.findIndex((item) => item.imageData === image.imageData) === index)
+      .slice(0, 12);
+
+    return res.json({
+      ...mapSkinProfileResponse(user, facts),
+      latestAnalysis,
+      latestProfileImage,
+      profileImages,
+      cart: (cart?.items || []).map((item) => ({
+        id: item.product.id,
+        name: item.product.name,
+        brand: item.product.brand,
+        category: item.product.category,
+        quantity: item.quantity,
+      })),
+      wishlist: wishlist.map((item) => ({
+        id: item.product.id,
+        name: item.product.name,
+        brand: item.product.brand,
+        category: item.product.category,
+      })),
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Serverfehler" });
+  }
+}
+
+async function updateSkinProfile(req, res) {
+  try {
+    const userId = req.user.userId;
+    const { skinType, facts = {} } = req.body;
+    const normalizedSkinType = skinType === null || skinType === "" ? null : skinType;
+
+    if (normalizedSkinType && !SKIN_TYPES.has(normalizedSkinType)) {
+      return res.status(400).json({ message: "Ungültiger Hauttyp" });
+    }
+
+    const nextFacts = [];
+    if (normalizedSkinType) {
+      nextFacts.push({
+        userId,
+        key: "skin_type",
+        value: normalizedSkinType,
+        source: "profile",
+        confidence: 0.9,
+        evidence: "Vom Nutzer im Profil gepflegt",
+      });
+    }
+
+    for (const key of EDITABLE_SKIN_FACT_KEYS) {
+      const values = Array.isArray(facts[key]) ? facts[key] : [];
+      for (const value of values) {
+        const cleaned = cleanFactValue(value);
+        if (!cleaned) continue;
+        if (nextFacts.some((fact) => fact.key === key && fact.value === cleaned)) continue;
+        nextFacts.push({
+          userId,
+          key,
+          value: cleaned,
+          source: "profile",
+          confidence: 0.9,
+          evidence: "Vom Nutzer im Profil gepflegt",
+        });
+      }
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id: userId },
+        data: { skinType: normalizedSkinType },
+      });
+
+      await tx.userSkinProfileFact.deleteMany({
+        where: {
+          userId,
+          key: { in: [...PROFILE_FACT_REPLACE_KEYS, ...DEPRECATED_SKIN_FACT_KEYS] },
+        },
+      });
+
+      if (nextFacts.length > 0) {
+        await tx.userSkinProfileFact.createMany({
+          data: nextFacts,
+          skipDuplicates: true,
+        });
+      }
+    });
+
+    await refreshUserProfileEmbedding(userId);
+
+    const [user, savedFacts] = await Promise.all([
+      prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true, email: true, name: true, skinType: true, savedAddress: true, savedPostal: true, savedCity: true, savedCountry: true, savedPhone: true, usedWelcomeCode: true, emailVerified: true, gender: true },
+      }),
+      prisma.userSkinProfileFact.findMany({
+        where: {
+          userId,
+          key: { notIn: DEPRECATED_SKIN_FACT_KEYS },
+        },
+        orderBy: { updatedAt: "desc" },
+        take: 30,
+      }),
+    ]);
+
+    return res.json({
+      message: "Hautprofil gespeichert",
+      user: toAuthUser(user),
+      profile: mapSkinProfileResponse(user, savedFacts),
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Serverfehler" });
+  }
+}
+
 // ─── PATCH /api/auth/address ──────────────────────────────────────────────────
 async function updateAddress(req, res) {
   try {
@@ -311,13 +763,53 @@ async function updateAddress(req, res) {
 // ─── PATCH /api/auth/skin-type ────────────────────────────────────────────────
 async function updateSkinType(req, res) {
   try {
-    const { skinType } = req.body;
+    const { skinType, source, quizAnswers } = req.body;
     if (!skinType) return res.status(400).json({ message: "skinType fehlt" });
+    if (!SKIN_TYPES.has(skinType)) return res.status(400).json({ message: "Ungültiger Hauttyp" });
+    const factSource = SKIN_TYPE_FACT_SOURCES.has(source) ? source : "profile";
+    const evidence = factSource === "quiz"
+      ? "Vom Nutzer im Hauttyp-Quiz ermittelt"
+      : "Vom Nutzer im Profil gepflegt";
+    const quizAnswerFacts = factSource === "quiz" ? buildQuizAnswerFacts(req.user.userId, quizAnswers) : [];
 
-    const updatedUser = await prisma.user.update({
-      where: { id: req.user.userId },
-      data:  { skinType },
+    const updatedUser = await prisma.$transaction(async (tx) => {
+      const user = await tx.user.update({
+        where: { id: req.user.userId },
+        data:  { skinType },
+      });
+
+      await tx.userSkinProfileFact.deleteMany({
+        where: {
+          userId: req.user.userId,
+          OR: factSource === "quiz"
+            ? [
+                { key: "skin_type" },
+                { source: "quiz" },
+                { key: { in: DEPRECATED_SKIN_FACT_KEYS } },
+              ]
+            : [
+                { key: "skin_type" },
+                { key: { in: DEPRECATED_SKIN_FACT_KEYS } },
+              ],
+        },
+      });
+
+      await tx.userSkinProfileFact.createMany({
+        data: [{
+          userId: req.user.userId,
+          key: "skin_type",
+          value: skinType,
+          source: factSource,
+          confidence: 0.9,
+          evidence,
+        }, ...quizAnswerFacts],
+        skipDuplicates: true,
+      });
+
+      return user;
     });
+
+    await refreshUserProfileEmbedding(req.user.userId);
     return res.json({ message: "Hauttyp gespeichert", user: toAuthUser(updatedUser) });
   } catch (error) {
     console.error(error);
@@ -328,10 +820,22 @@ async function updateSkinType(req, res) {
 
 async function deleteSkinType(req, res) {
   try {
-    const updatedUser = await prisma.user.update({
-      where: { id: req.user.userId },
-      data:  { skinType: null },
+    const updatedUser = await prisma.$transaction(async (tx) => {
+      const user = await tx.user.update({
+        where: { id: req.user.userId },
+        data:  { skinType: null },
+      });
+
+      await tx.userSkinProfileFact.deleteMany({
+        where: {
+          userId: req.user.userId,
+          key: "skin_type",
+        },
+      });
+
+      return user;
     })
+    await refreshUserProfileEmbedding(req.user.userId)
     return res.json({ message: 'Hauttyp gelöscht', user: toAuthUser(updatedUser) })
   } catch (error) {
     console.error(error)
@@ -402,10 +906,11 @@ async function updateGender(req, res) {
       where: { id: req.user.userId },
       data:  { gender: gender ?? null }
     })
+    await refreshUserProfileEmbedding(req.user.userId)
     return res.json({ message: 'Gespeichert', user: toAuthUser(updated) })
   } catch (err) {
     console.error(err)
     return res.status(500).json({ message: 'Serverfehler' })
   }
 }
-module.exports = { register, login, getAddress, updateAddress, updateSkinType, deleteSkinType, checkWelcomeCode, verifyCode, updateProfile, updatePassword, updateGender}
+module.exports = { register, login, getAddress, getProfileContext, updateSkinProfile, updateAddress, updateSkinType, deleteSkinType, checkWelcomeCode, verifyCode, updateProfile, updatePassword, updateGender}

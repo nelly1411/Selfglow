@@ -4,6 +4,8 @@ const {
     captureReviewProfileFacts,
 } = require("../services/user-skin-profile.service");
 
+const { refreshUserProfileEmbedding } = require("../services/user-profile-embedding.service");
+
 async function createReview(req, res) {
     try {
         //users can only write a review after making a purchase
@@ -58,7 +60,10 @@ async function createReview(req, res) {
             where: { id: Number(productId) },
             select: { id: true, name: true, brand: true, category: true },
         });
-        await captureReviewProfileFacts(userId, reviewText, product);
+        const capturedProfile = await captureReviewProfileFacts(userId, reviewText, product);
+        if (capturedProfile.facts.length > 0 || capturedProfile.skinType) {
+            await refreshUserProfileEmbedding(userId);
+        }
 
         return res.status(201).json(review);
 

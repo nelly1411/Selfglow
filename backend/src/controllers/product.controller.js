@@ -74,9 +74,24 @@ async function assessProductFit(req, res) {
   }
 }
 
+async function getMyRecommendations(req, res) {
+  try {
+    const products = await productService.getRecommendedProductsForUser(
+      req.user.userId,
+      { limit: Number(req.query.limit) || 8 }
+    );
+
+    res.status(200).json({ products });
+  } catch (error) {
+    console.error("Failed to fetch recommendations:", error);
+    res.status(500).json({ message: "Failed to fetch recommendations" });
+  }
+}
+
 module.exports = {
   getAllProducts,
   getProductById,
   explainProduct,
   assessProductFit,
+  getMyRecommendations,
 };

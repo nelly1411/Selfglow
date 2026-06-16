@@ -5,6 +5,8 @@ const {
   getUserSkinProfileFacts,
 } = require("../services/user-skin-profile.service");
 
+const { refreshUserProfileEmbedding } = require("../services/user-profile-embedding.service");
+
 function parseStoredJson(value, fallback) {
   if (!value) return fallback;
 
@@ -87,7 +89,10 @@ async function createChatResponse(req, res) {
       : [];
 
     const safeWeather = weather && typeof weather === "object" ? weather : null;
-    await captureUserSkinProfileFromMessage(req.user?.userId, message);
+    const capturedProfile = await captureUserSkinProfileFromMessage(req.user?.userId, message);
+    if (capturedProfile.changed || capturedProfile.facts.length > 0 || capturedProfile.skinType) {
+      await refreshUserProfileEmbedding(req.user.userId);
+    }
     const userProfile = await getUserProfileContext(req.user?.userId);
 
     const response = await chatService.createChatResponse(
@@ -136,7 +141,10 @@ async function createChatResponseStream(req, res) {
       : [];
 
     const safeWeather = weather && typeof weather === "object" ? weather : null;
-    await captureUserSkinProfileFromMessage(req.user?.userId, message);
+    const capturedProfile = await captureUserSkinProfileFromMessage(req.user?.userId, message);
+    if (capturedProfile.changed || capturedProfile.facts.length > 0 || capturedProfile.skinType) {
+      await refreshUserProfileEmbedding(req.user.userId);
+    }
     const userProfile = await getUserProfileContext(req.user?.userId);
 
     res.setHeader("Content-Type", "text/event-stream");

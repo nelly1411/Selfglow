@@ -6,6 +6,9 @@ const {
   captureSkinAnalysisProfileFacts,
 } = require('../services/user-skin-profile.service')
 
+
+const { refreshUserProfileEmbedding } = require("../services/user-profile-embedding.service");
+
 // ── POST /api/skin-analysis/analyze ──────────────────────────────────────────
 router.post('/analyze', async (req, res) => {
   try {
@@ -150,11 +153,16 @@ router.post('/glow', async (req, res) => {
 // ── POST /api/skin-analysis/save ─────────────────────────────────────────────
 router.post('/save', authMiddleware, async (req, res) => {
   try {
-    const { skinType, dryness, redness, blemishes, sensitivity, overall, tips, products } = req.body
+    const { skinType, dryness, redness, blemishes, sensitivity, overall, tips, products, imageData } = req.body
 
     if (!skinType) {
       return res.status(400).json({ error: 'skinType fehlt' })
     }
+
+    const storedImageData =
+      typeof imageData === 'string' && imageData.startsWith('data:image/')
+        ? imageData
+        : null
 
     const analysis = await prisma.skinAnalysis.create({
       data: {
@@ -167,10 +175,14 @@ router.post('/save', authMiddleware, async (req, res) => {
         overall:     overall   || '',
         tips:        JSON.stringify(tips     || []),
         products:    JSON.stringify(products || []),
+        imageData:    storedImageData,
       }
     })
 
-    await captureSkinAnalysisProfileFacts(req.user.userId, analysis)
+    const capturedProfile = await captureSkinAnalysisProfileFacts(req.user.userId, analysis)
+    if (capturedProfile.facts.length > 0 || capturedProfile.skinType) {
+      await refreshUserProfileEmbedding(req.user.userId)
+    }
 
     return res.json({ analysis })
   } catch (err) {
@@ -212,6 +224,7 @@ router.delete('/:id', authMiddleware, async (req, res) => {
     }
 
     await prisma.skinAnalysis.delete({ where: { id } })
+    await refreshUserProfileEmbedding(req.user.userId)
     return res.json({ message: 'Analyse gelöscht' })
   } catch (err) {
     console.error('Delete-Fehler:', err)
