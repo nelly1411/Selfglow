@@ -69,6 +69,7 @@ type RecommendedProduct = {
   imageUrl?: string | null
   rating?: number | null
   recommendationReason?: string | null
+  recommendationBullets?: string[]
 }
 
 const skinLabels: Record<string, string> = {
@@ -187,13 +188,15 @@ export default function Home() {
   const [recommendedProducts, setRecommendedProducts] = useState<RecommendedProduct[]>([])
   const [recommendationPage, setRecommendationPage] = useState(0)
   const [recommendationsLoading, setRecommendationsLoading] = useState(false)
+  const [profileSkinType, setProfileSkinType] = useState<string | null>(null)
+  const [profileGender, setProfileGender] = useState<string | null>(null)
   const styleRef = useRef<HTMLStyleElement | null>(null)
   const { user, token, updateUser } = useAuth()
   const navigate = useNavigate()
 
   const firstName  = user?.name?.split(' ')[0] || user?.email?.split('@')[0] || null
-  const skinType   = user?.skinType || null
-  const gender     = user?.gender ?? null
+  const skinType   = profileSkinType ?? user?.skinType ?? null
+  const gender     = profileGender ?? user?.gender ?? null
   const greeting   = getGreeting(gender)
   const categories = getCategoriesForGender(gender)
 
@@ -204,6 +207,43 @@ export default function Home() {
     styleRef.current = el
     return () => { if (styleRef.current) document.head.removeChild(styleRef.current) }
   }, [])
+
+  useEffect(() => {
+    async function fetchProfileContext() {
+      if (!token) {
+        setProfileSkinType(null)
+        setProfileGender(null)
+        return
+      }
+
+      try {
+        const res = await fetch(apiUrl('/api/auth/profile-context'), {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+
+        if (!res.ok) return
+
+        const data = await res.json()
+        const nextSkinType = data.skinType ?? null
+        const nextGender = data.gender ?? null
+
+        setProfileSkinType(nextSkinType)
+        setProfileGender(nextGender)
+
+        if (user && (user.skinType !== nextSkinType || user.gender !== nextGender)) {
+          updateUser({
+            ...user,
+            skinType: nextSkinType,
+            gender: nextGender,
+          })
+        }
+      } catch (err) {
+        console.error(err)
+      }
+    }
+
+    fetchProfileContext()
+  }, [token, user?.id, user?.skinType, user?.gender, updateUser])
 
   useEffect(() => {
     async function fetchRecommendations() {
@@ -302,6 +342,7 @@ export default function Home() {
                             method: 'DELETE', headers: { Authorization: `Bearer ${t}` },
                           })
                           const data = await res.json()
+                          setProfileSkinType(null)
                           if (data.user) updateUser({ ...user!, ...data.user, token: t })
                           else updateUser({ ...user!, skinType: null, token: t })
                         } catch (err) { console.error(err) }
@@ -439,9 +480,30 @@ export default function Home() {
                       <p style={{ fontSize: 10, color: '#9a7a5a', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {product.brand}
                       </p>
-                      <p style={{ fontSize: 9, color: '#7a5c42', margin: '2px 0 0', lineHeight: 1.35, minHeight: 24, overflow: 'hidden' }}>
-                        {product.recommendationReason || 'Basierend auf deinem Hautprofil empfohlen'}
-                      </p>
+                      {product.recommendationBullets && product.recommendationBullets.length > 0 && (
+                        <div style={{ display: 'flex', flexWrap: 'nowrap', gap: 4, marginTop: 2, overflow: 'hidden', minHeight: 18 }}>
+                          {product.recommendationBullets.slice(0, 4).map((bullet) => (
+                            <span
+                              key={bullet}
+                              style={{
+                                flex: '0 0 auto',
+                                borderRadius: 999,
+                                background: '#FDF7F0',
+                                padding: '2px 7px',
+                                fontSize: 9,
+                                lineHeight: '14px',
+                                color: '#7A5A3A',
+                                maxWidth: 78,
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              {bullet}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                       <div style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                         <span style={{ fontSize: 12, fontWeight: 800, color: '#1c1209' }}>
                           {product.price.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}

@@ -12,6 +12,7 @@ const REQUIRE_EMAIL_VERIFICATION =
   process.env.REQUIRE_EMAIL_VERIFICATION === "true";
 
 const { refreshUserProfileEmbedding } = require("../services/user-profile-embedding.service");
+const { getCurrentSkinTypeFromFacts } = require("../services/user-skin-profile.service");
 
 const SKIN_TYPES = new Set(["Normal", "Oily", "Dry", "Combination", "Sensitive"]);
 const SKIN_TYPE_FACT_SOURCES = new Set(["profile", "quiz"]);
@@ -215,8 +216,10 @@ function buildQuizAnswerFacts(userId, quizAnswers) {
 }
 
 function mapSkinProfileResponse(user, facts) {
+  const currentSkinType = getCurrentSkinTypeFromFacts(facts);
+
   return {
-    skinType: user.skinType,
+    skinType: currentSkinType,
     gender: user.gender,
     facts: facts
       .filter((fact) => !DEPRECATED_SKIN_FACT_KEYS.includes(fact.key))
@@ -442,11 +445,12 @@ async function getProfileContext(req, res) {
   try {
     const userId = req.user.userId;
 
-    await prisma.userSkinProfileFact.deleteMany({
+    await prisma.userSkinProfileFact.updateMany({
       where: {
         userId,
         key: { in: DEPRECATED_SKIN_FACT_KEYS },
       },
+      data: { isActive: false },
     });
 
     const [user, facts, latestAnalysis, latestImageConversation, analysisImages, chatImageConversations, cart, wishlist] = await Promise.all([
@@ -462,6 +466,7 @@ async function getProfileContext(req, res) {
         where: {
           userId,
           key: { notIn: DEPRECATED_SKIN_FACT_KEYS },
+          isActive: true,
         },
         orderBy: { updatedAt: "desc" },
         take: 30,
@@ -586,6 +591,15 @@ async function getProfileContext(req, res) {
       return res.status(404).json({ message: "Benutzer nicht gefunden" });
     }
 
+    const currentSkinType = getCurrentSkinTypeFromFacts(facts);
+    if ((user.skinType || null) !== (currentSkinType || null)) {
+      await prisma.user.update({
+        where: { id: userId },
+        data: { skinType: currentSkinType },
+      });
+      user.skinType = currentSkinType;
+    }
+
     const latestChatImage = latestImageConversation?.messages?.[0] || null;
     const latestProfileImage =
       latestAnalysis?.imageData && (!latestChatImage || latestAnalysis.createdAt >= latestImageConversation.updatedAt)
@@ -696,17 +710,33 @@ async function updateSkinProfile(req, res) {
         data: { skinType: normalizedSkinType },
       });
 
-      await tx.userSkinProfileFact.deleteMany({
+      await tx.userSkinProfileFact.updateMany({
         where: {
           userId,
           key: { in: [...PROFILE_FACT_REPLACE_KEYS, ...DEPRECATED_SKIN_FACT_KEYS] },
         },
+        data: { isActive: false },
       });
 
-      if (nextFacts.length > 0) {
-        await tx.userSkinProfileFact.createMany({
-          data: nextFacts,
-          skipDuplicates: true,
+      for (const fact of nextFacts) {
+        await tx.userSkinProfileFact.upsert({
+          where: {
+            userId_key_value: {
+              userId: fact.userId,
+              key: fact.key,
+              value: fact.value,
+            },
+          },
+          create: {
+            ...fact,
+            isActive: true,
+          },
+          update: {
+            source: fact.source,
+            confidence: fact.confidence,
+            evidence: fact.evidence,
+            isActive: true,
+          },
         });
       }
     });
@@ -722,6 +752,7 @@ async function updateSkinProfile(req, res) {
         where: {
           userId,
           key: { notIn: DEPRECATED_SKIN_FACT_KEYS },
+          isActive: true,
         },
         orderBy: { updatedAt: "desc" },
         take: 30,
@@ -778,7 +809,7 @@ async function updateSkinType(req, res) {
         data:  { skinType },
       });
 
-      await tx.userSkinProfileFact.deleteMany({
+      await tx.userSkinProfileFact.updateMany({
         where: {
           userId: req.user.userId,
           OR: factSource === "quiz"
@@ -792,19 +823,39 @@ async function updateSkinType(req, res) {
                 { key: { in: DEPRECATED_SKIN_FACT_KEYS } },
               ],
         },
+        data: { isActive: false },
       });
 
-      await tx.userSkinProfileFact.createMany({
-        data: [{
+      const nextFacts = [{
           userId: req.user.userId,
           key: "skin_type",
           value: skinType,
           source: factSource,
           confidence: 0.9,
           evidence,
-        }, ...quizAnswerFacts],
-        skipDuplicates: true,
-      });
+        }, ...quizAnswerFacts];
+
+      for (const fact of nextFacts) {
+        await tx.userSkinProfileFact.upsert({
+          where: {
+            userId_key_value: {
+              userId: fact.userId,
+              key: fact.key,
+              value: fact.value,
+            },
+          },
+          create: {
+            ...fact,
+            isActive: true,
+          },
+          update: {
+            source: fact.source,
+            confidence: fact.confidence,
+            evidence: fact.evidence,
+            isActive: true,
+          },
+        });
+      }
 
       return user;
     });
@@ -826,11 +877,12 @@ async function deleteSkinType(req, res) {
         data:  { skinType: null },
       });
 
-      await tx.userSkinProfileFact.deleteMany({
+      await tx.userSkinProfileFact.updateMany({
         where: {
           userId: req.user.userId,
           key: "skin_type",
         },
+        data: { isActive: false },
       });
 
       return user;

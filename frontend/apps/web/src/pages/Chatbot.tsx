@@ -7,6 +7,7 @@ import { apiUrl } from '@/lib/api'
 import { cn } from '@workspace/ui/lib/utils'
 import SkinAnalysis from '@/pages/SkinAnalysis'
 import { useChat, initialMessages, type Message, type ChatProduct } from '@/context/ChatContext'
+import { useAuth } from '@/context/AuthContext'
 
 type ChatResponseData = {
   answer: string
@@ -301,8 +302,7 @@ export default function Chatbot() {
     weather,
     fetchWeather,
   } = useChat()
-
-  const { token, user } = useAuth()
+  const { token, user, updateUser } = useAuth()
   const [isLoading, setIsLoading] = useState(false)
   const [explainingMessageId, setExplainingMessageId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -337,7 +337,16 @@ export default function Chatbot() {
         return
       }
 
-      setProfileContext(await response.json())
+      const data = await response.json()
+      setProfileContext(data)
+
+      if (user && (data.skinType !== user.skinType || data.gender !== user.gender)) {
+        updateUser({
+          ...user,
+          skinType: data.skinType ?? null,
+          gender: data.gender ?? null,
+        })
+      }
     } catch (err) {
       console.error(err)
       setProfileContext(null)
