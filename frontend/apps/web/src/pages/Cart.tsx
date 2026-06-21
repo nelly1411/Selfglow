@@ -269,9 +269,9 @@ export default function Cart() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-3xl font-bold text-foreground">
-          Warenkorb
+<div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+<h1 className="text-2xl sm:text-3xl font-bold text-foreground">
+            Warenkorb
         </h1>
 
         <Button
@@ -301,7 +301,7 @@ export default function Cart() {
           {items.map((item) => (
             <div
               key={item.id}
-              className="flex gap-4 p-4 bg-background border border-border rounded-xl"
+className="flex flex-col sm:flex-row gap-4 p-4 bg-background border border-border rounded-xl"
             >
               <input
                 type="checkbox"
@@ -345,8 +345,8 @@ export default function Cart() {
                 </div>
               </div>
 
-              <div className="flex flex-col items-end justify-between">
-                <button
+<div className="flex flex-row sm:flex-col items-center sm:items-end justify-between gap-4 sm:gap-0">
+                  <button
                   onClick={() => handleRemoveItem(item.id)}
                   className="p-1 text-muted-foreground hover:text-destructive transition-colors"
                   aria-label="Produkt entfernen"
