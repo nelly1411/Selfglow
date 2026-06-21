@@ -19,34 +19,39 @@ const hautProbleme = [
     title: 'Akne',
     image: acne,
     intro:
-      'Akne zeigt sich häufig durch Pickel, entzündete Stellen und verstopfte Poren. Sie kann in verschiedenen Altersgruppen auftreten.',
+      'Akne zeigt sich häufig durch Pickel, entzündete Stellen und verstopfte Poren.',
+    symptoms: ['Pickel', 'Entzündungen', 'Verstopfte Poren', 'Ölige Haut'],
     causes: [
       'Überschüssige Talgproduktion',
       'Verstopfte Poren durch abgestorbene Hautzellen',
       'Hormonelle Veränderungen',
       'Bakterien und Entzündungen',
-      'Stress oder ungeeignete Pflegeprodukte',
     ],
     tips: [
       'Reinige dein Gesicht mild und nicht zu aggressiv.',
-      'Drücke Pickel nicht aus, damit keine Narben entstehen.',
+      'Drücke Pickel nicht aus.',
       'Nutze leichte, nicht-komedogene Pflegeprodukte.',
-      'Achte auf regelmäßigen Sonnenschutz.',
-      'Bei starker Akne sollte man ärztlichen Rat einholen.',
+      'Achte auf täglichen Sonnenschutz.',
     ],
-    ingredients: ['Salicylsäure', 'Niacinamid', 'Azelainsäure', 'Benzoylperoxid'],
+    ingredients: [
+      { name: 'Salicylsäure', text: 'Hilft gegen verstopfte Poren.' },
+      { name: 'Niacinamid', text: 'Beruhigt die Haut und stärkt die Hautbarriere.' },
+      { name: 'Azelainsäure', text: 'Kann Rötungen und Pickelmale mildern.' },
+      { name: 'Benzoylperoxid', text: 'Wirkt gegen Akne-Bakterien.' },
+    ],
   },
   {
     slug: 'blackheads',
     title: 'Mitesser',
     image: blackheads,
     intro:
-      'Mitesser sind kleine verstopfte Poren, die oft auf Nase, Stirn oder Kinn sichtbar werden.',
+      'Mitesser sind kleine verstopfte Poren, die besonders auf Nase, Stirn und Kinn sichtbar werden.',
+    symptoms: ['Schwarze Punkte', 'Verstopfte Poren', 'Ölige T-Zone', 'Unreine Haut'],
     causes: [
       'Talg sammelt sich in den Poren',
       'Abgestorbene Hautzellen verstopfen die Hautoberfläche',
-      'Ölige Haut kann Mitesser begünstigen',
-      'Ungeeignete oder zu reichhaltige Produkte',
+      'Ölige Haut begünstigt Mitesser',
+      'Zu reichhaltige Pflegeprodukte',
     ],
     tips: [
       'Verwende eine milde Reinigung.',
@@ -54,7 +59,12 @@ const hautProbleme = [
       'Vermeide stark fettende Produkte.',
       'Drücke Mitesser nicht grob aus.',
     ],
-    ingredients: ['Salicylsäure', 'Niacinamid', 'Tonerde', 'Retinol'],
+    ingredients: [
+      { name: 'Salicylsäure', text: 'Dringt in die Poren ein und löst Verstopfungen.' },
+      { name: 'Niacinamid', text: 'Kann die Talgproduktion ausgleichen.' },
+      { name: 'Tonerde', text: 'Nimmt überschüssigen Talg auf.' },
+      { name: 'Retinol', text: 'Unterstützt die Hauterneuerung.' },
+    ],
   },
   {
     slug: 'dry-skin',
@@ -62,6 +72,7 @@ const hautProbleme = [
     image: dryskin,
     intro:
       'Trockene Haut fühlt sich oft gespannt, rau oder schuppig an und braucht besonders viel Feuchtigkeit und Schutz.',
+    symptoms: ['Spannungsgefühl', 'Schuppige Haut', 'Raue Stellen', 'Juckreiz'],
     causes: [
       'Geschwächte Hautbarriere',
       'Kälte, Heizungsluft oder häufiges Waschen',
@@ -69,12 +80,17 @@ const hautProbleme = [
       'Zu wenig Feuchtigkeit in der Pflege',
     ],
     tips: [
-      'Nutze eine milde Reinigung ohne starkes Austrocknen.',
-      'Trage regelmäßig eine reichhaltige Feuchtigkeitspflege auf.',
+      'Nutze eine milde Reinigung.',
+      'Trage regelmäßig Feuchtigkeitspflege auf.',
       'Vermeide sehr heißes Wasser im Gesicht.',
       'Stärke deine Hautbarriere mit beruhigenden Produkten.',
     ],
-    ingredients: ['Hyaluronsäure', 'Glycerin', 'Ceramide', 'Panthenol'],
+    ingredients: [
+      { name: 'Hyaluronsäure', text: 'Bindet Feuchtigkeit in der Haut.' },
+      { name: 'Glycerin', text: 'Spendet Feuchtigkeit und schützt vor Austrocknung.' },
+      { name: 'Ceramide', text: 'Stärken die natürliche Hautbarriere.' },
+      { name: 'Panthenol', text: 'Beruhigt trockene und gereizte Haut.' },
+    ],
   },
   {
     slug: 'oily-skin',
@@ -82,11 +98,12 @@ const hautProbleme = [
     image: oily,
     intro:
       'Fettige Haut glänzt schnell und produziert mehr Talg als normale Haut. Trotzdem braucht sie Feuchtigkeit.',
+    symptoms: ['Glanz', 'Ölige T-Zone', 'Vergrößerte Poren', 'Unreinheiten'],
     causes: [
       'Erhöhte Talgproduktion',
       'Genetische Veranlagung',
       'Hormonelle Schwankungen',
-      'Zu aggressive Reinigung kann die Haut zusätzlich reizen',
+      'Zu aggressive Reinigung',
     ],
     tips: [
       'Verwende leichte, ölfreie Pflegeprodukte.',
@@ -94,7 +111,12 @@ const hautProbleme = [
       'Vermeide schwere Cremes.',
       'Nutze mattierende Produkte, ohne die Haut auszutrocknen.',
     ],
-    ingredients: ['Niacinamid', 'Salicylsäure', 'Zink', 'Grüner Tee'],
+    ingredients: [
+      { name: 'Niacinamid', text: 'Kann Glanz reduzieren und die Haut beruhigen.' },
+      { name: 'Salicylsäure', text: 'Hilft gegen verstopfte Poren.' },
+      { name: 'Zink', text: 'Kann überschüssigen Talg regulieren.' },
+      { name: 'Grüner Tee', text: 'Wirkt beruhigend und antioxidativ.' },
+    ],
   },
   {
     slug: 'redness',
@@ -102,6 +124,7 @@ const hautProbleme = [
     image: redness,
     intro:
       'Rötungen können durch empfindliche Haut, Reizungen oder äußere Einflüsse entstehen.',
+    symptoms: ['Brennen', 'Wärmegefühl', 'Empfindlichkeit', 'Sichtbare Rötung'],
     causes: [
       'Empfindliche oder gereizte Haut',
       'Hitze, Kälte oder Sonne',
@@ -114,7 +137,12 @@ const hautProbleme = [
       'Nutze täglich Sonnenschutz.',
       'Beobachte, welche Auslöser deine Haut stärker röten.',
     ],
-    ingredients: ['Panthenol', 'Centella Asiatica', 'Aloe Vera', 'Niacinamid'],
+    ingredients: [
+      { name: 'Panthenol', text: 'Beruhigt gereizte Haut und unterstützt die Hautbarriere.' },
+      { name: 'Centella Asiatica', text: 'Hilft bei empfindlicher Haut und wirkt beruhigend.' },
+      { name: 'Aloe Vera', text: 'Spendet Feuchtigkeit und kühlt die Haut angenehm.' },
+      { name: 'Niacinamid', text: 'Kann Rötungen mildern und die Haut stärken.' },
+    ],
   },
   {
     slug: 'hyperpigmentation',
@@ -122,6 +150,7 @@ const hautProbleme = [
     image: hyperpigmentation,
     intro:
       'Hyperpigmentierung zeigt sich durch dunkle Flecken oder einen ungleichmäßigen Hautton.',
+    symptoms: ['Dunkle Flecken', 'Pickelmale', 'Ungleichmäßiger Hautton', 'Pigmentflecken'],
     causes: [
       'Sonneneinstrahlung',
       'Pickelmale nach Entzündungen',
@@ -131,10 +160,15 @@ const hautProbleme = [
     tips: [
       'Nutze jeden Tag Sonnenschutz.',
       'Vermeide es, Pickel aufzukratzen.',
-      'Verwende aufhellende Wirkstoffe regelmäßig und geduldig.',
-      'Schütze deine Haut besonders im Sommer.',
+      'Verwende aufhellende Wirkstoffe regelmäßig.',
+      'Sei geduldig, da Flecken Zeit brauchen.',
     ],
-    ingredients: ['Vitamin C', 'Niacinamid', 'Azelainsäure', 'Alpha-Arbutin'],
+    ingredients: [
+      { name: 'Vitamin C', text: 'Kann den Hautton ebenmäßiger wirken lassen.' },
+      { name: 'Niacinamid', text: 'Hilft bei einem ausgeglicheneren Hautbild.' },
+      { name: 'Azelainsäure', text: 'Kann dunkle Flecken und Rötungen mildern.' },
+      { name: 'Alpha-Arbutin', text: 'Wird häufig gegen Pigmentflecken eingesetzt.' },
+    ],
   },
   {
     slug: 'dark-circles',
@@ -142,6 +176,7 @@ const hautProbleme = [
     image: darkcircles,
     intro:
       'Augenringe lassen die Augenpartie müde wirken und können verschiedene Ursachen haben.',
+    symptoms: ['Dunkle Schatten', 'Müder Blick', 'Trockene Augenpartie', 'Leichte Schwellung'],
     causes: [
       'Schlafmangel',
       'Genetische Veranlagung',
@@ -152,9 +187,14 @@ const hautProbleme = [
       'Achte auf ausreichend Schlaf.',
       'Pflege die Augenpartie mit Feuchtigkeit.',
       'Kühlende Augenpads können kurzfristig helfen.',
-      'Trage Sonnenschutz auch vorsichtig um die Augenpartie auf.',
+      'Trage Sonnenschutz vorsichtig um die Augenpartie auf.',
     ],
-    ingredients: ['Koffein', 'Hyaluronsäure', 'Peptide', 'Vitamin C'],
+    ingredients: [
+      { name: 'Koffein', text: 'Kann Schwellungen optisch reduzieren.' },
+      { name: 'Hyaluronsäure', text: 'Spendet Feuchtigkeit und polstert optisch auf.' },
+      { name: 'Peptide', text: 'Unterstützen ein glatteres Hautbild.' },
+      { name: 'Vitamin C', text: 'Kann die Augenpartie frischer wirken lassen.' },
+    ],
   },
   {
     slug: 'large-pores',
@@ -162,6 +202,7 @@ const hautProbleme = [
     image: poren,
     intro:
       'Große Poren entstehen oft durch Talg, Hautstruktur und verstopfte Poren. Ganz verschwinden können Poren nicht, aber sie können feiner wirken.',
+    symptoms: ['Sichtbare Poren', 'Unebene Haut', 'Ölige Stellen', 'Verstopfte Poren'],
     causes: [
       'Erhöhte Talgproduktion',
       'Verstopfte Poren',
@@ -172,9 +213,14 @@ const hautProbleme = [
       'Reinige die Haut regelmäßig und mild.',
       'Nutze BHA gegen verstopfte Poren.',
       'Vermeide schwere, komedogene Produkte.',
-      'Achte auf Sonnenschutz, um die Hautstruktur zu schützen.',
+      'Achte auf Sonnenschutz.',
     ],
-    ingredients: ['Niacinamid', 'Salicylsäure', 'Retinol', 'Tonerde'],
+    ingredients: [
+      { name: 'Niacinamid', text: 'Kann Poren optisch feiner wirken lassen.' },
+      { name: 'Salicylsäure', text: 'Hilft, Poren von innen zu reinigen.' },
+      { name: 'Retinol', text: 'Unterstützt die Hauterneuerung.' },
+      { name: 'Tonerde', text: 'Nimmt überschüssigen Talg auf.' },
+    ],
   },
   {
     slug: 'sensitive-skin',
@@ -182,6 +228,7 @@ const hautProbleme = [
     image: sensibleskin,
     intro:
       'Empfindliche Haut reagiert schnell mit Brennen, Jucken, Trockenheit oder leichter Rötung.',
+    symptoms: ['Brennen', 'Juckreiz', 'Trockenheit', 'Schnelle Reizung'],
     causes: [
       'Geschwächte Hautbarriere',
       'Duftstoffe oder reizende Inhaltsstoffe',
@@ -190,11 +237,16 @@ const hautProbleme = [
     ],
     tips: [
       'Halte deine Routine einfach und mild.',
-      'Vermeide Duftstoffe und Alkohol in Pflegeprodukten.',
+      'Vermeide Duftstoffe und Alkohol.',
       'Teste neue Produkte zuerst vorsichtig.',
       'Nutze beruhigende und barrierestärkende Pflege.',
     ],
-    ingredients: ['Ceramide', 'Panthenol', 'Aloe Vera', 'Centella Asiatica'],
+    ingredients: [
+      { name: 'Ceramide', text: 'Stärken die Hautbarriere.' },
+      { name: 'Panthenol', text: 'Beruhigt empfindliche Haut.' },
+      { name: 'Aloe Vera', text: 'Spendet Feuchtigkeit und kühlt.' },
+      { name: 'Centella Asiatica', text: 'Wirkt beruhigend bei gereizter Haut.' },
+    ],
   },
   {
     slug: 'acne-scars',
@@ -202,19 +254,25 @@ const hautProbleme = [
     image: acnescars,
     intro:
       'Pickelmale bleiben oft nach Entzündungen zurück und können als dunkle oder rötliche Flecken sichtbar sein.',
+    symptoms: ['Rötliche Flecken', 'Dunkle Flecken', 'Unebener Hautton', 'Spuren nach Pickeln'],
     causes: [
       'Entzündete Pickel',
-      'Ausdrücken oder Aufkratzen von Unreinheiten',
+      'Ausdrücken oder Aufkratzen',
       'Sonneneinstrahlung kann Flecken verstärken',
       'Langsame Hauterneuerung',
     ],
     tips: [
       'Verwende täglich Sonnenschutz.',
       'Drücke Pickel nicht aus.',
-      'Nutze Wirkstoffe, die die Hauterneuerung unterstützen.',
-      'Sei geduldig, da Pickelmale Zeit brauchen.',
+      'Nutze Wirkstoffe zur Hauterneuerung.',
+      'Sei geduldig, Pickelmale brauchen Zeit.',
     ],
-    ingredients: ['Niacinamid', 'Vitamin C', 'Azelainsäure', 'Retinol'],
+    ingredients: [
+      { name: 'Niacinamid', text: 'Kann Flecken und Rötungen mildern.' },
+      { name: 'Vitamin C', text: 'Unterstützt einen ebenmäßigeren Hautton.' },
+      { name: 'Azelainsäure', text: 'Hilft bei Rötungen und Pickelmalen.' },
+      { name: 'Retinol', text: 'Fördert die Hauterneuerung.' },
+    ],
   },
   {
     slug: 'stress-breakouts',
@@ -222,19 +280,25 @@ const hautProbleme = [
     image: stressbreakouts,
     intro:
       'Stress kann sich auch auf die Haut auswirken und Unreinheiten verstärken.',
+    symptoms: ['Plötzliche Pickel', 'Unruhige Haut', 'Rötungen', 'Mehr Talg'],
     causes: [
-      'Stresshormone können die Talgproduktion beeinflussen',
+      'Stresshormone beeinflussen die Talgproduktion',
       'Weniger Schlaf in stressigen Phasen',
-      'Unregelmäßige Pflege',
+      'Unregelmäßige Pflegeroutine',
       'Häufiges Berühren des Gesichts',
     ],
     tips: [
-      'Halte deine Pflegeroutine einfach und regelmäßig.',
+      'Halte deine Pflegeroutine einfach.',
       'Achte auf Schlaf und Erholung.',
       'Berühre dein Gesicht möglichst wenig.',
-      'Nutze beruhigende Pflege bei gereizter Haut.',
+      'Nutze beruhigende Pflege.',
     ],
-    ingredients: ['Niacinamid', 'Salicylsäure', 'Panthenol', 'Grüner Tee'],
+    ingredients: [
+      { name: 'Niacinamid', text: 'Beruhigt die Haut und stärkt die Barriere.' },
+      { name: 'Salicylsäure', text: 'Hilft gegen verstopfte Poren.' },
+      { name: 'Panthenol', text: 'Beruhigt gereizte Haut.' },
+      { name: 'Grüner Tee', text: 'Wirkt beruhigend und antioxidativ.' },
+    ],
   },
   {
     slug: 'razor-bumps',
@@ -242,6 +306,7 @@ const hautProbleme = [
     image: rasierpickel,
     intro:
       'Rasierpickel entstehen häufig nach der Rasur und zeigen sich als kleine rote Punkte, Reizungen oder eingewachsene Haare.',
+    symptoms: ['Rote Punkte', 'Eingewachsene Haare', 'Juckreiz', 'Reizung nach Rasur'],
     causes: [
       'Reizung durch Rasur',
       'Eingewachsene Haare',
@@ -252,9 +317,14 @@ const hautProbleme = [
       'Rasiere mit einer sauberen und scharfen Klinge.',
       'Rasiere möglichst in Haarwuchsrichtung.',
       'Beruhige die Haut nach der Rasur.',
-      'Vermeide direkt nach der Rasur stark reizende Produkte.',
+      'Vermeide direkt nach der Rasur reizende Produkte.',
     ],
-    ingredients: ['Aloe Vera', 'Panthenol', 'Salicylsäure', 'Centella Asiatica'],
+    ingredients: [
+      { name: 'Aloe Vera', text: 'Kühlt und beruhigt gereizte Haut.' },
+      { name: 'Panthenol', text: 'Unterstützt die Hautbarriere.' },
+      { name: 'Salicylsäure', text: 'Kann eingewachsenen Haaren vorbeugen.' },
+      { name: 'Centella Asiatica', text: 'Beruhigt empfindliche und gereizte Haut.' },
+    ],
   },
 ]
 
@@ -266,7 +336,7 @@ export default function HautwissenDetail() {
 
   if (!problem) {
     return (
-      <main className="min-h-screen bg-[#FFF9F5] pt-32 px-6">
+      <main className="min-h-screen bg-[#FFF9F5] px-6 pt-32">
         <div className="mx-auto max-w-3xl rounded-3xl bg-white p-8 shadow-sm">
           <h1 className="text-3xl font-bold text-[#2a1c10]">
             Hautproblem nicht gefunden
@@ -284,101 +354,143 @@ export default function HautwissenDetail() {
   }
 
   return (
-    <main className="min-h-screen bg-[#FFF9F5] pt-32 pb-16 px-6">
-      <article className="mx-auto max-w-5xl overflow-hidden rounded-[36px] bg-white shadow-lg">
-        <img
-          src={problem.image}
-          alt={problem.title}
-          className="h-[360px] w-full object-cover"
-        />
+    <main className="min-h-screen bg-[#FFF9F5] px-6 pt-28 pb-16">
+      <article className="mx-auto max-w-6xl">
+        <Link
+          to="/hautwissen"
+          className="mb-6 inline-block font-semibold text-[#D4A574]"
+        >
+          ← Zurück zu Hautwissen
+        </Link>
 
-        <div className="p-8 md:p-12">
-          <Link
-            to="/hautwissen"
-            className="font-semibold text-[#D4A574]"
-          >
-            ← Zurück zu Hautwissen
-          </Link>
-
-          <h1 className="mt-6 text-4xl font-bold text-[#2a1c10] md:text-5xl">
-            {problem.title}
-          </h1>
-
-          <p className="mt-5 text-lg leading-8 text-gray-600">
-            {problem.intro}
-          </p>
-
-          <div className="mt-10 grid gap-6 md:grid-cols-2">
-            <section className="rounded-3xl bg-[#FFF9F5] p-6">
-              <h2 className="text-2xl font-bold text-[#2a1c10]">
-                Warum entsteht das?
-              </h2>
-
-              <ul className="mt-5 space-y-3 text-gray-600">
-                {problem.causes.map((cause) => (
-                  <li key={cause} className="flex gap-3">
-                    <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-[#D4A574]" />
-                    <span>{cause}</span>
-                  </li>
-                ))}
-              </ul>
-            </section>
-
-            <section className="rounded-3xl bg-[#FFF9F5] p-6">
-              <h2 className="text-2xl font-bold text-[#2a1c10]">
-                Was kann helfen?
-              </h2>
-
-              <ul className="mt-5 space-y-3 text-gray-600">
-                {problem.tips.map((tip) => (
-                  <li key={tip} className="flex gap-3">
-                    <span className="font-bold text-[#D4A574]">✓</span>
-                    <span>{tip}</span>
-                  </li>
-                ))}
-              </ul>
-            </section>
+        <section className="grid overflow-hidden rounded-[36px] bg-white shadow-lg md:grid-cols-2">
+          <div className="h-[320px] md:h-auto">
+            <img
+              src={problem.image}
+              alt={problem.title}
+              className="h-full w-full object-cover"
+            />
           </div>
 
-          <section className="mt-8 rounded-3xl border border-[#F0E0CC] p-6">
-            <h2 className="text-2xl font-bold text-[#2a1c10]">
-              Geeignete Inhaltsstoffe
-            </h2>
+          <div className="flex flex-col justify-center p-8 md:p-12">
+            <span className="mb-4 w-fit rounded-full bg-[#FDECEC] px-4 py-2 text-sm font-semibold text-[#b76b5f]">
+              Hautwissen
+            </span>
 
-            <div className="mt-5 flex flex-wrap gap-3">
-              {problem.ingredients.map((ingredient) => (
-                <span
-                  key={ingredient}
-                  className="rounded-full bg-[#F5E6D3] px-4 py-2 text-sm font-semibold text-[#8a5f36]"
-                >
-                  {ingredient}
-                </span>
-              ))}
-            </div>
-          </section>
+            <h1 className="text-4xl font-bold text-[#2a1c10] md:text-5xl">
+              {problem.title}
+            </h1>
 
-          <section className="mt-10 rounded-[28px] bg-[#2a1c10] p-8 text-white">
-            <h2 className="text-2xl font-bold">
-              Du bist dir unsicher, was zu deiner Haut passt?
-            </h2>
-
-            <p className="mt-3 max-w-2xl text-white/80">
-              Starte die KI-Beratung und erhalte passendere Empfehlungen für deine Hautpflege.
+            <p className="mt-5 text-lg leading-8 text-gray-600">
+              {problem.intro}
             </p>
 
             <button
               onClick={() => navigate('/chatbot')}
-              className="mt-6 rounded-full bg-[#D4A574] px-7 py-3 font-semibold text-white transition hover:bg-[#c4945f]"
+              className="mt-8 w-fit rounded-full bg-[#D4A574] px-7 py-3 font-semibold text-white transition hover:bg-[#c4945f]"
             >
               KI-Beratung starten
             </button>
-          </section>
+          </div>
+        </section>
 
-          <p className="mt-8 text-sm text-gray-500">
-            Hinweis: Diese Informationen ersetzen keine ärztliche Beratung.
-            Bei starken oder anhaltenden Beschwerden solltest du dermatologischen Rat einholen.
+        {/* <section className="mt-8 rounded-[32px] bg-white p-8 shadow-sm">
+          <h2 className="text-2xl font-bold text-[#2a1c10]">
+            Typische Symptome
+          </h2>
+
+          <div className="mt-5 grid gap-4 sm:grid-cols-2 md:grid-cols-4">
+            {problem.symptoms.map((symptom) => (
+              <div
+                key={symptom}
+                className="rounded-2xl bg-[#FFF9F5] p-5 text-center font-semibold text-[#8a5f36]"
+              >
+                {symptom}
+              </div>
+            ))}
+          </div>
+        </section> */}
+
+        <section className="mt-8 grid gap-6 md:grid-cols-2">
+          <div className="rounded-[32px] bg-white p-8 shadow-sm">
+            <h2 className="text-2xl font-bold text-[#2a1c10]">
+              Warum entsteht das?
+            </h2>
+
+            <div className="mt-5 grid gap-4">
+              {problem.causes.map((cause) => (
+                <div
+                  key={cause}
+                  className="rounded-2xl border border-[#F0E0CC] bg-[#FFF9F5] p-4 text-gray-600"
+                >
+                  <span className="mr-2 text-[#D4A574]">●</span>
+                  {cause}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-[32px] bg-white p-8 shadow-sm">
+            <h2 className="text-2xl font-bold text-[#2a1c10]">
+              Was kann helfen?
+            </h2>
+
+            <div className="mt-5 grid gap-4">
+              {problem.tips.map((tip) => (
+                <div
+                  key={tip}
+                  className="rounded-2xl border border-[#F0E0CC] bg-[#FFF9F5] p-4 text-gray-600"
+                >
+                  <span className="mr-2 font-bold text-[#D4A574]">✓</span>
+                  {tip}
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="mt-8 rounded-[32px] bg-white p-8 shadow-sm">
+          <h2 className="text-2xl font-bold text-[#2a1c10]">
+            Geeignete Inhaltsstoffe
+          </h2>
+
+          <div className="mt-6 grid gap-5 md:grid-cols-2">
+            {problem.ingredients.map((ingredient) => (
+              <div
+                key={ingredient.name}
+                className="rounded-3xl bg-[#FFF9F5] p-6"
+              >
+                <h3 className="text-xl font-bold text-[#2a1c10]">
+                  {ingredient.name}
+                </h3>
+                <p className="mt-3 leading-7 text-gray-600">
+                  {ingredient.text}
+                </p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="mt-10 rounded-[36px] bg-[#2a1c10] p-8 text-white md:p-10">
+          <h2 className="text-3xl font-bold">
+            Du bist dir unsicher, was zu deiner Haut passt?
+          </h2>
+
+          <p className="mt-4 max-w-2xl text-white/80">
+            Starte die KI-Beratung und erhalte passendere Empfehlungen für deine Hautpflege.
           </p>
-        </div>
+
+          <button
+            onClick={() => navigate('/chatbot')}
+            className="mt-7 rounded-full bg-[#D4A574] px-8 py-3 font-semibold text-white transition hover:bg-[#c4945f]"
+          >
+            Analyse starten
+          </button>
+        </section>
+
+        <p className="mt-8 text-sm text-gray-500">
+          Hinweis: Diese Informationen ersetzen keine ärztliche Beratung.
+        </p>
       </article>
     </main>
   )
