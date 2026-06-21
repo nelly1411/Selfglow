@@ -15,8 +15,7 @@ export default function Layout() {
     <div className="min-h-screen flex flex-col">
       <Header />
 
-      <main className={`${isHome ? '' : 'pt-[78px]'} flex-1`}>
-        <Outlet />
+<main className={`${isHome ? '' : 'pt-[70px] sm:pt-[78px]'} flex-1`}>        <Outlet />
       </main>
 
       {!isChatbotPage && (
