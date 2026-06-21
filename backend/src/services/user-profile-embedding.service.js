@@ -1,7 +1,7 @@
 const crypto = require("node:crypto");
 const prisma = require("../config/prisma");
 const { EMBEDDING_MODEL, createEmbedding } = require("./embedding.service");
-const { getUserSkinProfileFacts } = require("./user-skin-profile.service");
+const { getUserSkinProfileFacts, getCurrentSkinTypeFromFacts } = require("./user-skin-profile.service");
 
 function compact(value, max = 500) {
   if (!value) return "";
@@ -19,12 +19,13 @@ function groupFacts(facts) {
 
 function buildUserProfileEmbeddingText(user, latestAnalysis, facts) {
   const grouped = groupFacts(facts);
+  const currentSkinType = getCurrentSkinTypeFromFacts(facts);
 
   return [
     "User skincare profile",
     "",
     `Gender: ${user.gender || "unknown"}`,
-    `Skin type from quiz: ${user.skinType || "unknown"}`,
+    `Current skin type: ${currentSkinType || "unknown"}`,
     "",
     latestAnalysis
       ? [
