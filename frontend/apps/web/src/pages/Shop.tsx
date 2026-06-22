@@ -345,11 +345,21 @@ export default function Shop() {
   const featureQuery = productFeatures
     .filter((feature) => searchParams.get(feature.key) === 'true')
     .map((feature) => feature.key)
+  const minPriceQuery = Number(searchParams.get('minPrice') ?? 0)
+  const maxPriceQuery = Number(searchParams.get('maxPrice') ?? 200)
+
+  const initialMinPrice =
+    Number.isFinite(minPriceQuery) && minPriceQuery >= 0 ? minPriceQuery : 0
+  const initialMaxPrice =
+    Number.isFinite(maxPriceQuery) && maxPriceQuery <= 200 ? maxPriceQuery : 200
 
   const [products, setProducts] = useState<Product[]>([])
-  const [priceRange, setPriceRange] = useState<[number, number]>([0, 200])
-  const [minPriceInput, setMinPriceInput] = useState('0')
-  const [maxPriceInput, setMaxPriceInput] = useState('200')
+  const [priceRange, setPriceRange] = useState<[number, number]>([
+    initialMinPrice,
+    initialMaxPrice,
+  ])
+  const [minPriceInput, setMinPriceInput] = useState(String(initialMinPrice))
+  const [maxPriceInput, setMaxPriceInput] = useState(String(initialMaxPrice))
 
   const [selectedSkinType, setSelectedSkinType] =
     useState<string[]>(() => skinTypeQuery)
@@ -431,7 +441,25 @@ export default function Shop() {
 
     setSelectedFeatures(nextValues)
     setSearchParams(params)
-}
+  }
+
+  const updatePriceQuery = (nextRange: [number, number]) => {
+    const params = new URLSearchParams(searchParams)
+
+    if (nextRange[0] > 0) {
+      params.set('minPrice', String(nextRange[0]))
+    } else {
+      params.delete('minPrice')
+    }
+
+    if (nextRange[1] < 200) {
+      params.set('maxPrice', String(nextRange[1]))
+    } else {
+      params.delete('maxPrice')
+    }
+
+    setSearchParams(params)
+  }
 
   const resetAllFilters = () => {
     const params = new URLSearchParams(searchParams)
@@ -442,6 +470,8 @@ export default function Shop() {
     productFeatures.forEach((feature) => {
       params.delete(feature.key)
     })
+    params.delete('minPrice')
+    params.delete('maxPrice')
 
     setSelectedCategory([])
     setSelectedSkinType([])
@@ -451,6 +481,7 @@ export default function Shop() {
     setPriceRange([0, 200])
     setMinPriceInput('0')
     setMaxPriceInput('200')
+    
 
     setSearchParams(params)
   }
@@ -552,7 +583,7 @@ export default function Shop() {
     <>
       <FilterSection title="Hauttyp">
         {skinTypes.map((type) => (
-          <label key={type.name} className="flex items-center gap-2 cursor-pointer">
+          <label key={type.name} className="group flex items-center gap-2 cursor-pointer rounded-lg px-2 py-1.5 transition-all duration-150 hover:bg-[#F5E6D3]">
             <Checkbox
               checked={selectedSkinType.includes(type.name)}
               onCheckedChange={() =>
@@ -564,7 +595,7 @@ export default function Shop() {
                 )
               }
             />
-            <span className="text-sm text-foreground">
+            <span className="text-sm text-foreground transition-colors group-hover:text-[#A97745]">
               {type.label}
             </span>
           </label>
@@ -573,7 +604,7 @@ export default function Shop() {
 
       <FilterSection title="Hautanliegen">
         {concerns.map((concern) => (
-          <label key={concern.name} className="flex items-center gap-2 cursor-pointer">
+          <label key={concern.name} className="group flex items-center gap-2 cursor-pointer rounded-lg px-2 py-1.5 transition-all duration-150 hover:bg-[#F5E6D3]">
             <Checkbox
               checked={selectedConcern.includes(concern.name)}
               onCheckedChange={() =>
@@ -585,7 +616,7 @@ export default function Shop() {
                 )
               }
             />
-            <span className="text-sm text-foreground">
+            <span className="text-sm text-foreground transition-colors group-hover:text-[#A97745]">
               {concern.label}
             </span>
           </label>
@@ -594,12 +625,12 @@ export default function Shop() {
 
       <FilterSection title="Produkteigenschaften">
         {productFeatures.map((feature) => (
-          <label key={feature.key} className="flex items-center gap-2 cursor-pointer">
+          <label key={feature.key} className="group flex items-center gap-2 cursor-pointer rounded-lg px-2 py-1.5 transition-all duration-150 hover:bg-[#F5E6D3]">
             <Checkbox
               checked={selectedFeatures.includes(feature.key)}
               onCheckedChange={() => toggleFeatureValue(feature.key)}
             />
-            <span className="text-sm text-foreground">
+            <span className="text-sm text-foreground transition-colors group-hover:text-[#A97745]">
               {feature.label}
             </span>
           </label>
@@ -608,7 +639,7 @@ export default function Shop() {
 
       <FilterSection title="Produkttyp">
         {productTypes.map((type) => (
-          <label key={type.name} className="flex items-center gap-2 cursor-pointer">
+          <label key={type.name} className="group flex items-center gap-2 cursor-pointer rounded-lg px-2 py-1.5 transition-all duration-150 hover:bg-[#F5E6D3]">
             <Checkbox
               checked={selectedCategory.includes(type.name)}
               onCheckedChange={() =>
@@ -620,7 +651,7 @@ export default function Shop() {
                 )
               }
             />
-            <span className="text-sm text-foreground">
+            <span className="text-sm text-foreground transition-colors group-hover:text-[#A97745]">
               {type.name}
             </span>
           </label>
@@ -647,10 +678,13 @@ export default function Shop() {
                   const num = Number(val)
 
                   if (!Number.isNaN(num) && num >= 0 && num <= 200) {
-                    setPriceRange([
+                    const nextRange: [number, number] = [
                       Math.min(num, priceRange[1]),
                       priceRange[1],
-                    ])
+                    ]
+
+                    setPriceRange(nextRange)
+                    updatePriceQuery(nextRange)
                   }
                 }}
                 onBlur={() => {
@@ -661,7 +695,10 @@ export default function Shop() {
                   } else {
                     const clamped = Math.min(Math.max(0, num), priceRange[1])
                     setMinPriceInput(String(clamped))
-                    setPriceRange([clamped, priceRange[1]])
+                    const nextRange: [number, number] = [clamped, priceRange[1]]
+
+                    setPriceRange(nextRange)
+                    updatePriceQuery(nextRange)
                   }
                 }}
                 className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-[#D4A574]"
@@ -685,10 +722,13 @@ export default function Shop() {
                   const num = Number(val)
 
                   if (!Number.isNaN(num) && num >= 0 && num <= 200) {
-                    setPriceRange([
+                    const nextRange: [number, number] = [
                       priceRange[0],
                       Math.max(num, priceRange[0]),
-                    ])
+                    ]
+
+                    setPriceRange(nextRange)
+                    updatePriceQuery(nextRange)
                   }
                 }}
                 onBlur={() => {
@@ -699,7 +739,10 @@ export default function Shop() {
                   } else {
                     const clamped = Math.max(Math.min(200, num), priceRange[0])
                     setMaxPriceInput(String(clamped))
-                    setPriceRange([priceRange[0], clamped])
+                    const nextRange: [number, number] = [priceRange[0], clamped]
+
+                    setPriceRange(nextRange)
+                    updatePriceQuery(nextRange)
                   }
                 }}
                 className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-[#D4A574]"
@@ -711,7 +754,7 @@ export default function Shop() {
             type="button"
             variant="outline"
             onClick={resetAllFilters}
-            className="w-full rounded-full"
+            className="w-full rounded-full bg-[#F5E6D3] text-[#4a3a2a] hover:bg-[#E8D5C0] transition-colors"
           >
             Alles Zurücksetzen
           </Button>
