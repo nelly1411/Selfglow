@@ -165,14 +165,16 @@ export default function Header() {
             : '0 2px 20px rgba(0,0,0,0.06)',
         }}
       >
-        <div className="w-full px-6 lg:px-12 xl:px-16 flex items-center h-[78px] gap-8">
+        {/* <div className="w-full px-6 lg:px-12 xl:px-16 flex items-center h-[78px] gap-8"> */}
+        <div className="w-full px-4 sm:px-6 lg:px-12 xl:px-16 flex items-center h-[70px] sm:h-[78px] gap-3 sm:gap-8">
 
           {/* LOGO */}
           <Link
-            to="/"
-            style={{
-              fontFamily: "'Outfit', sans-serif",
-              fontSize: 26,
+  to="/"
+  className="text-[22px] sm:text-[26px]"
+  style={{
+    fontFamily: "'Outfit', sans-serif",
+              // fontSize: 26,
               fontWeight: 800,
               color: '#D4A574',
               letterSpacing: '-0.02em',
@@ -336,8 +338,8 @@ export default function Header() {
 
             {/* WISHLIST */}
             <button
-              className={iconBtn}
-              onClick={() => navigate('/wishlist')}
+ className={cn(iconBtn, 'hidden md:inline-flex')}
+               onClick={() => navigate('/wishlist')}
             >
               <Heart className="h-6 w-6" />
 
@@ -353,7 +355,7 @@ export default function Header() {
               to={isLoggedIn ? '/profile' : '/login'}
               className={({ isActive }) =>
                 cn(
-                  'hidden sm:inline-flex items-center gap-2 rounded-full px-4 py-2 text-base font-semibold transition-colors duration-200',
+                  'hidden md:inline-flex items-center gap-2 rounded-full px-4 py-2 text-base font-semibold transition-colors duration-200',
 
                   isActive
                     ? transparentHeader
@@ -401,6 +403,22 @@ export default function Header() {
         </div>
 
       </header>
+
+      {mobileOpen && (
+  <div className="lg:hidden fixed top-[70px] left-0 w-full z-40 bg-white border-b border-[#f0e0cc] shadow-lg">
+    <nav className="flex flex-col px-5 py-4 gap-3 text-[#4a3a2a] font-semibold">
+      <Link to="/" onClick={() => setMobileOpen(false)}>Startseite</Link>
+      <Link to="/shop" onClick={() => setMobileOpen(false)}>Produkte</Link>
+      <Link to="/about" onClick={() => setMobileOpen(false)}>Über uns</Link>
+      <Link to="/chatbot" onClick={() => setMobileOpen(false)}>KI-Beratung</Link>
+      <Link to="/hautwissen" onClick={() => setMobileOpen(false)}>Hautwissen</Link>
+      <Link to="/wishlist" onClick={() => setMobileOpen(false)}>Merkliste</Link>
+      <Link to={isLoggedIn ? "/profile" : "/login"} onClick={() => setMobileOpen(false)}>
+        {isLoggedIn ? "Mein Profil" : "Anmelden"}
+      </Link>
+    </nav>
+  </div>
+)}
 
       {showLogout && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 px-4">

@@ -79,12 +79,10 @@ export default function ReviewForm({
     }
 
     return (
-        <div className=" fixed inset-0 bg-black/30 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md border border-[#F5E6D3] relative">
+<div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center p-3 sm:p-4 backdrop-blur-sm">            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md border border-[#F5E6D3] relative">
 
             {/*Content*/}
-            <form onSubmit={handleSubmit} className="p-6 space-y-6">
-
+<form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-5 sm:space-y-6">
                 {/*Close button*/}
                 <button
                 type="button"
@@ -111,8 +109,7 @@ export default function ReviewForm({
                                 className="transition-all hover:scale-125 active:scale-95"
                             >
                                 <Star
-                                    className={cn("h-10 w-10 transition-all stroke-0",
-                                        star <= (hoveredRating || rating) ? "fill-[#D4A574] text-[#D4A574]" : "fill-[#E8D5C0] text-[#E8D5C0]"
+  className={cn("h-8 w-8 sm:h-10 sm:w-10 transition-all stroke-0",                                        star <= (hoveredRating || rating) ? "fill-[#D4A574] text-[#D4A574]" : "fill-[#E8D5C0] text-[#E8D5C0]"
                                     )}
                                 />
                             </button>
@@ -162,8 +159,8 @@ export default function ReviewForm({
                 )}
 
                 {/*Buttons*/}
-                <div className="flex gap-3 pt-4">
-                    <Button
+<div className="flex flex-col sm:flex-row gap-3 pt-4">
+                        <Button
                         type="button"
                         variant="outline"
                         onClick={handleClose}

@@ -529,7 +529,7 @@ export default function FloatingChat({
   return (
     <>
       {isOpen && (
-        <section className="fixed bottom-24 right-5 z-50 flex h-[min(620px,calc(100vh-8rem))] w-[min(420px,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl border border-[#E8D5C0] bg-white shadow-2xl">
+        <section className="fixed bottom-20 right-2 sm:right-5 z-50 flex h-[min(620px,calc(100vh-6rem))] w-[calc(100vw-1rem)] sm:w-[min(420px,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl border border-[#E8D5C0] bg-white shadow-2xl">
           <div className="flex items-center justify-between border-b border-[#EFE6DC] bg-[#FFFBF6] px-4 py-3">
             <div className="flex items-center gap-2">
               <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#F5E6D3]">
@@ -668,7 +668,7 @@ export default function FloatingChat({
       <button
         type="button"
         onClick={() => setIsOpen((open) => !open)}
-        className="fixed bottom-40 right-5 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-[#D4A574] text-white shadow-lg transition hover:bg-[#C49464] hover:scale-105"
+        className="fixed bottom-24 right-3 sm:bottom-40 sm:right-5 z-50 flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-full bg-[#D4A574] text-white shadow-lg transition hover:bg-[#C49464] hover:scale-105"
         aria-label="KI-Beratung öffnen"
         title="KI-Beratung öffnen"
       >

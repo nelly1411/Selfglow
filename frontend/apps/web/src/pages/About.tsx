@@ -28,16 +28,29 @@ const CSS = `
   .team-avatar:hover {
     transform: translateY(-8px) scale(1.05);
   }
+ .team-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: clamp(8px, 2vw, 24px);
+}
+
+@media (max-width: 1024px) {
   .team-grid {
-    display: grid;
-    grid-template-columns: repeat(6, minmax(0, 1fr));
-    gap: clamp(8px, 2vw, 24px);
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .team-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
     align-items: start;
   }
-  .team-avatar-circle {
-    width: clamp(72px, 9vw, 120px);
-    height: clamp(72px, 9vw, 120px);
-  }
+.team-avatar-circle {
+  width: clamp(80px, 20vw, 120px);
+  height: clamp(80px, 20vw, 120px);
+}
   .team-member-role {
     overflow-wrap: anywhere;
     line-height: 1.35;
@@ -94,8 +107,10 @@ export default function About() {
 
       {/* ── STORY ───────────────────────────────────────────────── */}
       <section style={{ padding: '96px 28px', background: '#fff' }}>
-        <div style={{ maxWidth: 1100, margin: '0 auto', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 72, alignItems: 'center' }}>
-          <div>
+<div
+  className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-[72px] items-center"
+  style={{ maxWidth: 1100, margin: '0 auto' }}
+>          <div>
             <p style={{ fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#C4925A', marginBottom: 12, fontWeight: 600 }}>
               Unsere Geschichte
             </p>
@@ -153,8 +168,7 @@ export default function About() {
             </h2>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 18 }}>
-            {values.map((v) => (
+<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-[18px]">            {values.map((v) => (
               <div
                 key={v.title}
                 className="value-card"
@@ -227,8 +241,16 @@ export default function About() {
 
       {/* ── CTA ─────────────────────────────────────────────────── */}
       <section style={{ padding: '80px 28px', background: '#F5E6D3' }}>
-        <div style={{ maxWidth: 1100, margin: '0 auto', textAlign: 'center' }}>
-          <h2 style={{ fontSize: 'clamp(22px,3vw,36px)', fontWeight: 700, color: '#1c1209', margin: '0 0 14px', letterSpacing: '-0.02em' }}>
+<div
+  style={{
+    maxWidth: 1100,
+    margin: '0 auto',
+    textAlign: 'center',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+  }}
+>          <h2 style={{ fontSize: 'clamp(22px,3vw,36px)', fontWeight: 700, color: '#1c1209', margin: '0 0 14px', letterSpacing: '-0.02em' }}>
             Bereit für Ihre perfekte Hautpflege?
           </h2>
           <p style={{ fontSize: 15, color: '#7a5c42', marginBottom: 36, maxWidth: 480, margin: '0 auto 36px', lineHeight: 1.7, fontWeight: 300 }}>
@@ -236,8 +258,24 @@ export default function About() {
           </p>
           <Link
             to="/shop"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 10, background: '#D4A574', color: '#fff', padding: '14px 32px', borderRadius: 100, fontSize: 14, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', textDecoration: 'none', transition: 'background 0.2s ease' }}
-            onMouseEnter={e => (e.currentTarget.style.background = '#c4925a')}
+style={{
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: 10,
+  background: '#D4A574',
+  color: '#fff',
+  padding: '14px 32px',
+  borderRadius: 100,
+  fontSize: 14,
+  fontWeight: 700,
+  letterSpacing: '0.06em',
+  textTransform: 'uppercase',
+  textDecoration: 'none',
+  transition: 'background 0.2s ease',
+  width: '100%',
+  maxWidth: '320px',
+}}            onMouseEnter={e => (e.currentTarget.style.background = '#c4925a')}
             onMouseLeave={e => (e.currentTarget.style.background = '#D4A574')}
           >
             Jetzt entdecken <ArrowRight size={15} />
