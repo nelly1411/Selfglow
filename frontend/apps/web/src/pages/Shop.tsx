@@ -342,6 +342,9 @@ export default function Shop() {
   const categoryQuery = searchParams.getAll('category')
   const skinTypeQuery = searchParams.getAll('skinType')
   const concernQuery = searchParams.getAll('concern')
+  const featureQuery = productFeatures
+    .filter((feature) => searchParams.get(feature.key) === 'true')
+    .map((feature) => feature.key)
 
   const [products, setProducts] = useState<Product[]>([])
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 200])
@@ -357,7 +360,7 @@ export default function Shop() {
   const [selectedCategory, setSelectedCategory] =
     useState<string[]>(() => categoryQuery)
 
-  const [selectedFeatures, setSelectedFeatures] = useState<string[]>([])
+  const [selectedFeatures, setSelectedFeatures] = useState<string[]>(() => featureQuery)
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
   const [visibleCount, setVisibleCount] = useState(PRODUCTS_PER_PAGE)
   const [sortBy, setSortBy] = useState<SortOption>('name-asc')
@@ -382,10 +385,12 @@ export default function Shop() {
     setSelectedCategory(categoryQuery)
     setSelectedSkinType(skinTypeQuery)
     setSelectedConcern(concernQuery)
+    setSelectedFeatures(featureQuery)
   }, [
     categoryQuery.join(','),
     skinTypeQuery.join(','),
     concernQuery.join(','),
+    featureQuery.join(','),
   ])
 
   const toggleQueryValue = (
@@ -409,12 +414,34 @@ export default function Shop() {
     setSearchParams(params)
   }
 
+  const toggleFeatureValue = (key: string) => {
+    const params = new URLSearchParams(searchParams)
+
+    const nextValues = selectedFeatures.includes(key)
+      ? selectedFeatures.filter((item) => item !== key)
+      : [...selectedFeatures, key]
+
+    productFeatures.forEach((feature) => {
+      params.delete(feature.key)
+    })
+
+    nextValues.forEach((feature) => {
+      params.set(feature, 'true')
+    })
+
+    setSelectedFeatures(nextValues)
+    setSearchParams(params)
+}
+
   const resetAllFilters = () => {
     const params = new URLSearchParams(searchParams)
 
     params.delete('category')
     params.delete('skinType')
     params.delete('concern')
+    productFeatures.forEach((feature) => {
+      params.delete(feature.key)
+    })
 
     setSelectedCategory([])
     setSelectedSkinType([])
@@ -570,13 +597,7 @@ export default function Shop() {
           <label key={feature.key} className="flex items-center gap-2 cursor-pointer">
             <Checkbox
               checked={selectedFeatures.includes(feature.key)}
-              onCheckedChange={() =>
-                setSelectedFeatures((prev) =>
-                  prev.includes(feature.key)
-                    ? prev.filter((item) => item !== feature.key)
-                    : [...prev, feature.key]
-                )
-              }
+              onCheckedChange={() => toggleFeatureValue(feature.key)}
             />
             <span className="text-sm text-foreground">
               {feature.label}
