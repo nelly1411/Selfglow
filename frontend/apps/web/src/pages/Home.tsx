@@ -429,7 +429,7 @@ export default function Home() {
              
               <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
                 <Link to="/login" className="pill-btn" style={{ display: 'inline-flex', alignItems: 'center', gap: 10, background: '#D4A574', color: '#fff', padding: '15px 32px', borderRadius: 100, fontSize: 13, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', textDecoration: 'none' }}>
-                  Jetzt registrieren <ArrowRight size={15} />
+                  Jetzt einloggen <ArrowRight size={15} />
                 </Link>
                 <Link to="/shop" style={{ display: 'inline-flex', alignItems: 'center', gap: 10, background: 'rgba(255,255,255,0.1)', color: '#fff', padding: '15px 32px', borderRadius: 100, fontSize: 13, fontWeight: 600, textDecoration: 'none', border: '1.5px solid rgba(255,255,255,0.25)', backdropFilter: 'blur(8px)' }}>
                   Produkte entdecken
