@@ -88,7 +88,22 @@ function freshState(): ChatState {
   const c = createConversation()
   return { conversations: [c], activeConversationId: c.id }
 }
+const guestStorageKey = 'selfglow-chatbot-conversations'
 
+function loadGuestState(): ChatState {
+  try {
+   const stored = localStorage.getItem(guestStorageKey)
+   if (stored) {
+      const parsed = JSON.parse(stored) as ChatState
+      if (parsed.conversations?.length && parsed.activeConversationId) {
+    return parsed
+      }
+      }
+    } catch {
+      
+  }
+  return freshState()
+}
 async function compressImage(base64: string, maxWidth = 800): Promise<string> {
   return new Promise((resolve) => {
     const img = new Image()
@@ -113,7 +128,7 @@ const ChatContext = createContext<ChatContextType | undefined>(undefined)
 
 export function ChatProvider({ children }: { children: ReactNode }) {
   const { token, isLoggedIn } = useAuth()
-  const [chatState, setChatState] = useState<ChatState>(freshState)
+  const [chatState, setChatState] = useState<ChatState>(loadGuestState)
   const [input, setInput] = useState('')
   const [isLoadingHistory, setIsLoadingHistory] = useState(false)
   const [weather, setWeather] = useState<object | null>(null)
@@ -147,13 +162,19 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
   const messages = activeConversation?.messages ?? initialMessages
 
+   useEffect(() => {
+    if (!isLoggedIn) {
+localStorage.setItem(guestStorageKey, JSON.stringify(chatState))
+    }
+ }, [chatState, isLoggedIn])
+
   // ── DB laden wenn eingeloggt ──────────────────────────────────────────────
   useEffect(() => {
     if (!token || !isLoggedIn) {
       loadedForToken.current = null
       saving.current = {}
       pending.current = {}
-      setChatState(freshState)
+      setChatState(loadGuestState())
       return
     }
 
