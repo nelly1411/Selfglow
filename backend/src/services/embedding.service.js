@@ -23,9 +23,31 @@ async function createEmbedding(input) {
   return data.data[0].embedding;
 }
 
+async function searchByEmbedding(prisma, queryText, limit = 60) {
+  const embedding = await createEmbedding(queryText);
+  const vectorStr = `[${embedding.join(",")}]`;
+
+  const results = await prisma.$queryRawUnsafe(
+    `
+    SELECT
+      p.*,
+      1 - (pe.embedding <=> $1::vector) AS similarity
+    FROM "ProductEmbedding" pe
+    JOIN "Product" p ON p.id = pe."productId"
+    ORDER BY pe.embedding <=> $1::vector
+    LIMIT $2
+    `,
+    vectorStr,
+    limit
+  );
+
+  return results;
+}
+
 module.exports = {
   EMBEDDING_MODEL,
   createEmbedding,
+  searchByEmbedding,
 };
 
 

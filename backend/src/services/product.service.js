@@ -1,6 +1,7 @@
 const prisma = require("../config/prisma");
 const { refreshUserProfileEmbedding } = require("./user-profile-embedding.service");
 const { getUserSkinProfileFacts, getCurrentSkinTypeFromFacts } = require("./user-skin-profile.service");
+const { searchByEmbedding } = require("./embedding.service");
 
 function toBool(value) {
   return String(value).trim().toLowerCase() === "true";
@@ -11,6 +12,14 @@ function toArray(value) {
   return Array.isArray(value) ? value : [value];
 }
 
+function isSemanticQuery(search){
+  if (!search) return false;
+  const words = search.trim().split(/\s+/);
+  const problemWords = ["gegen", "für", "bei", "problem"];
+  const hasProblemWord = problemWords.some((w) => search.toLowerCase().includes(w));
+  return words.length >= 3 || hasProblemWord;
+}
+
 async function getAllProducts(query) {
   const where = {
     AND: [],
@@ -19,6 +28,8 @@ async function getAllProducts(query) {
   const categories = toArray(query.category);
   const skinTypes = toArray(query.skinType);
   const concerns = toArray(query.concern);
+
+  const useEmbedding = isSemanticQuery(query.search);
 
   if (categories.length > 0) {
     where.AND.push({
@@ -68,7 +79,7 @@ async function getAllProducts(query) {
     });
   }
 
-  if (query.search) {
+  if (query.search && !useEmbedding) {
     where.AND.push({
       OR: [
         {
@@ -91,10 +102,71 @@ async function getAllProducts(query) {
     delete where.AND;
   }
 
+//if there is no semantic search, then normal db-query
+if (!useEmbedding) {
   return prisma.product.findMany({
     where,
     orderBy: { name: "asc" },
   });
+}
+
+//semantic search via Embedding
+try {
+  const embeddingResults = await searchByEmbedding(prisma, query.search, 60);
+
+  const MIN_SIMILARITY = 0.35;
+  const relevantResults = embeddingResults.filter(
+    (p) => Number(p.similarity) >= MIN_SIMILARITY
+  );
+
+  if (relevantResults.length === 0) {
+    return [];
+  }
+
+  const embeddingIds = relevantResults.map((p) => p.id);
+
+  const hasFilters = 
+    categories.length > 0 ||
+    skinTypes.length > 0 ||
+    concerns.length > 0 ||
+    query.vegan !== undefined ||
+    query.alcoholFree !== undefined ||
+    query.fragranceFree !== undefined;
+
+    const filtered = await prisma.product.findMany({
+      where: hasFilters
+        ? { ...where, id: { in: embeddingIds } }
+        : { id: { in: embeddingIds } },
+      orderBy: { name: "asc" },
+    });
+
+    return filtered.map((p) => ({ ...p, _semantic: true }));
+} catch (err) {
+  console.error("Embedding search failed, falling back: ", err.message);
+
+  if (where.AND) {
+    where.AND.push({
+      OR: [
+        { name: { contains: query.search, mode: "insensitive" } },
+        { brand: { contains: query.search, mode: "insensitive" } },
+      ],
+    });
+  } else {
+    where.AND = [
+      {
+        OR: [
+          { name: { contains: query.search, mode: "insensitive" } },
+          { brand: { contains: query.search, mode: "insensitive" } },
+        ],
+      },
+    ];
+  }
+
+  return prisma.product.findMany({
+    where,
+    orderBy: { name: "asc" },
+  });
+}
 }
 
 async function getProductById(id) {

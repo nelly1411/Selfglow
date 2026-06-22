@@ -32,6 +32,8 @@ type Product = {
   vegan?: boolean
   alcoholFree?: boolean
   fragranceFree?: boolean
+  _semantic?: boolean
+  similarity?: number
 }
 
 const PRODUCTS_PER_PAGE = 25
