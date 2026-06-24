@@ -13,6 +13,7 @@ import {
   ShieldCheck,
   LoaderCircle,
   AlertCircle,
+  X,
 } from 'lucide-react'
 import { Button } from '@workspace/ui/components/button'
 import { cn } from '@workspace/ui/lib/utils'
@@ -312,7 +313,43 @@ export default function ProductDetail() {
       setSavingSkinType(false)
     }
   }
+async function clearSkinType() {
+  if (!token || !user) return
 
+  setSavingSkinType(true)
+  setProductAiError(null)
+
+  try {
+    const response = await fetch(apiUrl('/api/auth/skin-type'), {
+      method: 'DELETE',
+      headers: {
+       
+        Authorization: `Bearer ${token}`,
+      },
+     
+    })
+
+    const data = await response.json().catch(() => ({}))
+
+    if (!response.ok) {
+      throw new Error(data.message || 'Hauttyp konnte nicht entfernt werden')
+    }
+
+    if (data.user) {
+      updateUser({ ...user, ...data.user, token })
+    }
+
+    setProductAiResult(null)
+    setOpenAiResultSections((prev) => prev.filter((item) => item !== 'fit'))
+  } catch (err) {
+    console.error(err)
+    setProductAiError(
+      err instanceof Error ? err.message : 'Hauttyp konnte nicht entfernt werden'
+    )
+  } finally {
+    setSavingSkinType(false)
+  }
+}
   function renderFitRating(line: string, index: number) {
     const ratingMatch = line.match(/^(?:Passform|Bewertung|Score):\s*([1-5])\s*\/\s*5(?:\s*Sterne)?/i)
 
@@ -653,7 +690,25 @@ export default function ProductDetail() {
                 </p>
               </div>
             </div>
+{isLoggedIn && user?.skinType && (
+  <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-[#E8D5C0] bg-white px-4 py-1.5 text-sm text-[#8A5D2F]">
+    <span>
+      Hauttyp:{' '}
+      {skinTypeOptions.find((o) => o.value === user.skinType)?.label || user.skinType}
+    </span>
 
+    <button
+      type="button"
+      onClick={clearSkinType}
+      disabled={savingSkinType}
+      className="rounded-full p-0.5 text-[#D4A574] transition hover:bg-[#F5E6D3] disabled:opacity-50"
+      aria-label="Hauttyp entfernen"
+      title="Hauttyp entfernen"
+    >
+      <X className="h-3.5 w-3.5" />
+    </button>
+  </div>
+)}
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Button
                 type="button"
