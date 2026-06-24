@@ -282,11 +282,11 @@ export default function SkinQuiz() {
   const resultDesc = skinResult ? (gender === 'male' ? skinResult.descMale : skinResult.desc) : ''
 
   return (
-    <div className="quiz-root" style={{ minHeight: '100vh', background: '#FDFAF6', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '80px 20px', position: 'relative' }}>
+    <div className="quiz-root" style={{ minHeight: '100vh', background: '#FDFAF6', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 'clamp(40px, 10vw, 80px) clamp(16px, 4vw, 20px)', position: 'relative' }}>
 
       {showConfirm && (
         <div className="confirm-overlay" style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-          <div style={{ background: '#fff', borderRadius: 24, padding: '36px 32px', maxWidth: 360, width: '100%', textAlign: 'center', boxShadow: '0 24px 60px rgba(0,0,0,0.15)', fontFamily: "'Outfit', sans-serif" }}>
+          <div style={{ background: '#fff', borderRadius: 24, padding: 'clamp(24px, 6vw, 36px) clamp(20px, 5vw, 32px)', maxWidth: 360, width: '100%', textAlign: 'center', boxShadow: '0 24px 60px rgba(0,0,0,0.15)', fontFamily: "'Outfit', sans-serif" }}>
             <h3 style={{ fontSize: 20, fontWeight: 700, color: '#1c1209', margin: '0 0 10px', letterSpacing: '-0.02em' }}>Quiz aufhören?</h3>
             <p style={{ fontSize: 14, color: '#9a7a5a', margin: '0 0 28px', lineHeight: 1.6, fontWeight: 300 }}>Dein Fortschritt geht verloren. Möchtest du das Quiz wirklich beenden?</p>
             <div style={{ display: 'flex', gap: 10 }}>
@@ -321,8 +321,8 @@ export default function SkinQuiz() {
         {/* ── INTRO ── */}
         {step === 0 && (
           <div className="quiz-slide" style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: 52, marginBottom: 16 }}>{introConfig.emoji}</div>
-            <h1 style={{ fontFamily: "'Outfit', sans-serif", fontSize: 32, fontWeight: 800, color: '#1c1209', margin: '0 0 12px', letterSpacing: '-0.02em' }}>
+            <div style={{ fontSize: 'clamp(40px, 10vw, 52px)', marginBottom: 16 }}>{introConfig.emoji}</div>
+            <h1 style={{ fontFamily: "'Outfit', sans-serif", fontSize: 'clamp(24px, 6vw, 32px)', fontWeight: 800, color: '#1c1209', margin: '0 0 12px', letterSpacing: '-0.02em' }}>
               {introConfig.title}
             </h1>
             <p style={{ fontSize: 15, color: '#9a7a5a', lineHeight: 1.7, margin: '0 0 8px', fontWeight: 300 }}>{introConfig.sub}</p>
@@ -330,7 +330,7 @@ export default function SkinQuiz() {
               Wir ermitteln deinen Hauttyp und empfehlen die passenden Produkte.
             </p>
             <button onClick={() => setStep(1)}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 10, background: '#D4A574', color: '#fff', padding: '15px 36px', borderRadius: 100, fontSize: 15, fontWeight: 700, border: 'none', cursor: 'pointer', letterSpacing: '0.06em' }}>
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 10, background: '#D4A574', color: '#fff', padding: 'clamp(13px, 3vw, 15px) clamp(24px, 6vw, 36px)', borderRadius: 100, fontSize: 15, fontWeight: 700, border: 'none', cursor: 'pointer', letterSpacing: '0.06em' }}>
               Quiz starten <ArrowRight size={16} />
             </button>
           </div>
@@ -352,20 +352,20 @@ export default function SkinQuiz() {
               {currentQ.options.map((opt) => (
                 <button key={opt.value} onClick={() => handleSelect(opt.value)}
                   className={`quiz-option ${selected === opt.value ? 'selected' : ''}`}
-                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderRadius: 14, background: '#fff', textAlign: 'left', fontFamily: "'Outfit', sans-serif", fontSize: 15, fontWeight: 500, color: '#1c1209' }}>
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 'clamp(14px, 3vw, 16px) clamp(16px, 4vw, 20px)', borderRadius: 14, background: '#fff', textAlign: 'left', fontFamily: "'Outfit', sans-serif", fontSize: '(14px, 2.5vw, 15px)', fontWeight: 500, color: '#1c1209' }}>
                   <span>{opt.label}</span>
-                  {selected === opt.value && <CheckCircle size={18} color="#D4A574" />}
+                  {selected === opt.value && <CheckCircle size={18} color="#D4A574" style={{ flexShrink: 0, marginLeft: 12 }}/>}
                 </button>
               ))}
             </div>
 
             <div style={{ display: 'flex', gap: 12 }}>
               <button onClick={handleBack}
-                style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '13px 20px', borderRadius: 100, background: 'transparent', border: '1.5px solid #e8c9a0', color: '#9a7a5a', fontSize: 14, fontWeight: 500, cursor: 'pointer', fontFamily: "'Outfit', sans-serif" }}>
-                <ArrowLeft size={15} /> Zurück
+                style={{ display: 'flex', alignItems: 'center', gap: 6, padding: 'clamp(12px, 3vw, 13px) clamp(14px, 3vw, 20px)', borderRadius: 100, background: 'transparent', border: '1.5px solid #e8c9a0', color: '#9a7a5a', fontSize: 14, fontWeight: 500, cursor: 'pointer', fontFamily: "'Outfit', sans-serif", flexShrink: 0 }}>
+                <ArrowLeft size={15} /> <span className="hide-on-tiny">Zurück</span> 
               </button>
               <button onClick={handleNext} disabled={!selected}
-                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '13px 24px', borderRadius: 100, background: selected ? '#D4A574' : '#e8c9a0', color: '#fff', fontSize: 14, fontWeight: 700, border: 'none', cursor: selected ? 'pointer' : 'not-allowed', fontFamily: "'Outfit', sans-serif", transition: 'background 0.2s' }}>
+                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: 'clamp(12px, 3vw, 13px) clamp(16px, 4vw, 24px)', borderRadius: 100, background: selected ? '#D4A574' : '#e8c9a0', color: '#fff', fontSize: 14, fontWeight: 700, border: 'none', cursor: selected ? 'pointer' : 'not-allowed', fontFamily: "'Outfit', sans-serif", transition: 'background 0.2s' }}>
                 {step === totalSteps ? 'Ergebnis anzeigen' : 'Weiter'} <ArrowRight size={15} />
               </button>
             </div>
@@ -376,7 +376,7 @@ export default function SkinQuiz() {
         {step === totalSteps + 1 && skinResult && (
           <div className="quiz-slide" style={{ textAlign: 'center' }}>
             <p style={{ fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#C4925A', marginBottom: 8, fontWeight: 600 }}>Dein Hauttyp</p>
-            <h2 style={{ fontFamily: "'Outfit', sans-serif", fontSize: 32, fontWeight: 800, color: '#1c1209', margin: '0 0 16px', letterSpacing: '-0.02em' }}>
+            <h2 style={{ fontFamily: "'Outfit', sans-serif", fontSize: 'clamp(24px, 6vw, 32px)', fontWeight: 800, color: '#1c1209', margin: '0 0 16px', letterSpacing: '-0.02em' }}>
               {skinResult.label}
             </h2>
             <p style={{ fontSize: 15, color: '#7a5c42', lineHeight: 1.75, margin: '0 auto 16px', maxWidth: 420, fontWeight: 300 }}>
@@ -385,11 +385,11 @@ export default function SkinQuiz() {
             {user && saving && <p style={{ fontSize: 13, color: '#b8967a', marginBottom: 32, fontWeight: 500 }}>⏳ Wird gespeichert…</p>}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <button onClick={() => navigate(`/shop?skinType=${encodeURIComponent(skinResult.shopFilter)}`)}
-                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, padding: '15px 28px', borderRadius: 100, background: '#D4A574', color: '#fff', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: "'Outfit', sans-serif" }}>
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, padding: 'clamp(13px, 3vw, 15px) clamp(20px, 5vw, 28px)', borderRadius: 100, background: '#D4A574', color: '#fff', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: "'Outfit', sans-serif" }}>
                 Passende Produkte entdecken <ArrowRight size={15} />
               </button>
               <button onClick={() => navigate('/')}
-                style={{ padding: '13px 28px', borderRadius: 100, background: 'transparent', border: '1.5px solid #e8c9a0', color: '#9a7a5a', fontSize: 14, fontWeight: 500, cursor: 'pointer', fontFamily: "'Outfit', sans-serif" }}>
+                style={{ padding: 'clamp(12px, 3vw, 13px) clamp(20px, 5vw, 28px)', borderRadius: 100, background: 'transparent', border: '1.5px solid #e8c9a0', color: '#9a7a5a', fontSize: 14, fontWeight: 500, cursor: 'pointer', fontFamily: "'Outfit', sans-serif" }}>
                 Zur Startseite
               </button>
               <button onClick={resetQuiz}
