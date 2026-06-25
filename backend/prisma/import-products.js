@@ -136,14 +136,41 @@ async function main() {
     })
     .on("end", async () => {
       console.log(`Importiere ${products.length} Produkte...`);
-
-      await prisma.product.deleteMany();
-
-      await prisma.product.createMany({
-        data: products,
-      });
-
-      console.log("Import fertig!");
+    
+      let created = 0;
+      let updated = 0;
+    
+      for (const product of products) {
+        const existingProduct = await prisma.product.findFirst({
+          where: {
+            name: product.name,
+            brand: product.brand,
+            category: product.category,
+          },
+          select: {
+            id: true,
+          },
+        });
+    
+        if (existingProduct) {
+          await prisma.product.update({
+            where: {
+              id: existingProduct.id,
+            },
+            data: product,
+          });
+    
+          updated += 1;
+        } else {
+          await prisma.product.create({
+            data: product,
+          });
+    
+          created += 1;
+        }
+      }
+    
+      console.log(`Import fertig! Neu: ${created}, aktualisiert: ${updated}`);
       await prisma.$disconnect();
     });
 }
