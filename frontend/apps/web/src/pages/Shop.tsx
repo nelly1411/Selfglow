@@ -754,8 +754,7 @@ export default function Shop() {
             type="button"
             variant="outline"
             onClick={resetAllFilters}
-            className="w-full rounded-full bg-[#F5E6D3] text-[#4a3a2a] hover:bg-[#E8D5C0] transition-colors"
-          >
+            className="w-full rounded-full bg-[#F5E6D3] text-[#4a3a2a] hover:bg-[#E8D5C0] transition-colors"          >
             Alles Zurücksetzen
           </Button>
         </div>
