@@ -112,12 +112,18 @@ export default function Header() {
 
   function handleSearch(value: string) {
     setSearchTerm(value)
-
-    navigate(
-      value.trim()
-        ? `/shop?search=${encodeURIComponent(value)}`
-        : '/shop'
-    )
+  
+    const params = new URLSearchParams(location.search)
+  
+    if (value.trim()) {
+      params.set('search', value.trim())
+    } else {
+      params.delete('search')
+    }
+  
+    const queryString = params.toString()
+  
+    navigate(queryString ? `/shop?${queryString}` : '/shop')
   }
 
   function handleLogout() {
