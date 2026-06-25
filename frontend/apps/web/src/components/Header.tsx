@@ -112,17 +112,21 @@ export default function Header() {
 
   function handleSearch(value: string) {
     setSearchTerm(value)
-  
-    const params = new URLSearchParams(location.search)
-  
-    if (value.trim()) {
-      params.set('search', value.trim())
+
+    const params = new URLSearchParams(
+      location.pathname === '/shop' ? location.search : ''
+    )
+
+    const trimmedValue = value.trim()
+
+    if (trimmedValue) {
+      params.set('search', trimmedValue)
     } else {
       params.delete('search')
     }
-  
+
     const queryString = params.toString()
-  
+
     navigate(queryString ? `/shop?${queryString}` : '/shop')
   }
 
