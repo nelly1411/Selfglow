@@ -34,6 +34,8 @@ type Product = {
   fragranceFree?: boolean
   _semantic?: boolean
   similarity?: number
+  reviewAverage?: number
+  reviewCount?: number
 }
 
 const PRODUCTS_PER_PAGE = 25
@@ -105,7 +107,8 @@ function FilterSection({ title, children, defaultOpen = true }: FilterSectionPro
 }
 
 function ProductCard({ product }: { product: Product }) {
-  const rating = product.rating ?? 0
+  const rating = product.reviewAverage ?? product.rating ?? 0
+  const reviewCount = product.reviewCount ?? 0
 
   const { addToCart, updateQuantity, removeFromCart, items } = useCart()
   const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist()
@@ -114,6 +117,8 @@ function ProductCard({ product }: { product: Product }) {
   const cartItem = items.find((item) => item.id === product.id)
   const isInCart = Boolean(cartItem)
   const inWishlist = isInWishlist(product.id)
+  
+
 
   const [showLoginHint, setShowLoginHint] = useState(false)
   const [cartToastVisible, setCartToastVisible] = useState(false)
@@ -280,7 +285,7 @@ function ProductCard({ product }: { product: Product }) {
               </div>
 
               <span className="text-xs text-muted-foreground">
-                {rating.toFixed(1)}
+                {rating.toFixed(1)} ({reviewCount})
               </span>
             </div>
 

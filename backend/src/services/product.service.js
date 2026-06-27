@@ -20,6 +20,28 @@ function isSemanticQuery(search){
   return words.length >= 3 || hasProblemWord;
 }
 
+//Review statistics for shop page
+    async function attachReviewStats(products) {
+      const productIds = products.map((p) => p.id);
+
+      const reviewStats = await prisma.review.groupBy({
+        by: ['productId'],
+        where: { productId: { in: productIds } },
+        _avg: { rating: true },
+        _count: { rating: true },
+      });
+
+      const statsMap = new Map(
+        reviewStats.map((s) => [s.productId, {average: s._avg.rating || 0, count: s._count.rating}])
+      );
+
+      return products.map((p) => ({
+        ...p,
+        reviewAverage: statsMap.get(p.id)?.average ?? 0,
+        reviewCount: statsMap.get(p.id)?.count ?? 0,
+      }));
+    }
+
 async function getAllProducts(query) {
   const where = {
     AND: [],
@@ -104,10 +126,12 @@ async function getAllProducts(query) {
 
 //if there is no semantic search, then normal db-query
 if (!useEmbedding) {
-  return prisma.product.findMany({
+  const products = await prisma.product.findMany({
     where,
     orderBy: { name: "asc" },
   });
+
+  return attachReviewStats(products);
 }
 
 //semantic search via Embedding
@@ -140,7 +164,9 @@ try {
       orderBy: { name: "asc" },
     });
 
-    return filtered.map((p) => ({ ...p, _semantic: true }));
+    //review fix with review statistics
+    const withReviews = await attachReviewStats(filtered);
+    return withReviews.map((p) => ({...p, _semantic: true}));
 } catch (err) {
   console.error("Embedding search failed, falling back: ", err.message);
 
@@ -162,10 +188,12 @@ try {
     ];
   }
 
-  return prisma.product.findMany({
+  const products = await prisma.product.findMany({
     where,
     orderBy: { name: "asc" },
   });
+
+  return attachReviewStats(products);
 }
 }
 
