@@ -101,101 +101,76 @@ async function getAllProducts(query) {
     });
   }
 
-  if (query.search && !useEmbedding) {
-    where.AND.push({
-      OR: [
-        {
-          name: {
-            contains: query.search,
-            mode: "insensitive",
-          },
-        },
-        {
-          brand: {
-            contains: query.search,
-            mode: "insensitive",
-          },
-        },
-      ],
-    });
-  }
+  //if there is no intelligent search, then query with filters
+  if (!query.search) {
+    const celanWhere = {...where};
+    if (celanWhere.AND.length === 0) delete celanWhere.AND;
 
-  if (where.AND.length === 0) {
-    delete where.AND;
-  }
-
-//if there is no semantic search, then normal db-query
-if (!useEmbedding) {
-  const products = await prisma.product.findMany({
-    where,
-    orderBy: { name: "asc" },
-  });
-
-  return attachReviewStats(products);
-}
-
-//semantic search via Embedding
-try {
-  const embeddingResults = await searchByEmbedding(prisma, query.search, 60);
-
-  const MIN_SIMILARITY = 0.35;
-  const relevantResults = embeddingResults.filter(
-    (p) => Number(p.similarity) >= MIN_SIMILARITY
-  );
-
-  if (relevantResults.length === 0) {
-    return [];
-  }
-
-  const embeddingIds = relevantResults.map((p) => p.id);
-
-  const hasFilters = 
-    categories.length > 0 ||
-    skinTypes.length > 0 ||
-    concerns.length > 0 ||
-    query.vegan !== undefined ||
-    query.alcoholFree !== undefined ||
-    query.fragranceFree !== undefined;
-
-    const filtered = await prisma.product.findMany({
-      where: hasFilters
-        ? { ...where, id: { in: embeddingIds } }
-        : { id: { in: embeddingIds } },
+    const products = await prisma.product.findMany({
+      where: celanWhere,
       orderBy: { name: "asc" },
     });
+    return attachReviewStats(products);
+  }
 
-    //review fix with review statistics
-    const withReviews = await attachReviewStats(filtered);
-    return withReviews.map((p) => ({...p, _semantic: true}));
-} catch (err) {
-  console.error("Embedding search failed, falling back: ", err.message);
-
-  if (where.AND) {
-    where.AND.push({
-      OR: [
-        { name: { contains: query.search, mode: "insensitive" } },
-        { brand: { contains: query.search, mode: "insensitive" } },
-      ],
-    });
-  } else {
-    where.AND = [
+  //intelligent search: keyword + embedding
+  const keywordWhere = {
+    AND: [
+      ...where.AND,
       {
         OR: [
           { name: { contains: query.search, mode: "insensitive" } },
           { brand: { contains: query.search, mode: "insensitive" } },
+          { ingredients: { contains: query.search, mode: "insensitive" } },
         ],
       },
-    ];
+    ],
+  };
+
+  let keywordResults = [];
+  let embeddingResults = [];
+
+  try {
+    keywordResults = await prisma.product.findMany({
+      where: keywordWhere,
+      orderBy: { name: "asc" },
+    });
+  } catch (err) {
+    console.error("Keyword search failed: ", err.message);
   }
 
-  const products = await prisma.product.findMany({
-    where,
-    orderBy: { name: "asc" },
-  });
+  try {
+    const MIN_SIMILARITY = 0.35;
+    const rawEmbedding = await searchByEmbedding(prisma, query.search, 60);
+    const relevant = rawEmbedding.filter((p) => Number(p.similarity) >= MIN_SIMILARITY);
 
-  return attachReviewStats(products);
+    if (relevant.length > 0) {
+      const embeddingIds = relevant.map((p) => p.id);
+      const hasFilters = where.AND.length > 0;
+
+      embeddingResults = await prisma.product.findMany({
+        where: hasFilters? {...where, id: {in: embeddingIds} }
+        : { id: {in: embeddingIds} },
+        orderBy: { name: "asc" },
+      });
+    }
+  } catch (err) {
+    console.error("Embedding search failed: ", err.message);
+  }
+
+const merged = new Map();
+for (const p of keywordResults) merged.set(p.id, {...p, _semantic: false});
+for (const p of embeddingResults) {
+  if (!merged.has(p.id)) merged.set(p.id, {...p, _semantic: true});
 }
+
+const finalProducts = Array.from(merged.values()).sort((a, b) =>
+  a.name.localeCompare(b.name, "de")
+);
+
+  return attachReviewStats(finalProducts);
 }
+
 
 async function getProductById(id) {
   return prisma.product.findUnique({
