@@ -162,18 +162,65 @@ const CSS = `
 function ExpandableItems({ items, orderId }: { items: OrderItem[], orderId: number }) {
   const [expanded, setExpanded] = useState(false)
   const visible = expanded ? items : items.slice(0, 3)
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
       {visible.map(item => (
-        <div key={`${orderId}-${item.id}`} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: '#7a5c42' }}>
-          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, paddingRight: 12 }}>{item.name}</span>
-          <span style={{ color: '#c4a882', flexShrink: 0 }}>×{item.quantity || 1}</span>
+        <div
+          key={`${orderId}-${item.id}`}
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            fontSize: 13,
+            color: '#7a5c42',
+          }}
+        >
+          <Link
+            to={`/product/${item.id}`}
+            style={{
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              flex: 1,
+              paddingRight: 12,
+              color: '#7a5c42',
+              textDecoration: 'none',
+              fontWeight: 500,
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.color = '#D4A574'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = '#7a5c42'
+            }}
+          >
+            {item.name}
+          </Link>
+
+          <span style={{ color: '#c4a882', flexShrink: 0 }}>
+            ×{item.quantity || 1}
+          </span>
         </div>
       ))}
+
       {items.length > 3 && (
-        <button onClick={() => setExpanded(e => !e)}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: '#D4A574', fontWeight: 600, textAlign: 'left', padding: '4px 0', fontFamily: "'Outfit',sans-serif" }}>
-          {expanded ? '▲ Weniger anzeigen' : `▼ +${items.length - 3} weitere anzeigen`}
+        <button
+          onClick={() => setExpanded(e => !e)}
+          style={{
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            fontSize: 12,
+            color: '#D4A574',
+            fontWeight: 600,
+            textAlign: 'left',
+            padding: '4px 0',
+            fontFamily: "'Outfit',sans-serif",
+          }}
+        >
+          {expanded
+            ? '▲ Weniger anzeigen'
+            : `▼ +${items.length - 3} weitere anzeigen`}
         </button>
       )}
     </div>
