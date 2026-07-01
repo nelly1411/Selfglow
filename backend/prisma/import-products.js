@@ -141,6 +141,14 @@ async function main() {
       let created = 0;
       let updated = 0;
     
+      // Alle Produkt-Kombinationen aus der neuen CSV merken
+      const currentProductKeys = new Set(
+        products.map((product) =>
+          [product.name, product.brand, product.category].join("\u0000")
+        )
+      );
+    
+      // Erst alle Produkte importieren oder aktualisieren
       for (const product of products) {
         const existingProduct = await prisma.product.findFirst({
           where: {
@@ -171,7 +179,81 @@ async function main() {
         }
       }
     
-      console.log(`Import fertig! Neu: ${created}, aktualisiert: ${updated}`);
+      // Danach Produkte finden, die NICHT mehr in der neuen CSV vorkommen
+      const allDatabaseProducts = await prisma.product.findMany({
+        select: {
+          id: true,
+          name: true,
+          brand: true,
+          category: true,
+        },
+      });
+    
+      const outdatedProducts = allDatabaseProducts.filter((product) => {
+        const key = [product.name, product.brand, product.category].join("\u0000");
+        return !currentProductKeys.has(key);
+      });
+    
+      const outdatedProductIds = outdatedProducts.map((product) => product.id);
+    
+      if (outdatedProductIds.length > 0) {
+        console.log(`Entferne ${outdatedProductIds.length} alte Produkte...`);
+    
+        // Erst abhängige Daten löschen
+        await prisma.wishlistItem.deleteMany({
+          where: {
+            productId: {
+              in: outdatedProductIds,
+            },
+          },
+        });
+    
+        await prisma.cartItem.deleteMany({
+          where: {
+            productId: {
+              in: outdatedProductIds,
+            },
+          },
+        });
+    
+        await prisma.review.deleteMany({
+          where: {
+            productId: {
+              in: outdatedProductIds,
+            },
+          },
+        });
+    
+        await prisma.productEmbedding.deleteMany({
+          where: {
+            productId: {
+              in: outdatedProductIds,
+            },
+          },
+        });
+    
+        await prisma.productAiExplanation.deleteMany({
+          where: {
+            productId: {
+              in: outdatedProductIds,
+            },
+          },
+        });
+    
+        // Jetzt alte Produkte löschen
+        await prisma.product.deleteMany({
+          where: {
+            id: {
+              in: outdatedProductIds,
+            },
+          },
+        });
+      }
+    
+      console.log(
+        `Import fertig! Neu: ${created}, aktualisiert: ${updated}, entfernt: ${outdatedProductIds.length}`
+      );
+    
       await prisma.$disconnect();
     });
 }
