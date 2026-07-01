@@ -279,7 +279,7 @@ export default function Home() {
   const showRecommendations = Boolean(token) && recommendedProducts.length > 0
   const recommendationTarget = skinType
     ? skinLabels[skinType] || skinType
-    : 'deine Haut'
+    : 'Dich'
   const recommendedPageSize = 5
   const recommendationPageCount = Math.ceil(recommendedProducts.length / recommendedPageSize)
   const visibleRecommendedProducts = recommendedProducts.slice(
