@@ -9,6 +9,9 @@ import {
   X,
   Heart,
   Check,
+  Leaf,
+  WineOff,
+  DropletOff,
 } from 'lucide-react'
 import { Button } from '@workspace/ui/components/button'
 import { Checkbox } from '@workspace/ui/components/checkbox'
@@ -76,6 +79,27 @@ const productFeatures = [
   { key: 'vegan', label: 'Vegan' },
   { key: 'alcoholFree', label: 'Alkoholfrei' },
   { key: 'fragranceFree', label: 'Parfümfrei' },
+]
+
+const productBadges = [
+  {
+    key: 'vegan' as const,
+    label: 'Vegan',
+    Icon: Leaf,
+    className: 'bg-[#E7F3E8] text-[#3F7D4E]',
+  },
+  {
+    key: 'alcoholFree' as const,
+    label: 'Alkoholfrei',
+    Icon: WineOff,
+    className: 'bg-[#F8E9EE] text-[#A64D6A]',
+  },
+  {
+    key: 'fragranceFree' as const,
+    label: 'Parfümfrei',
+    Icon: DropletOff,
+    className: 'bg-[#E5F0F6] text-[#2F6D8A]',
+  },
 ]
 
 interface FilterSectionProps {
@@ -288,6 +312,24 @@ function ProductCard({ product }: { product: Product }) {
                 {rating.toFixed(1)} ({reviewCount})
               </span>
             </div>
+            {productBadges.some((badge) => product[badge.key]) && (
+            <div className="mb-2 flex flex-wrap gap-1.5">
+              {productBadges
+                .filter((badge) => product[badge.key])
+                .map(({ key, label, Icon, className }) => (
+                  <span
+                    key={key}
+                    className={cn(
+                      'inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-medium',
+                      className
+                    )}
+                  >
+                    <Icon className="h-3 w-3" />
+                    {label}
+                  </span>
+                ))}
+            </div>
+          )}
 
             <div className="flex items-center gap-2">
               <span className="font-bold text-foreground">
