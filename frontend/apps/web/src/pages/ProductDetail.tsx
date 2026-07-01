@@ -14,6 +14,9 @@ import {
   LoaderCircle,
   AlertCircle,
   X,
+  Leaf,
+  WineOff,
+  DropletOff
 } from 'lucide-react'
 import { Button } from '@workspace/ui/components/button'
 import { cn } from '@workspace/ui/lib/utils'
@@ -42,6 +45,27 @@ type Product = {
   alcoholFree?: boolean
   fragranceFree?: boolean
 }
+
+const productBadges = [
+  {
+    key: 'vegan' as const,
+    label: 'Vegan',
+    Icon: Leaf,
+    className: 'bg-[#E7F3E8] text-[#3F7D4E]',
+  },
+  {
+    key: 'alcoholFree' as const,
+    label: 'Alkoholfrei',
+    Icon: WineOff,
+    className: 'bg-[#F8E9EE] text-[#A64D6A]',
+  },
+  {
+    key: 'fragranceFree' as const,
+    label: 'Parfümfrei',
+    Icon: DropletOff,
+    className: 'bg-[#E5F0F6] text-[#2F6D8A]',
+  },
+]
 
 type ProductAiAction = 'explain' | 'fit'
 
@@ -592,6 +616,25 @@ async function clearSkinType() {
               {reviewCount === 1 ? 'Bewertung' : 'Bewertungen'})
             </span>
           </div>
+
+          {productBadges.some((badge) => product[badge.key]) && (
+            <div className="mb-6 flex flex-wrap gap-2">
+              {productBadges
+                .filter((badge) => product[badge.key])
+                .map(({ key, label, Icon, className }) => (
+                  <span
+                    key={key}
+                    className={cn(
+                      'inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-medium',
+                      className
+                    )}
+                  >
+                    <Icon className="h-4 w-4" />
+                    {label}
+                  </span>
+                ))}
+            </div>
+          )}
 
           <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-3xl font-bold">
