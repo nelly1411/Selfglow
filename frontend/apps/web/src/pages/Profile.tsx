@@ -223,6 +223,31 @@ function ExpandableItems({ items, orderId }: { items: OrderItem[], orderId: numb
             : `▼ +${items.length - 3} weitere anzeigen`}
         </button>
       )}
+
+      <Link
+        to={`/profile/orders/${orderId}`}
+        style={{
+          display: 'inline-flex',
+          alignSelf: 'flex-start',
+          marginTop: 10,
+          padding: '8px 14px',
+          borderRadius: 999,
+          background: '#D4A574',
+          color: '#fff',
+          fontSize: 12,
+          fontWeight: 600,
+          textDecoration: 'none',
+          transition: 'background 0.2s ease',
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.background = '#C49464'
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.background = '#D4A574'
+        }}
+      >
+        Details ansehen
+      </Link>
     </div>
   )
 }
