@@ -6,7 +6,7 @@ const { PrismaClient } = require("@prisma/client");
 
 const prisma = new PrismaClient();
 
-const filePath = path.join(__dirname, "../db/data/chosen2-products_inWork.csv");
+const filePath = path.join(__dirname, "../db/data/final_products.csv");
 
 function parsePrice(value) {
   if (!value) return 0;
@@ -114,7 +114,7 @@ async function main() {
   const products = [];
 
   fs.createReadStream(filePath)
-    .pipe(csv({ separator: ";" }))
+    .pipe(csv({ separator: "," }))
     .on("data", (row) => {
       if (!row.product_name) return;
 
@@ -132,6 +132,7 @@ async function main() {
         skinTypes: detectSkinTypes(row),
         concerns: detectConcerns(row),
         application: row.Anwendung || null,
+        size: row.size || null,
       });
     })
     .on("end", async () => {

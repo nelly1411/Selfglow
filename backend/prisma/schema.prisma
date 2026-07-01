@@ -17,6 +17,7 @@ model Product {
   description String?
   ingredients String?
   application String?
+  size        String?
 
   alcoholFree   Boolean @default(false)
   fragranceFree Boolean @default(false)
