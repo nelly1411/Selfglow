@@ -13,6 +13,11 @@ export interface Review {
     name: string;
     email?: string;
   };
+  product?: {
+    id: number;
+    name: string;
+    brand?: string;
+  };
 }
 
 interface ReviewsContextType {

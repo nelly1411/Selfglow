@@ -34,6 +34,15 @@ async function getReviewsByProductId(productId){
 async function getReviewsByUserId(userId) {
     return prisma.review.findMany({
         where: {userId},
+        include: {
+            product: {
+              select: {
+                id: true,
+                name: true,
+                brand: true,
+              },
+            },
+          },
         orderBy: {createdAt: "desc"},
     });
 }
