@@ -826,7 +826,11 @@ export default function Profile() {
                     <p style={{ fontSize: 13, color: '#7a5c42', margin: 0, lineHeight: 1.6, fontWeight: 300 }}>"{review.reviewText}"</p>
                   )}
                   <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid #F0DCC8', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: 11, color: '#c4a882', fontWeight: 300 }}>Produkt #{review.productId}</span>
+                  <span style={{ fontSize: 11, color: '#c4a882', fontWeight: 300 }}>
+                    {review.product?.name
+                      ? `${review.product.name} (#${review.productId})`
+                      : `Produkt #${review.productId}`}
+                  </span>
                     <span style={{ fontSize: 12, fontWeight: 700, color: '#D4A574' }}>{review.rating}/5</span>
                   </div>
                 </div>
