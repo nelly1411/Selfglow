@@ -512,18 +512,18 @@ async function clearSkinType() {
   return (
     <div className="container mx-auto px-4 py-10">
       {addedToCart && (
-        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[100] pointer-events-none">
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[100] pointer-events-none px-4 w-full sm:w-auto">
           <div
             className={cn(
-              'flex items-center gap-3 rounded-2xl bg-[#D4A574] px-6 py-4 text-white shadow-2xl transition-all duration-500 ease-out',
+              'flex items-center gap-3 rounded-2xl bg-[#D4A574] px-5 sm:px-6 py-3 sm:py-4 text-white shadow-2xl transition-all duration-500 ease-out mx-auto max-w-fit',
               !cartToastEntered && 'opacity-0 -translate-y-4 scale-95',
               cartToastEntered && !cartToastLeaving && 'opacity-100 translate-y-0 scale-100',
               cartToastLeaving && 'opacity-0 -translate-y-3 scale-95'
             )}
           >
-            <CheckCircle className="h-5 w-5" />
+            <CheckCircle className="h-5 w-5 shrink-0" />
 
-            <span className="text-sm font-medium">
+            <span className="text-xs sm:text-sm font-medium">
               Produkt wurde zum Warenkorb hinzugefügt
             </span>
           </div>
@@ -550,12 +550,12 @@ async function clearSkinType() {
         )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-10">
         <div className="rounded-2xl overflow-hidden flex items-start justify-center">
           <img
             src={product.imageUrl || 'https://placehold.co/600x600?text=Kein+Bild'}
             alt={product.name}
-            className="max-h-[620px] w-auto object-contain"
+            className="max-h-[320px] sm:max-h-[440px] md:max-h-[620px] w-auto object-contain"
           />
         </div>
 
@@ -564,7 +564,7 @@ async function clearSkinType() {
             {product.category}
           </p>
 
-          <h1 className="text-3xl font-bold text-foreground mb-2">
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-2">
             {product.name}
           </h1>
 
@@ -663,7 +663,7 @@ async function clearSkinType() {
               </Button>
 
               {showLoginHint && (
-                <div className="absolute top-14 right-0 z-20 w-64 rounded-xl bg-white p-3 text-xs shadow-lg border border-border">
+                <div className="absolute top-14 right-0 z-20 w-64 max-w-[calc(100vw-2rem)] rounded-xl bg-white p-3 text-xs shadow-lg border border-border">
                   <p className="mb-2 text-foreground">
                     Bitte einloggen, um Produkte zu speichern.
                   </p>
@@ -679,7 +679,7 @@ async function clearSkinType() {
             </div>
           </div>
 
-          <div className="mb-8 rounded-2xl border border-[#E8D5C0] bg-[#FFFBF6] p-5">
+          <div className="mb-8 rounded-2xl border border-[#E8D5C0] bg-[#FFFBF6] p-4 sm:p-5">
             <div className="mb-4 flex items-start justify-between gap-4">
               <div>
                 <h2 className="text-lg font-semibold text-foreground">
@@ -761,7 +761,7 @@ async function clearSkinType() {
             {showSkinTypeForm && (
               <div className="mt-5">
                 {openAiResultSections.includes('fit') && (
-                  <div className="relative rounded-xl border border-[#E8D5C0] bg-white p-5 pr-12">
+                  <div className="relative rounded-xl border border-[#E8D5C0] bg-white p-4 pr-10 sm:p-5 sm:pr-12">
                     <button
                       type="button"
                       onClick={() => toggleAiResultSection('fit')}
@@ -818,7 +818,7 @@ async function clearSkinType() {
             {productAiResult && (
               <div className="mt-5">
                 {openAiResultSections.includes(productAiResult.action) && (
-                  <div className="relative rounded-xl border border-[#E8D5C0] bg-white p-5 pr-12">
+                  <div className="relative rounded-xl border border-[#E8D5C0] bg-white p-4 pr-10 sm:p-5 sm:pr-12">
                     <button
                       type="button"
                       onClick={() => toggleAiResultSection(productAiResult.action)}
@@ -876,12 +876,12 @@ async function clearSkinType() {
       </div>
 
       <div className="mt-12 border-t pt-10 px-1">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
           <h2 className="text-2xl font-bold">Kundenbewertungen</h2>
 
           <Button
             onClick={() => setIsReviewFormOpen(true)}
-            className="bg-[#D4A574] text-white hover:bg-[#C69563] px-6 py-3 text-base font-semibold"
+            className="bg-[#D4A574] text-white hover:bg-[#C69563] px-6 py-3 text-base font-semibold w-full sm:w-auto"
           >
             Bewertung schreiben
           </Button>
@@ -901,8 +901,8 @@ async function clearSkinType() {
                       <User className="h-5 w-5 text-[#D4A574]" />
                     </div>
 
-                    <div className="flex-1">
-                      <span className="font-medium text-foreground">
+                    <div className="flex-1 min-w-0">
+                      <span className="font-medium text-foreground break-words">
                         {review.user?.name || review.user?.email?.split('@')[0]}
                       </span>
 
@@ -916,7 +916,7 @@ async function clearSkinType() {
                     <button
                       onClick={() => handleDeleteReview(review.id)}
                       disabled={deletingReviewId === review.id}
-                      className="text-muted-foreground hover:text-red-500 hover:bg-red-50 transition-all p-2 rounded-lg"
+                      className="text-muted-foreground hover:text-red-500 hover:bg-red-50 transition-all p-2 rounded-lg flex-shrink-0"
                       aria-label="Bewertung löschen"
                       title="Bewertung löschen"
                     >
