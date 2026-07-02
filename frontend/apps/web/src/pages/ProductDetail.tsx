@@ -16,7 +16,8 @@ import {
   X,
   Leaf,
   WineOff,
-  DropletOff
+  DropletOff,
+  Ruler
 } from 'lucide-react'
 import { Button } from '@workspace/ui/components/button'
 import { cn } from '@workspace/ui/lib/utils'
@@ -38,6 +39,7 @@ type Product = {
   ingredients?: string | null
   rating?: number | null
   application?: string | null
+  size?: string | null
 
   skinTypes?: string | null
   concerns?: string | null
@@ -616,6 +618,13 @@ async function clearSkinType() {
               {reviewCount === 1 ? 'Bewertung' : 'Bewertungen'})
             </span>
           </div>
+
+          {product.size && (
+            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-[#E8D5C0] bg-[#FFFBF6] px-4 py-1.5 text-sm font-medium text-[#8A5D2F]">
+              <Ruler className="h-4 w-4 text-[#D4A574]" />
+              <span>Größe: {product.size}</span>
+            </div>
+          )}
 
           {productBadges.some((badge) => product[badge.key]) && (
             <div className="mb-6 flex flex-wrap gap-2">

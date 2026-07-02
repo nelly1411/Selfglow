@@ -27,6 +27,7 @@ type Product = {
   brand: string
   category: string
   price: number
+  size?: string | null
   imageUrl?: string | null
   description?: string | null
   rating?: number | null
@@ -292,6 +293,12 @@ function ProductCard({ product }: { product: Product }) {
             <p className="text-xs text-muted-foreground mb-2">
               {product.brand}
             </p>
+
+            {product.size && (
+            <p className="text-xs text-muted-foreground mb-2">
+              {product.size}
+            </p>
+          )}
 
             <div className="flex items-center gap-1 mb-2">
               <div className="flex">
