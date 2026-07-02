@@ -51,12 +51,13 @@ async function rankProductsForUser(products, userId) {
     console.error("User profile embedding refresh failed:", err.message);
   }
 
-  const [user, facts] = await Promise.all([
+  const [user, facts, productSignals] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
       select: { id: true, skinType: true, gender: true },
     }),
     getUserSkinProfileFacts(userId),
+    getUserProductSignals(userId),
   ]);
 
   if (!user) return products;
@@ -92,7 +93,7 @@ async function rankProductsForUser(products, userId) {
 
   return products
     .map((product) => {
-      const scoring = scoreRecommendedProduct(product, user, facts);
+      const scoring = scoreRecommendedProduct(product, user, facts, productSignals);
       const similarity = similarityMap.get(product.id) || 0;
       const recommendationScore = similarity + scoring.bonus;
 
@@ -386,12 +387,46 @@ function getTargetGenderRank(product, user) {
   return 0;
 }
 
-function scoreRecommendedProduct(product, user, facts) {
+async function getUserProductSignals(userId) {
+  const [wishlistItems, cartItems] = await Promise.all([
+    prisma.wishlistItem.findMany({
+      where: { userId },
+      select: { productId: true },
+    }),
+    prisma.cartItem.findMany({
+      where: {
+        cart: { userId },
+      },
+      select: { productId: true },
+    }),
+  ]);
+
+  return {
+    wishlistProductIds: new Set(wishlistItems.map((item) => item.productId)),
+    cartProductIds: new Set(cartItems.map((item) => item.productId)),
+  };
+}
+
+function scoreRecommendedProduct(product, user, facts, productSignals = {}) {
   let bonus = 0;
   const reasons = [];
   const bullets = [];
   const effectiveSkinType = getCurrentSkinTypeFromFacts(facts) || user.skinType;
   const productText = getProductSearchText(product);
+  const wishlistProductIds = productSignals.wishlistProductIds || new Set();
+  const cartProductIds = productSignals.cartProductIds || new Set();
+
+  if (cartProductIds.has(product.id)) {
+    bonus += 0.8;
+    reasons.push("Liegt bereits in deinem Warenkorb");
+    bullets.push("Warenkorb");
+  }
+
+  if (wishlistProductIds.has(product.id)) {
+    bonus += 0.65;
+    reasons.push("Ist auf deiner Merkliste");
+    bullets.push("Merkliste");
+  }
 
   if (effectiveSkinType && hasTextMatch(product.skinTypes, [effectiveSkinType])) {
     bonus += 0.12;
@@ -499,12 +534,13 @@ async function getRecommendedProductsForUser(userId, options = {}) {
 
   await refreshUserProfileEmbedding(userId);
 
-  const [user, facts, candidates] = await Promise.all([
+  const [user, facts, productSignals, candidates] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
       select: { id: true, skinType: true, gender: true },
     }),
     getUserSkinProfileFacts(userId),
+    getUserProductSignals(userId),
     prisma.$queryRawUnsafe(
       `
         SELECT
@@ -545,9 +581,21 @@ async function getRecommendedProductsForUser(userId, options = {}) {
 
   if (!user) return [];
 
-  return candidates
+  const interactionProductIds = [...new Set([
+    ...productSignals.cartProductIds,
+    ...productSignals.wishlistProductIds,
+  ])];
+  const candidateIds = new Set(candidates.map((product) => product.id));
+  const missingInteractionProductIds = interactionProductIds.filter((id) => !candidateIds.has(id));
+  const interactionProducts = missingInteractionProductIds.length > 0
+    ? await prisma.product.findMany({
+        where: { id: { in: missingInteractionProductIds } },
+      })
+    : [];
+
+  return [...candidates, ...interactionProducts]
     .map((product) => {
-      const scoring = scoreRecommendedProduct(product, user, facts);
+      const scoring = scoreRecommendedProduct(product, user, facts, productSignals);
       const similarity = Number(product.similarity || 0);
       const recommendationScore = similarity + scoring.bonus;
 
