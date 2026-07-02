@@ -19,6 +19,21 @@ function toBool(value) {
   return String(value).trim().toLowerCase() === "true";
 }
 
+function detectTargetGender(row) {
+  const explicitGender = String(row.target_gender || row.targetGender || "")
+    .trim()
+    .toLowerCase();
+
+  if (["male", "female", "unisex"].includes(explicitGender)) {
+    return explicitGender;
+  }
+
+  const productName = String(row.product_name || "");
+  const maleProductPattern = /\bmen\b|\bhomme\b|männer|\bmann\b|mencare|barber club|samurai/i;
+
+  return maleProductPattern.test(productName) ? "male" : "unisex";
+}
+
 function detectSkinTypes(row) {
   const text = `${row.description || ""} ${row.ingredients || ""}`.toLowerCase();
   const types = new Set();
@@ -122,6 +137,7 @@ async function main() {
         name: row.product_name,
         brand: row.brand_name || "Unknown Brand",
         category: row.category || "Uncategorized",
+        targetGender: detectTargetGender(row),
         price: parsePrice(row.search_price),
         imageUrl: row.merchant_image_url || null,
         description: row.description || null,

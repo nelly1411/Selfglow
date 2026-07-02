@@ -283,6 +283,24 @@ function findMatchingValues(productText, values, termsByValue) {
   return values.filter((value) => hasTextMatch(productText, termsByValue[value] || [value]));
 }
 
+function isMaleTargetedProduct(product) {
+  const targetGender = String(product?.targetGender || "unisex").toLowerCase();
+  const name = String(product?.name || "");
+  const maleProductPattern = /\bmen\b|\bhomme\b|männer|\bmann\b|mencare|barber club|samurai/i;
+
+  return targetGender === "male" || maleProductPattern.test(name);
+}
+
+function getTargetGenderRank(product, user) {
+  const userGender = String(user?.gender || "").toLowerCase();
+
+  if (userGender === "male") {
+    return isMaleTargetedProduct(product) ? 0 : 1;
+  }
+
+  return 0;
+}
+
 function scoreRecommendedProduct(product, user, facts) {
   let bonus = 0;
   const reasons = [];
@@ -406,16 +424,37 @@ async function getRecommendedProductsForUser(userId, options = {}) {
       `
         SELECT
           p.*,
-          1 - (pe.embedding <=> upe.embedding) AS similarity
-        FROM "UserProfileEmbedding" upe
-        JOIN "ProductEmbedding" pe ON true
-        JOIN "Product" p ON p.id = pe."productId"
-        WHERE upe."userId" = $1
-        ORDER BY pe.embedding <=> upe.embedding
+          CASE
+            WHEN pe.embedding IS NOT NULL AND upe.embedding IS NOT NULL
+              THEN 1 - (pe.embedding <=> upe.embedding)
+            ELSE 0
+          END AS similarity
+        FROM "Product" p
+        JOIN "User" u ON u.id = $1
+        LEFT JOIN "UserProfileEmbedding" upe ON upe."userId" = u.id
+        LEFT JOIN "ProductEmbedding" pe ON pe."productId" = p.id
+        ORDER BY
+          CASE
+            WHEN u.gender = 'male'
+              AND (
+                p."targetGender" = 'male'
+                OR p.name ~* '(^|[^[:alnum:]])(men|homme|mann)([^[:alnum:]]|$)'
+                OR p.name ~* '(männer|mencare|barber club|samurai)'
+              )
+              THEN 0
+            WHEN u.gender = 'male' THEN 1
+            ELSE 0
+          END,
+          CASE
+            WHEN pe.embedding IS NOT NULL AND upe.embedding IS NOT NULL
+              THEN pe.embedding <=> upe.embedding
+            ELSE NULL
+          END ASC NULLS LAST,
+          p.name ASC
         LIMIT $2
       `,
       userId,
-      Math.max(limit * 3, 20)
+      Math.max(limit * 5, 50)
     ),
   ]);
 
@@ -425,16 +464,24 @@ async function getRecommendedProductsForUser(userId, options = {}) {
     .map((product) => {
       const scoring = scoreRecommendedProduct(product, user, facts);
       const similarity = Number(product.similarity || 0);
+      const recommendationScore = similarity + scoring.bonus;
 
       return {
         ...product,
         similarity,
-        recommendationScore: similarity + scoring.bonus,
+        targetGenderRank: getTargetGenderRank(product, user),
+        recommendationScore,
         recommendationReason: scoring.reason,
         recommendationBullets: scoring.bullets,
       };
     })
-    .sort((a, b) => b.recommendationScore - a.recommendationScore)
+    .sort((a, b) => {
+      if (a.targetGenderRank !== b.targetGenderRank) {
+        return a.targetGenderRank - b.targetGenderRank;
+      }
+
+      return b.recommendationScore - a.recommendationScore;
+    })
     .slice(0, limit);
 }
 

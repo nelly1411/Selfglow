@@ -11,13 +11,14 @@ model Product {
   id          Int     @id @default(autoincrement())
   name        String
   brand       String
-  category    String
-  price       Float
-  imageUrl    String?
-  description String?
-  ingredients String?
-  application String?
-  size        String?
+  category     String
+  targetGender String @default("unisex")
+  price        Float
+  imageUrl     String?
+  description  String?
+  ingredients  String?
+  application  String?
+  size         String?
 
   alcoholFree   Boolean @default(false)
   fragranceFree Boolean @default(false)
