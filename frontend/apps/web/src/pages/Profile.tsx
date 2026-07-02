@@ -157,6 +157,12 @@ const CSS = `
   .p-photo-viewer-thumb { width:56px; height:56px; border-radius:12px; border:2px solid transparent; padding:0; overflow:hidden; background:#fff; cursor:pointer; opacity:0.74; transition:all 0.15s ease; }
   .p-photo-viewer-thumb.active { border-color:#D4A574; opacity:1; box-shadow:0 0 0 2px rgba(212,165,116,0.18); }
   .p-photo-viewer-thumb img { width:100%; height:100%; object-fit:cover; display:block; }
+  .p-photo-viewer-stage { position:relative; min-height:0; overflow:auto; background:#1c1209; display:flex; align-items:center; justify-content:center; }
+  .p-photo-viewer-footer { display:flex; align-items:flex-end; justify-content:space-between; gap:14px; padding:14px; border-top:1px solid #F0DCC8; background:#fff; }
+  .p-photo-viewer-thumbs { min-width:0; display:flex; gap:10px; overflow-x:auto; padding:2px; }
+  .p-photo-delete-cta { position:absolute; top:14px; right:14px; z-index:2; min-height:44px; display:inline-flex; align-items:center; justify-content:center; gap:8px; padding:11px 16px; border-radius:14px; border:1px solid #b84f3d; background:#c47a5a; color:#fff; cursor:pointer; font-family:'Outfit',sans-serif; font-size:13px; font-weight:800; box-shadow:0 10px 22px rgba(0,0,0,0.28); transition:all 0.15s ease; }
+  .p-photo-delete-cta:hover { background:#a94736; border-color:#a94736; transform:translateY(-1px); box-shadow:0 14px 28px rgba(196,122,90,0.34); }
+  .p-photo-delete-cta:disabled { opacity:0.65; cursor:not-allowed; transform:none; }
 
   .p-tabs-row { display:flex; gap:8px; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; }
   .p-tabs-row::-webkit-scrollbar { display:none; }
@@ -166,6 +172,7 @@ const CSS = `
   .p-modal-box { padding: 20px ! important; }
   .p-modal-box-lg-header { padding: 18px !important; }
   .p-modal-box-lg-body { padding: 16px !important; }
+  .p-photo-delete-cta { top:10px; right:10px; min-height:40px; padding:9px 12px; }
   }
 `
 
@@ -314,16 +321,18 @@ function GenderPicker({ value, onChange }: { value: Gender; onChange: (g: Gender
 
 function SkinProfileModal({
   profile, editSkinType, editFacts, saving, message,
-  onClose, onSkinTypeChange, onToggleFact,
+  deletingPhotoId, onClose, onSkinTypeChange, onToggleFact, onDeletePhoto,
 }: {
   profile: SkinProfile | null
   editSkinType: string | null
   editFacts: EditableSkinFacts
   saving: boolean
   message: string
+  deletingPhotoId: string | null
   onClose: () => void
   onSkinTypeChange: (value: string | null) => void
   onToggleFact: (key: string, value: string) => void
+  onDeletePhoto: (photo: ProfileImageSnapshot) => Promise<boolean>
 }) {
   const latestImage = profile?.latestProfileImage?.imageData || profile?.latestAnalysis?.imageData || null
   const images = profile?.profileImages?.length
@@ -336,6 +345,18 @@ function SkinProfileModal({
   const selectedFactCount = Object.values(editFacts).reduce((sum, values) => sum + values.length, 0)
   const filledFactGroups = Object.values(editFacts).filter(values => values.length > 0).length
   const completion = Math.min(100, Math.round(((editSkinType ? 1 : 0) + filledFactGroups) / (editableFactGroups.length + 1) * 100))
+
+  useEffect(() => {
+    if (photoViewerIndex !== null && photoViewerIndex >= images.length) {
+      setPhotoViewerIndex(images.length ? images.length - 1 : null)
+    }
+  }, [images.length, photoViewerIndex])
+
+  const deleteActivePhoto = async () => {
+    if (!activePhoto?.id) return
+    const deleted = await onDeletePhoto(activePhoto)
+    if (deleted) setPhotoViewerIndex(null)
+  }
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
@@ -455,11 +476,22 @@ function SkinProfileModal({
               </div>
               <button className="p-close-btn" onClick={() => setPhotoViewerIndex(null)} title="Schließen"><X size={20} /></button>
             </div>
-            <div style={{ minHeight: 0, overflow: 'auto', background: '#1c1209', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div className="p-photo-viewer-stage">
+              {activePhoto.id && (
+                <button
+                  className="p-photo-delete-cta"
+                  onClick={deleteActivePhoto}
+                  disabled={deletingPhotoId === activePhoto.id}
+                  title="Bild löschen"
+                >
+                  <Trash2 size={18} />
+                  <span>{deletingPhotoId === activePhoto.id ? 'Löscht...' : 'Bild löschen'}</span>
+                </button>
+              )}
               <img src={activePhoto.imageData} alt="Gespeichertes Hautprofil" style={{ maxWidth: '100%', maxHeight: '62vh', objectFit: 'contain', display: 'block' }} />
             </div>
-            {images.length > 1 && (
-              <div style={{ display: 'flex', gap: 10, overflowX: 'auto', padding: 14, borderTop: '1px solid #F0DCC8' }}>
+            <div className="p-photo-viewer-footer">
+              <div className="p-photo-viewer-thumbs">
                 {images.map((image, index) => (
                   <button
                     key={image.id || `${image.source}-${index}`}
@@ -472,7 +504,7 @@ function SkinProfileModal({
                   </button>
                 ))}
               </div>
-            )}
+            </div>
           </div>
         </div>
       )}
@@ -497,6 +529,7 @@ export default function Profile() {
   const [skinProfile,     setSkinProfile]     = useState<SkinProfile | null>(null)
   const [skinSaving,      setSkinSaving]      = useState(false)
   const [skinMsg,         setSkinMsg]         = useState('')
+  const [deletingPhotoId, setDeletingPhotoId] = useState<string | null>(null)
 
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
   const [confirmSaveName, setConfirmSaveName] = useState(false)
@@ -694,6 +727,44 @@ export default function Profile() {
     const nextFacts = { ...editSkinFacts, [key]: nextValues }
     setEditSkinFacts(nextFacts)
     void saveSkinProfile(editSkinType, nextFacts)
+  }
+
+  const deleteProfilePhoto = async (photo: ProfileImageSnapshot) => {
+    if (!token || !photo.id) return false
+    setDeletingPhotoId(photo.id)
+    setSkinMsg('')
+    try {
+      const res = await fetch(apiUrl('/api/auth/profile-image'), {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ id: photo.id, source: photo.source }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setSkinMsg(data.message || 'Bild konnte nicht gelöscht werden')
+        return false
+      }
+
+      setSkinProfile(prev => {
+        if (!prev) return prev
+        const profileImages = (prev.profileImages || []).filter(image => image.id !== photo.id)
+        const latestProfileImage = prev.latestProfileImage?.id === photo.id
+          ? profileImages[0] || null
+          : prev.latestProfileImage || null
+        const latestAnalysis = photo.source === 'skin_analysis' && prev.latestAnalysis?.id === Number(photo.id.replace('skin_analysis-', ''))
+          ? { ...prev.latestAnalysis, imageData: null }
+          : prev.latestAnalysis || null
+        return { ...prev, latestProfileImage, latestAnalysis, profileImages }
+      })
+      setSkinMsg('✓ Bild gelöscht')
+      void loadSkinProfileContext()
+      return true
+    } catch {
+      setSkinMsg('Netzwerkfehler')
+      return false
+    } finally {
+      setDeletingPhotoId(null)
+    }
   }
 
   const closeModal = () => {
@@ -970,9 +1041,11 @@ export default function Profile() {
           editFacts={editSkinFacts}
           saving={skinSaving}
           message={skinMsg}
+          deletingPhotoId={deletingPhotoId}
           onClose={() => setShowSkinProfile(false)}
           onSkinTypeChange={handleSkinTypeChange}
           onToggleFact={toggleSkinFact}
+          onDeletePhoto={deleteProfilePhoto}
         />
       )}
 

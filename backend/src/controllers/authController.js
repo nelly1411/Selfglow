@@ -504,6 +504,7 @@ async function getProfileContext(req, res) {
             orderBy: { createdAt: "desc" },
             take: 1,
             select: {
+              id: true,
               imageData: true,
               content: true,
               createdAt: true,
@@ -604,12 +605,14 @@ async function getProfileContext(req, res) {
     const latestProfileImage =
       latestAnalysis?.imageData && (!latestChatImage || latestAnalysis.createdAt >= latestImageConversation.updatedAt)
         ? {
+            id: `skin_analysis-${latestAnalysis.id}`,
             imageData: latestAnalysis.imageData,
             source: "skin_analysis",
             createdAt: latestAnalysis.createdAt,
           }
         : latestChatImage?.imageData
           ? {
+              id: `chat-${latestChatImage.id}`,
               imageData: latestChatImage.imageData,
               source: "chat",
               createdAt: latestImageConversation.updatedAt,
@@ -764,6 +767,56 @@ async function updateSkinProfile(req, res) {
       user: toAuthUser(user),
       profile: mapSkinProfileResponse(user, savedFacts),
     });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Serverfehler" });
+  }
+}
+
+async function deleteProfileImage(req, res) {
+  try {
+    const userId = req.user.userId;
+    const { id, source } = req.body || {};
+
+    if (!id || !["skin_analysis", "chat"].includes(source)) {
+      return res.status(400).json({ message: "Ungültiges Bild" });
+    }
+
+    if (source === "skin_analysis") {
+      const analysisId = Number(String(id).replace(/^skin_analysis-/, ""));
+      if (!Number.isInteger(analysisId)) {
+        return res.status(400).json({ message: "Ungültiges Bild" });
+      }
+
+      const analysis = await prisma.skinAnalysis.findFirst({
+        where: { id: analysisId, userId },
+        select: { id: true },
+      });
+      if (!analysis) return res.status(404).json({ message: "Bild nicht gefunden" });
+
+      await prisma.skinAnalysis.update({
+        where: { id: analysisId },
+        data: { imageData: null },
+      });
+    } else {
+      const messageId = String(id).replace(/^chat-/, "");
+      const message = await prisma.chatMessage.findFirst({
+        where: {
+          id: messageId,
+          conversation: { userId },
+        },
+        select: { id: true },
+      });
+      if (!message) return res.status(404).json({ message: "Bild nicht gefunden" });
+
+      await prisma.chatMessage.update({
+        where: { id: messageId },
+        data: { imageData: null },
+      });
+    }
+
+    await refreshUserProfileEmbedding(userId);
+    return res.json({ message: "Bild gelöscht" });
   } catch (error) {
     console.error(error);
     return res.status(500).json({ message: "Serverfehler" });
@@ -965,4 +1018,4 @@ async function updateGender(req, res) {
     return res.status(500).json({ message: 'Serverfehler' })
   }
 }
-module.exports = { register, login, getAddress, getProfileContext, updateSkinProfile, updateAddress, updateSkinType, deleteSkinType, checkWelcomeCode, verifyCode, updateProfile, updatePassword, updateGender}
+module.exports = { register, login, getAddress, getProfileContext, updateSkinProfile, deleteProfileImage, updateAddress, updateSkinType, deleteSkinType, checkWelcomeCode, verifyCode, updateProfile, updatePassword, updateGender}

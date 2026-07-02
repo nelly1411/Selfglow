@@ -8,6 +8,7 @@ const {
   getAddress,
   getProfileContext,
   updateSkinProfile,
+  deleteProfileImage,
   updateAddress,
   updateSkinType,
   verifyCode,
@@ -24,6 +25,7 @@ router.post  ("/verify-code", verifyCode),
 router.get   ("/address",        authMiddleware, getAddress);
 router.get   ("/profile-context", authMiddleware, getProfileContext);
 router.patch ("/skin-profile",    authMiddleware, updateSkinProfile);
+router.delete("/profile-image",   authMiddleware, deleteProfileImage);
 router.patch ("/address",        authMiddleware, updateAddress);
 router.patch ("/skin-type",      authMiddleware, updateSkinType);  
 router.get   ("/confirm/:token", verifyCode);
