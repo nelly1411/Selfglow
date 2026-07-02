@@ -157,6 +157,16 @@ const CSS = `
   .p-photo-viewer-thumb { width:56px; height:56px; border-radius:12px; border:2px solid transparent; padding:0; overflow:hidden; background:#fff; cursor:pointer; opacity:0.74; transition:all 0.15s ease; }
   .p-photo-viewer-thumb.active { border-color:#D4A574; opacity:1; box-shadow:0 0 0 2px rgba(212,165,116,0.18); }
   .p-photo-viewer-thumb img { width:100%; height:100%; object-fit:cover; display:block; }
+
+  .p-tabs-row { display:flex; gap:8px; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; }
+  .p-tabs-row::-webkit-scrollbar { display:none; }
+
+  @media (max-width: 640px) {
+  .p-hero { padding: 44px 0 64px !important; }
+  .p-modal-box { padding: 20px ! important; }
+  .p-modal-box-lg-header { padding: 18px !important; }
+  .p-modal-box-lg-body { padding: 16px !important; }
+  }
 `
 
 function ExpandableItems({ items, orderId }: { items: OrderItem[], orderId: number }) {
@@ -258,7 +268,7 @@ function ConfirmModal({ title, message, onConfirm, onCancel, confirmLabel = 'Ja,
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
       onClick={(e) => { if (e.target === e.currentTarget) onCancel() }}>
-      <div style={{ width: '100%', maxWidth: 380, background: '#fff', borderRadius: 24, padding: 32, boxShadow: '0 24px 60px rgba(0,0,0,0.18)' }}>
+      <div className="p-modal-box" style={{ width: '100%', maxWidth: 380, background: '#fff', borderRadius: 24, padding: 32, boxShadow: '0 24px 60px rgba(0,0,0,0.18)' }}>
         <div style={{ width: 48, height: 48, borderRadius: 12, background: danger ? '#fff0f0' : '#FDF6EE', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
           <span style={{ fontSize: 22 }}>{danger ? '🗑️' : '✏️'}</span>
         </div>
@@ -331,7 +341,7 @@ function SkinProfileModal({
     <div style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
       <div style={{ width: '100%', maxWidth: 760, background: '#fff', borderRadius: 28, padding: 0, boxShadow: '0 24px 60px rgba(0,0,0,0.18)', maxHeight: '92vh', overflowY: 'auto' }}>
-        <div style={{ padding: 28, borderBottom: '1px solid #F0DCC8', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16 }}>
+        <div className="p-modal-box-lg-header" style={{ padding: 28, borderBottom: '1px solid #F0DCC8', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16 }}>
           <div>
             <p style={{ fontSize: 11, color: '#D4A574', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', margin: '0 0 6px' }}>Meine Haut</p>
             <h2 style={{ fontFamily: "'Outfit',sans-serif", fontSize: 24, fontWeight: 800, color: '#1c1209', margin: 0 }}>{skinTypeLabel(editSkinType)}</h2>
@@ -698,17 +708,17 @@ export default function Profile() {
     <div className="profile-root" style={{ background: '#FDFAF6', minHeight: '100vh', padding: '0 0 60px' }}>
 
       {/* ── Hero Banner ── */}
-      <div style={{ background: 'linear-gradient(135deg, #3A2416 0%, #6F4E37 100%)', padding: '72px 0 96px', marginBottom: -48 }}>
+      <div className="p-hero" style={{ background: 'linear-gradient(135deg, #3A2416 0%, #6F4E37 100%)', padding: '72px 0 96px', marginBottom: -48 }}>
         <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 24px' }}>
           <div className="p-fade" style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
             <div style={{ width: 72, height: 72, borderRadius: '50%', background: 'rgba(212,165,116,0.2)', border: '2px solid rgba(212,165,116,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               <span style={{ fontSize: 28, fontWeight: 800, color: '#D4A574' }}>{firstName.charAt(0).toUpperCase()}</span>
             </div>
-            <div>
+            <div style={{ minWidth: 0 }}>
               <h1 style={{ fontFamily: "'Outfit',sans-serif", fontSize: 'clamp(24px,4vw,36px)', fontWeight: 800, color: '#fff', margin: 0, letterSpacing: '-0.02em' }}>
                 Willkommen, {firstName}
               </h1>
-              <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', margin: '4px 0 0', fontWeight: 300 }}>{user?.email}</p>
+              <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', margin: '4px 0 0', fontWeight: 300, wordBreak: 'break-word' }}>{user?.email}</p>
             </div>
            
           </div>
@@ -741,7 +751,7 @@ export default function Profile() {
         </div>
 
         {/* ── Tabs ── */}
-        <div style={{ display: 'flex', gap: 8, marginBottom: 24, background: '#fff', borderRadius: 100, padding: 4, border: '1px solid #F0DCC8', width: 'fit-content' }}>
+        <div className="p-tabs-row" style={{ display: 'flex', gap: 8, marginBottom: 24, background: '#fff', borderRadius: 100, padding: 4, border: '1px solid #F0DCC8', width: 'fit-content' }}>
           {(['orders', 'reviews', 'account'] as const).map(tab => (
             <button key={tab} className={`p-tab ${activeTab === tab ? 'active' : ''}`} onClick={() => setActiveTab(tab)}>
               {tab === 'orders' ? `Bestellungen (${orders.length})` : tab === 'reviews' ? `Bewertungen (${userReviews.length})` : 'Konto'}
@@ -779,8 +789,8 @@ export default function Profile() {
                         </span>
                       </div>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#9a7a5a', marginBottom: 12 }}>
-                      <MapPin size={12} />{order.address}, {order.postal} {order.city}, {order.country}
+                    <div style={{ display: 'flex', alignItems: 'flex-start', flexWrap: 'wrap', gap: 6, fontSize: 12, color: '#9a7a5a', marginBottom: 12, lineHeight: 1.5 }}>
+                      <MapPin size={12} style={{ marginTop: 2, flexShrink: 0 }} />{order.address}, {order.postal} {order.city}, {order.country}
                     </div>
                     <div style={{ borderTop: '1px solid #F0DCC8', paddingTop: 12 }}>
                       <p style={{ fontSize: 12, fontWeight: 600, color: '#7a5c42', margin: '0 0 8px' }}>{itemCount} Artikel</p>
@@ -970,7 +980,7 @@ export default function Profile() {
       {showEditProfile && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
           onClick={(e) => { if (e.target === e.currentTarget) closeModal() }}>
-          <div style={{ width: '100%', maxWidth: 460, background: '#fff', borderRadius: 28, padding: 36, boxShadow: '0 24px 60px rgba(0,0,0,0.18)', maxHeight: '90vh', overflowY: 'auto' }}>
+          <div className="p-modal-box" style={{ width: '100%', maxWidth: 460, background: '#fff', borderRadius: 28, padding: 36, boxShadow: '0 24px 60px rgba(0,0,0,0.18)', maxHeight: '90vh', overflowY: 'auto' }}>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28 }}>
               <h2 style={{ fontFamily: "'Outfit',sans-serif", fontSize: 22, fontWeight: 800, color: '#1c1209', margin: 0 }}>Profil bearbeiten</h2>

@@ -210,18 +210,18 @@ function ProductCard({ product }: { product: Product }) {
   return (
     <>
       {cartToastVisible && (
-       <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[100] pointer-events-none">
+       <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[100] pointer-events-none px-4 w-full sm:w-auto">
          <div
   className={cn(
-    'flex items-center gap-3 rounded-2xl bg-[#D4A574] px-6 py-4 text-white shadow-2xl transition-all duration-500 ease-out',
+    'flex items-center gap-3 rounded-2xl bg-[#D4A574] px-5 sm:px-6 py-3 sm:py-4 text-white shadow-2xl transition-all duration-500 ease-out mx-auto max-w-fit',
     !cartToastEntered && 'opacity-0 -translate-y-4 scale-95',
     cartToastEntered && !cartToastLeaving && 'opacity-100 translate-y-0 scale-100',
     cartToastLeaving && 'opacity-0 -translate-y-3 scale-95'
   )}
 >
-  <Check className="h-5 w-5" />
+  <Check className="h-5 w-5 shrink-0" />
 
-  <span className="text-sm font-medium">
+  <span className="text-xs sm:text-sm font-medium">
     Produkt wurde zum Warenkorb hinzugefügt
   </span>
 </div>
@@ -716,7 +716,7 @@ export default function Shop() {
 
       <FilterSection title="Preis">
         <div className="px-2 space-y-4">
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
             <div className="flex-1">
               <label className="block text-xs text-muted-foreground mb-1">
                 Min. Preis
@@ -838,7 +838,7 @@ export default function Shop() {
             onClick={() => setMobileFiltersOpen(false)}
           />
 
-          <div className="absolute left-0 top-0 h-full w-80 bg-background p-6 overflow-y-auto">
+          <div className="absolute left-0 top-0 h-full w-[85vw] max-w-80 bg-background p-6 overflow-y-auto">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-lg font-bold text-foreground">
                 Filter
@@ -913,7 +913,7 @@ export default function Shop() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
                 {visibleProducts.map((product) => (
                   <ProductCard key={product.id} product={product} />
                 ))}

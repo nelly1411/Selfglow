@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { Bot, MessageCircle, Send, User, X } from 'lucide-react'
+import { Bot, Sparkles, Send, User, X } from 'lucide-react'
 import { Button } from '@workspace/ui/components/button'
 import { cn } from '@workspace/ui/lib/utils'
 import { apiUrl } from '@/lib/api'
@@ -672,7 +672,7 @@ export default function FloatingChat({
         aria-label="KI-Beratung öffnen"
         title="KI-Beratung öffnen"
       >
-        {isOpen ? <X className="h-6 w-6" /> : <MessageCircle className="h-6 w-6" />}
+        {isOpen ? <X className="h-6 w-6" /> : <Sparkles className="h-6 w-6" />}
       </button>
     </>
   )

@@ -39,6 +39,10 @@ const CSS = `
   .sa-product-card { transition: all 0.2s ease; cursor: pointer; }
   .sa-product-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(212,165,116,0.18); }
   .sa-scanning .scan-line { position: absolute; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, transparent, #D4A574, transparent); animation: scan 2s ease-in-out infinite; }
+
+  @media (max-width: 380px) {
+  .sa-sample-grid { grid-template-columns: repeat(2, 1fr) !important; }
+  }
 `
 
 function compressImage(dataUrl: string, maxSize = 800, quality = 0.7): Promise<string> {
@@ -242,19 +246,19 @@ export default function SkinAnalysis({ onClose, onAnalysisComplete }: SkinAnalys
     <div className="skin-analysis" style={{ background: '#FDFAF6', borderRadius: 20, overflow: 'hidden', maxWidth: 500, width: '100%', margin: '0 auto' }}>
 
       {/* Header */}
-      <div style={{ background: '#1c1209', padding: '20px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <Sparkles size={18} color="#D4A574" />
-          <span style={{ color: '#fff', fontWeight: 700, fontSize: 15, letterSpacing: '-0.01em' }}>Virtuelle Haut-Analyse</span>
+      <div style={{ background: '#1c1209', padding: '16px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+          <Sparkles size={18} color="#D4A574" style={{ flexShrink: 0 }}/>
+          <span style={{ color: '#fff', fontWeight: 700, fontSize: 15, letterSpacing: '-0.01em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Virtuelle Haut-Analyse</span>
         </div>
         {onClose && (
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.5)', padding: 4 }}>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.5)', padding: 4, flexShrink: 0 }}>
             <X size={18} />
           </button>
         )}
       </div>
 
-      <div style={{ padding: 24 }}>
+      <div style={{ padding: 'clamp(16px, 4vw, 24px)' }}>
 
         {/* ── CHOOSE ── */}
         {mode === 'choose' && (
@@ -264,11 +268,11 @@ export default function SkinAnalysis({ onClose, onAnalysisComplete }: SkinAnalys
             </p>
             {error && <div style={{ background: '#fff0f0', border: '1px solid #fcc', borderRadius: 12, padding: '10px 14px', marginBottom: 16, fontSize: 13, color: '#c47a5a' }}>{error}</div>}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <button onClick={startCamera} className="sa-btn" style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '16px 20px', borderRadius: 14, background: '#1c1209', border: 'none', color: '#fff', textAlign: 'left', width: '100%' }}>
+              <button onClick={startCamera} className="sa-btn" style={{ display: 'flex', alignItems: 'center', gap: 14, padding: 'clamp(13px, 3vw, 16px) clamp(16px, 4vw, 20px)', borderRadius: 14, background: '#1c1209', border: 'none', color: '#fff', textAlign: 'left', width: '100%' }}>
                 <div style={{ width: 40, height: 40, borderRadius: 10, background: 'rgba(212,165,116,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                   <Camera size={18} color="#D4A574" />
                 </div>
-                <div>
+                <div style={{ minWidth: 0 }}>
                   <p style={{ fontWeight: 700, fontSize: 14, margin: 0, color: '#fff' }}>Selfie aufnehmen</p>
                   <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', margin: 0, fontWeight: 300 }}>Kamera öffnen und Foto machen</p>
                 </div>
@@ -340,7 +344,7 @@ export default function SkinAnalysis({ onClose, onAnalysisComplete }: SkinAnalys
                     }}
                     style={{ background: '#fff', border: '1.5px solid #F0DCC8', borderRadius: 14, overflow: 'hidden', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0, textAlign: 'center', padding: 0 }}
                   >
-                    <div style={{ width: '100%', height: 90, overflow: 'hidden' }}>
+                    <div style={{ width: '100%', height: 'clamp(70px, 18vw, 90px)', overflow: 'hidden' }}>
                       <img src={problem.img} alt={problem.label} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                     </div>
                   </button>
@@ -369,8 +373,8 @@ export default function SkinAnalysis({ onClose, onAnalysisComplete }: SkinAnalys
                 <canvas ref={canvasRef} style={{ display: 'none' }} />
                 <p style={{ fontSize: 12, color: '#9a7a5a', textAlign: 'center', margin: '0 0 16px', fontWeight: 300 }}>Positioniere dein Gesicht gut sichtbar</p>
                 <div style={{ display: 'flex', gap: 10 }}>
-                  <button onClick={() => { stopCamera(); setMode('choose') }} className="sa-btn" style={{ flex: 1, padding: '12px', borderRadius: 100, background: 'transparent', border: '1.5px solid #e0c9a8', color: '#7a5c42', fontSize: 14, fontWeight: 600 }}>Abbrechen</button>
-                  <button onClick={takeSelfie} className="sa-btn" style={{ flex: 2, padding: '12px', borderRadius: 100, background: '#D4A574', border: 'none', color: '#fff', fontSize: 14, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                  <button onClick={() => { stopCamera(); setMode('choose') }} className="sa-btn" style={{ flex: 1, padding: 'clamp(10px, 2.5vw, 12px)', borderRadius: 100, background: 'transparent', border: '1.5px solid #e0c9a8', color: '#7a5c42', fontSize: 'clamp(13px, 2.5vw, 14px)', fontWeight: 600 }}>Abbrechen</button>
+                  <button onClick={takeSelfie} className="sa-btn" style={{ flex: 2, padding: 'clamp(10px, 2.5vw, 12px)', borderRadius: 100, background: '#D4A574', border: 'none', color: '#fff', fontSize: 'clamp(13px, 2.5vw, 14px)', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
                     <Camera size={16} /> Aufnehmen
                   </button>
                 </div>
@@ -388,10 +392,10 @@ export default function SkinAnalysis({ onClose, onAnalysisComplete }: SkinAnalys
             </div>
             <p style={{ fontSize: 13, color: '#9a7a5a', textAlign: 'center', margin: '0 0 16px', fontWeight: 300 }}>Sieht gut aus! Bereit für die Analyse?</p>
             <div style={{ display: 'flex', gap: 10 }}>
-              <button onClick={reset} className="sa-btn" style={{ padding: '12px 16px', borderRadius: 100, background: 'transparent', border: '1.5px solid #e0c9a8', color: '#7a5c42', fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <button onClick={reset} className="sa-btn" style={{ padding: 'clamp(10px, 2.5vw, 12px) clamp(12px, 3vw, 16px)', borderRadius: 100, background: 'transparent', border: '1.5px solid #e0c9a8', color: '#7a5c42', fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap', flexShrink: 0 }}>
                 <RotateCcw size={14} /> Neu
               </button>
-              <button onClick={analyse} className="sa-btn" style={{ flex: 1, padding: '12px', borderRadius: 100, background: '#D4A574', border: 'none', color: '#fff', fontSize: 14, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+              <button onClick={analyse} className="sa-btn" style={{ flex: 1, padding: 'clamp(10px, 2.5vw, 12px)', borderRadius: 100, background: '#D4A574', border: 'none', color: '#fff', fontSize: 14, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
                 <Sparkles size={15} /> Jetzt analysieren
               </button>
             </div>
@@ -426,14 +430,14 @@ export default function SkinAnalysis({ onClose, onAnalysisComplete }: SkinAnalys
                   <img src={imageData} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 </div>
               )}
-              <div>
+              <div style={{ minWidth: 0 }}>
                 <p style={{ fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#C4925A', margin: '0 0 4px', fontWeight: 600 }}>Dein Hauttyp</p>
-                <p style={{ fontSize: 22, fontWeight: 800, color: '#1c1209', margin: '0 0 4px', letterSpacing: '-0.02em' }}>{displaySkinType(result.skinType)}</p>
+                <p style={{ fontSize: 'clamp(18px, 4vw, 22px)', fontWeight: 800, color: '#1c1209', margin: '0 0 4px', letterSpacing: '-0.02em' }}>{displaySkinType(result.skinType)}</p>
                 <p style={{ fontSize: 13, color: '#9a7a5a', margin: 0, fontWeight: 300, lineHeight: 1.5 }}>{result.overall}</p>
               </div>
             </div>
 
-            <div style={{ background: '#fff', borderRadius: 16, padding: '16px 18px', marginBottom: 16, border: '1px solid #F0DCC8' }}>
+            <div style={{ background: '#fff', borderRadius: 16, padding: 'clamp(14px, 3vw, 16px) clamp(14px, 4vw, 18px)', marginBottom: 16, border: '1px solid #F0DCC8' }}>
               <p style={{ fontSize: 12, fontWeight: 700, color: '#1c1209', margin: '0 0 14px', letterSpacing: '0.04em', textTransform: 'uppercase' }}>Detailanalyse</p>
               {[
                 { label: 'Trockenheit',  val: result.dryness },
@@ -454,7 +458,7 @@ export default function SkinAnalysis({ onClose, onAnalysisComplete }: SkinAnalys
             </div>
 
             {result.tips?.length > 0 && (
-              <div style={{ background: '#FDF6EE', borderRadius: 16, padding: '16px 18px', marginBottom: 16, border: '1px solid #F0DCC8' }}>
+              <div style={{ background: '#FDF6EE', borderRadius: 16, padding: 'clamp(14px, 3vw, 16px) clamp(14px, 4vw, 18px)', marginBottom: 16, border: '1px solid #F0DCC8' }}>
                 <p style={{ fontSize: 12, fontWeight: 700, color: '#1c1209', margin: '0 0 10px', letterSpacing: '0.04em', textTransform: 'uppercase' }}>Tipps für dich</p>
                 {result.tips.map((tip, i) => (
                   <div key={i} style={{ display: 'flex', gap: 10, marginBottom: i < result.tips.length - 1 ? 8 : 0 }}>
@@ -486,7 +490,7 @@ export default function SkinAnalysis({ onClose, onAnalysisComplete }: SkinAnalys
             )}
 
             <div style={{ display: 'flex', gap: 10 }}>
-              <button onClick={reset} className="sa-btn" style={{ padding: '12px 16px', borderRadius: 100, background: 'transparent', border: '1.5px solid #e0c9a8', color: '#7a5c42', fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <button onClick={reset} className="sa-btn" style={{ padding: 'clamp(10px, 2.5vw, 12px) clamp(12px, 3vw, 16px)', borderRadius: 100, background: 'transparent', border: '1.5px solid #e0c9a8', color: '#7a5c42', fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap', flexShrink: 0 }}>
                 <RotateCcw size={13} /> Neu
               </button>
               <button
@@ -507,7 +511,7 @@ export default function SkinAnalysis({ onClose, onAnalysisComplete }: SkinAnalys
                   navigate(`/shop?${params.toString()}`)
                 }}
                 className="sa-btn"
-                style={{ flex: 1, padding: '12px', borderRadius: 100, background: '#D4A574', border: 'none', color: '#fff', fontSize: 13, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                style={{ flex: 1, padding: 'clamp(10px, 2.5vs, 12px)', borderRadius: 100, background: '#D4A574', border: 'none', color: '#fff', fontSize: 13, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
                 Passende Produkte <ArrowRight size={14} />
               </button>
             </div>
