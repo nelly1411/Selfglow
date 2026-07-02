@@ -38,15 +38,20 @@ type Product = {
   fragranceFree?: boolean
   _semantic?: boolean
   similarity?: number
+  targetGenderRank?: number
+  recommendationScore?: number
+  recommendationReason?: string
+  recommendationBullets?: string[]
   reviewAverage?: number
   reviewCount?: number
 }
 
 const PRODUCTS_PER_PAGE = 25
 
-type SortOption = 'name-asc' | 'name-desc' | 'price-asc' | 'price-desc'
+type SortOption = 'relevance' | 'name-asc' | 'name-desc' | 'price-asc' | 'price-desc'
 
 const sortOptions: { value: SortOption; label: string }[] = [
+  { value: 'relevance', label: 'Relevanz' },
   { value: 'name-asc', label: 'Name (A-Z)' },
   { value: 'name-desc', label: 'Name (Z-A)' },
   { value: 'price-asc', label: 'Preis (niedrig - hoch)' },
@@ -393,6 +398,7 @@ function ProductCard({ product }: { product: Product }) {
 
 export default function Shop() {
   const [searchParams, setSearchParams] = useSearchParams()
+  const { token } = useAuth()
 
   const searchQuery = searchParams.get('search')?.toLowerCase().trim() || ''
   const categoryQuery = searchParams.getAll('category')
@@ -429,7 +435,7 @@ export default function Shop() {
   const [selectedFeatures, setSelectedFeatures] = useState<string[]>(() => featureQuery)
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
   const [visibleCount, setVisibleCount] = useState(PRODUCTS_PER_PAGE)
-  const [sortBy, setSortBy] = useState<SortOption>('name-asc')
+  const [sortBy, setSortBy] = useState<SortOption>('relevance')
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -570,10 +576,17 @@ export default function Shop() {
           params.set(feature, 'true')
         })
 
+        if (sortBy === 'relevance') {
+          params.set('sort', 'relevance')
+        }
+
         const queryString = params.toString()
 
         const response = await fetch(
-          apiUrl(`/api/products${queryString ? `?${queryString}` : ''}`)
+          apiUrl(`/api/products${queryString ? `?${queryString}` : ''}`),
+          {
+            headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+          }
         )
 
         if (!response.ok) {
@@ -597,6 +610,8 @@ export default function Shop() {
     selectedSkinType,
     selectedConcern,
     selectedFeatures,
+    sortBy,
+    token,
   ])
 
   const filteredProducts = products.filter((product) => {
@@ -608,6 +623,15 @@ export default function Shop() {
 
   const sortedProducts = [...filteredProducts].sort((a, b) => {
     switch (sortBy) {
+      case 'relevance': {
+        const genderRank = (a.targetGenderRank ?? 0) - (b.targetGenderRank ?? 0)
+        if (genderRank !== 0) return genderRank
+
+        const scoreDiff = (b.recommendationScore ?? 0) - (a.recommendationScore ?? 0)
+        if (scoreDiff !== 0) return scoreDiff
+
+        return a.name.localeCompare(b.name, 'de')
+      }
       case 'name-asc':
         return a.name.localeCompare(b.name, 'de')
       case 'name-desc':

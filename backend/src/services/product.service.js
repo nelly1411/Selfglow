@@ -42,7 +42,83 @@ function isSemanticQuery(search){
       }));
     }
 
-async function getAllProducts(query) {
+async function rankProductsForUser(products, userId) {
+  if (!userId || products.length === 0) return products;
+
+  try {
+    await refreshUserProfileEmbedding(userId);
+  } catch (err) {
+    console.error("User profile embedding refresh failed:", err.message);
+  }
+
+  const [user, facts] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, skinType: true, gender: true },
+    }),
+    getUserSkinProfileFacts(userId),
+  ]);
+
+  if (!user) return products;
+
+  const productIds = products.map((product) => product.id);
+  const similarityMap = new Map();
+
+  try {
+    const rows = await prisma.$queryRawUnsafe(
+      `
+        SELECT
+          p.id,
+          CASE
+            WHEN pe.embedding IS NOT NULL AND upe.embedding IS NOT NULL
+              THEN 1 - (pe.embedding <=> upe.embedding)
+            ELSE 0
+          END AS similarity
+        FROM "Product" p
+        LEFT JOIN "UserProfileEmbedding" upe ON upe."userId" = $1
+        LEFT JOIN "ProductEmbedding" pe ON pe."productId" = p.id
+        WHERE p.id = ANY($2::int[])
+      `,
+      userId,
+      productIds
+    );
+
+    rows.forEach((row) => {
+      similarityMap.set(row.id, Number(row.similarity || 0));
+    });
+  } catch (err) {
+    console.error("Product similarity ranking failed:", err.message);
+  }
+
+  return products
+    .map((product) => {
+      const scoring = scoreRecommendedProduct(product, user, facts);
+      const similarity = similarityMap.get(product.id) || 0;
+      const recommendationScore = similarity + scoring.bonus;
+
+      return {
+        ...product,
+        similarity,
+        targetGenderRank: getTargetGenderRank(product, user),
+        recommendationScore,
+        recommendationReason: scoring.reason,
+        recommendationBullets: scoring.bullets,
+      };
+    })
+    .sort((a, b) => {
+      if (a.targetGenderRank !== b.targetGenderRank) {
+        return a.targetGenderRank - b.targetGenderRank;
+      }
+
+      if (b.recommendationScore !== a.recommendationScore) {
+        return b.recommendationScore - a.recommendationScore;
+      }
+
+      return a.name.localeCompare(b.name, "de");
+    });
+}
+
+async function getAllProducts(query, options = {}) {
   const where = {
     AND: [],
   };
@@ -52,6 +128,7 @@ async function getAllProducts(query) {
   const concerns = toArray(query.concern);
 
   const useEmbedding = isSemanticQuery(query.search);
+  const useRelevanceSort = query.sort === "relevance" && options.userId;
 
   if (categories.length > 0) {
     where.AND.push({
@@ -110,7 +187,11 @@ async function getAllProducts(query) {
       where: celanWhere,
       orderBy: { name: "asc" },
     });
-    return attachReviewStats(products);
+    const rankedProducts = useRelevanceSort
+      ? await rankProductsForUser(products, options.userId)
+      : products;
+
+    return attachReviewStats(rankedProducts);
   }
 
   //intelligent search: keyword + embedding
@@ -168,7 +249,11 @@ const finalProducts = Array.from(merged.values()).sort((a, b) =>
   a.name.localeCompare(b.name, "de")
 );
 
-  return attachReviewStats(finalProducts);
+  const rankedProducts = useRelevanceSort
+    ? await rankProductsForUser(finalProducts, options.userId)
+    : finalProducts;
+
+  return attachReviewStats(rankedProducts);
 }
 
 

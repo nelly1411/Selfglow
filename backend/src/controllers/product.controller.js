@@ -3,7 +3,9 @@ const productAiService = require("../services/product-ai.service");
 
 async function getAllProducts(req, res) {
   try {
-    const products = await productService.getAllProducts(req.query);
+    const products = await productService.getAllProducts(req.query, {
+      userId: req.user?.userId || req.userId,
+    });
     res.status(200).json(products);
   } catch (error) {
     console.error("Failed to fetch products:", error);

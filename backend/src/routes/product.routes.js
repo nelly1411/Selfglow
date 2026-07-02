@@ -1,10 +1,11 @@
 const express = require("express")
 const productController = require("../controllers/product.controller");
 const authMiddleware = require("../middleware/authMiddleware");
+const optionalAuthMiddleware = require("../middleware/optionalAuthMiddleware");
 
 const router = express.Router()
 
-router.get("/", productController.getAllProducts)
+router.get("/", optionalAuthMiddleware, productController.getAllProducts)
 router.get("/recommendations/me", authMiddleware, productController.getMyRecommendations)
 router.post("/:id/explain", productController.explainProduct)
 router.post("/:id/fit", authMiddleware, productController.assessProductFit)
