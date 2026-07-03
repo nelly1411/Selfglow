@@ -473,6 +473,7 @@ const handledHautwissenStartRef = useRef(false)
   }
 
 useEffect(() => {
+  window.scrollTo(0, 0)
   const state = location.state as
     | {
         newChat?: boolean
