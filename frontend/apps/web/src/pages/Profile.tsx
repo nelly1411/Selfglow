@@ -193,7 +193,7 @@ function ExpandableItems({ items, orderId }: { items: OrderItem[], orderId: numb
           }}
         >
           <Link
-            to={`/product/${item.id}`}
+to={`/product/${item.id}?from=order&orderId=${orderId}`}
             style={{
               overflow: 'hidden',
               textOverflow: 'ellipsis',

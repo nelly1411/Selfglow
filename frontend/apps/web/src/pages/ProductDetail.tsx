@@ -88,6 +88,8 @@ const skinTypeOptions = [
 export default function ProductDetail() {
   const { id } = useParams()
   const [searchParams] = useSearchParams()
+  const from = searchParams.get('from')
+  const orderId = searchParams.get('orderId') 
 
   const { items, addToCart, updateQuantity, removeFromCart } = useCart()
   const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist()
@@ -501,9 +503,12 @@ async function clearSkinType() {
           {error || 'Produkt nicht gefunden.'}
         </p>
 
-        <Link to="/shop">
-          <Button variant="outline">Zurück zu den Produkten</Button>
-        </Link>
+        <Link
+  to={from === 'order' && orderId ? `/profile/orders/${orderId}` : '/shop'}
+  className="text-gray-500 hover:text-[#D4A574]"
+>
+  ← {from === 'order' && orderId ? 'Zurück zur Bestellung' : 'Zurück zu den Produkten'}
+</Link>
       </div>
     )
   }
@@ -558,12 +563,14 @@ async function clearSkinType() {
 
       <div className="mb-8 flex flex-wrap items-center gap-4">
         <Link
-          to="/shop"
-          className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Zurück zu den Produkten
-        </Link>
+  to={from === 'order' && orderId ? `/profile/orders/${orderId}` : '/shop'}
+  className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+>
+  <ArrowLeft className="h-4 w-4" />
+  {from === 'order' && orderId
+    ? 'Zurück zur Bestellung'
+    : 'Zurück zu den Produkten'}
+</Link>
 
         {fromChatbot && (
           <Link

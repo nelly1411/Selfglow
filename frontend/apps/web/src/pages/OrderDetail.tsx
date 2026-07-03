@@ -103,7 +103,7 @@ export default function OrderDetail() {
         Zurück zum Profil
       </button>
 
-      <div className="rounded-2xl border border-[#F0DCC8] bg-white p-6 mb-6">
+      <div className="rounded-2xl border border-[#F0DCC8] bg-white p-6 mb-6 !font-sans">
         <h1 className="text-3xl font-bold mb-2">
           Bestellung #{order.id}
         </h1>
@@ -123,7 +123,7 @@ export default function OrderDetail() {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-[#F0DCC8] bg-white p-6">
+      <div className="rounded-2xl border border-[#F0DCC8] bg-white p-6 !font-sans">
         <h2 className="text-xl font-bold mb-6">
           Bestellte Produkte
         </h2>
@@ -146,7 +146,7 @@ export default function OrderDetail() {
 
               <div className="flex-1">
                 <Link
-                  to={`/product/${item.id}`}
+to={`/product/${item.id}?from=order&orderId=${order.id}`}
                   className="font-medium hover:text-[#D4A574]"
                 >
                   {item.name}
