@@ -608,37 +608,25 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── NEWSLETTER ── */}
-      <section style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', minHeight: 460 }}>
-        <div style={{ position: 'relative', overflow: 'hidden' }}>
-          <img src={gender === 'male' ? man7 : (!gender || gender === 'diverse') ? dev7 : "https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?w=900&h=700&fit=crop"} alt="Newsletter" className="img-hover" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-          <div style={{ position: 'absolute', inset: 0, background: 'rgba(28,18,9,0.22)' }} />
-        </div>
-        <div style={{ background: '#1c1209', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '60px clamp(28px,6vw,80px)', gap: 20 }}>
-          <p style={{ fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#D4A574', fontWeight: 500, margin: 0 }}>Exklusiv für dich</p>
-          <h3 style={{ fontFamily: "'Outfit', sans-serif", fontSize: 'clamp(22px,2.8vw,36px)', fontWeight: 700, color: '#fff', margin: 0, lineHeight: 1.2, letterSpacing: '-0.02em' }}>
-            Jetzt anmelden &<br />10% Rabatt sichern.
-          </h3>
-          <p style={{ fontSize: 14, color: '#b8967a', margin: 0, lineHeight: 1.65, fontWeight: 300, maxWidth: 340 }}>
-            Erhalte exklusive Tipps, neue Produkte und deinen persönlichen Rabatt direkt in dein Postfach.
-          </p>
-          {subscribed ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#D4A574' }}>
-              <Sparkles size={16} />
-              <span style={{ fontSize: 14, fontWeight: 500 }}>Danke! Schau in dein Postfach.</span>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 4 }}>
-              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="deine@email.de"
-                style={{ flex: '1 1 180px', padding: '13px 18px', borderRadius: 100, background: 'rgba(255,255,255,0.08)', border: '1.5px solid rgba(255,255,255,0.15)', color: '#fff', fontSize: 13, outline: 'none', fontFamily: "'Outfit', sans-serif" }} />
-              <button onClick={() => { if (email) setSub(true) }} className="pill-btn"
-                style={{ padding: '13px 24px', borderRadius: 100, background: '#D4A574', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', fontFamily: "'Outfit', sans-serif", whiteSpace: 'nowrap' }}>
-                Sichern
-              </button>
-            </div>
-          )}
-        </div>
-      </section>
+     {/* ── COMMUNITY ── */}
+<section style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', minHeight: 460 }}>
+  <div style={{ position: 'relative', overflow: 'hidden' }}>
+    <img src={gender === 'male' ? man7 : (!gender || gender === 'diverse') ? dev7 : "https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?w=900&h=700&fit=crop"} alt="Community" className="img-hover" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+    <div style={{ position: 'absolute', inset: 0, background: 'rgba(28,18,9,0.22)' }} />
+  </div>
+  <div style={{ background: '#1c1209', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '60px clamp(28px,6vw,80px)', gap: 20 }}>
+    <p style={{ fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#D4A574', fontWeight: 500, margin: 0 }}>Für strahlende Haut</p>
+    <h3 style={{ fontFamily: "'Outfit', sans-serif", fontSize: 'clamp(22px,2.8vw,36px)', fontWeight: 700, color: '#fff', margin: 0, lineHeight: 1.2, letterSpacing: '-0.02em' }}>
+      Hautpflege, die<br />zu dir passt.
+    </h3>
+    <p style={{ fontSize: 14, color: '#b8967a', margin: 0, lineHeight: 1.65, fontWeight: 300, maxWidth: 340 }}>
+      Von der ersten Analyse bis zur perfekten Routine — wir begleiten dich mit ehrlicher Beratung und Produkten, die wirklich zu deiner Haut passen.
+    </p>
+    <p style={{ fontSize: 14, color: '#b8967a', margin: 0, lineHeight: 1.65, fontWeight: 300, maxWidth: 340 }}>
+      Keine leeren Versprechen, keine Massenware — nur das, was deine Haut wirklich braucht.
+    </p>
+  </div>
+</section>
     </div>
   )
 }
