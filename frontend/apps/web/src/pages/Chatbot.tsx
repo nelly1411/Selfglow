@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Bot, Camera, MessageCircle, Plus, Send, Sparkles, Trash2, User } from 'lucide-react'
 import { Button } from '@workspace/ui/components/button'
 import { apiUrl } from '@/lib/api'
@@ -276,6 +276,9 @@ export default function Chatbot() {
     fetchWeather,
   } = useChat()
   const { token, user, updateUser } = useAuth()
+  const location = useLocation()
+  const navigate = useNavigate()
+const handledHautwissenStartRef = useRef(false)
   const [isLoading, setIsLoading] = useState(false)
   const [explainingMessageId, setExplainingMessageId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -469,6 +472,54 @@ export default function Chatbot() {
     }
   }
 
+useEffect(() => {
+  const state = location.state as
+    | {
+        newChat?: boolean
+        problemTitle?: string
+        problemIntro?: string
+        problemImage?: string
+      }
+    | undefined
+
+  if (handledHautwissenStartRef.current) return
+  if (!state?.newChat || !state.problemTitle) return
+
+  handledHautwissenStartRef.current = true
+
+  const now = new Date().toISOString()
+  const conversationId = crypto.randomUUID()
+
+  const newConversation = {
+    id: conversationId,
+    title: `Hautwissen: ${state.problemTitle}`,
+    updatedAt: now,
+    messages: [
+      {
+        id: crypto.randomUUID(),
+        role: 'user' as const,
+        content: `Ich möchte eine KI-Beratung zu ${state.problemTitle}. ${state.problemIntro}`,
+        imageUrl: state.problemImage ?? null,
+      },
+      {
+        id: crypto.randomUUID(),
+        role: 'assistant' as const,
+        content: `Gerne ✨ Ich helfe dir zu **${state.problemTitle}**. Du kannst mir jetzt genauer sagen, was du brauchst: passende Produkte, Routine oder Inhaltsstoffe.`,
+      },
+    ],
+  }
+
+  setChatState((s) => ({
+    ...s,
+    activeConversationId: conversationId,
+    conversations: [newConversation, ...s.conversations],
+  }))
+
+  saveConversationToDb(newConversation)
+
+  navigate('/chatbot', { replace: true, state: null })
+}, [])
+
   function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
     sendMessage(input)
@@ -615,7 +666,7 @@ export default function Chatbot() {
             <Sparkles className="h-4 w-4 text-[#A97745]" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-foreground">KI-Beratung</h1>
+            <h1 className="text-xl font-bold text-foreground !font-sans">KI-Beratung</h1>
             <p className="text-xs text-muted-foreground">Produktempfehlungen aus dem SelfGlow Sortiment</p>
           </div>
         </div>
@@ -897,7 +948,7 @@ export default function Chatbot() {
             </section>
 
             <section className="rounded-lg border border-border bg-background p-4">
-              <h2 className="mb-3 text-sm font-semibold text-foreground">Schnell starten</h2>
+              <h2 className="mb-3 text-sm font-semibold text-foreground !font-sans">Schnell starten</h2>
               <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
                 {personalizedStarterQuestions.map((q) => (
                   <button key={q.label} type="button"

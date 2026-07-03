@@ -1,5 +1,5 @@
 import { Link, useNavigate, useParams } from 'react-router-dom'
-
+import { useEffect } from 'react'
 import acne from '@/images/acne.png'
 import acnescars from '@/images/acnescars.png'
 import blackheads from '@/images/blackheads.png'
@@ -332,6 +332,10 @@ export default function HautwissenDetail() {
   const { slug } = useParams()
   const navigate = useNavigate()
 
+   useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [slug])
+
   const problem = hautProbleme.find((item) => item.slug === slug)
 
   if (!problem) {
@@ -385,12 +389,12 @@ export default function HautwissenDetail() {
               {problem.intro}
             </p>
 
-            <button
+            {/* <button
               onClick={() => navigate('/chatbot')}
               className="mt-8 w-fit rounded-full bg-[#D4A574] px-7 py-3 font-semibold text-white transition hover:bg-[#c4945f]"
             >
               KI-Beratung starten
-            </button>
+            </button> */}
           </div>
         </section>
 
@@ -480,12 +484,21 @@ export default function HautwissenDetail() {
             Starte die KI-Beratung und erhalte passendere Empfehlungen für deine Hautpflege.
           </p>
 
-          <button
-            onClick={() => navigate('/chatbot')}
-            className="mt-7 rounded-full bg-[#D4A574] px-8 py-3 font-semibold text-white transition hover:bg-[#c4945f]"
-          >
-            Analyse starten
-          </button>
+   <button
+  onClick={() =>
+    navigate('/chatbot', {
+      state: {
+        newChat: true,
+        problemTitle: problem.title,
+        problemIntro: problem.intro,
+        problemImage: problem.image,
+      },
+    })
+  }
+  className="mt-7 rounded-full bg-[#D4A574] px-8 py-3 font-semibold text-white transition hover:bg-[#c4945f]"
+>
+  KI-Beratung starten
+</button>
         </section>
 
         <p className="mt-8 text-sm text-gray-500">
