@@ -383,7 +383,7 @@ export default function Home() {
                 </>
               ) : (
                 <>
-                  <p style={{ fontSize: 16, color: 'rgba(255,255,255,0.65)', margin: '0 0 28px', fontWeight: 300, lineHeight: 1.6 }}>
+                  <p style={{ fontSize: 18, color: 'rgba(255,255,255,0.65)', margin: '0 0 28px', fontWeight: 300, lineHeight: 1.6 }}>
                     {getHeroTagline(gender)}<br />Möchtest du…
                   </p>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -474,7 +474,7 @@ export default function Home() {
                       <p style={{ fontSize: 9, letterSpacing: '0.13em', textTransform: 'uppercase', color: '#C4925A', margin: 0, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {product.category}
                       </p>
-                      <h3 style={{ fontSize: 12, lineHeight: 1.25, fontWeight: 700, margin: 0, color: '#1c1209', minHeight: 30, overflow: 'hidden' }}>
+                      <h3 style={{ fontSize: 13, lineHeight: 1.25, fontWeight: 700, margin: 0, color: '#1c1209', minHeight: 30, overflow: 'hidden' }}>
                         {product.name}
                       </h3>
                       <p style={{ fontSize: 10, color: '#9a7a5a', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -542,7 +542,7 @@ export default function Home() {
                   <div className="skin-circle" style={{ width: 100, height: 100, borderRadius: '50%', overflow: 'hidden' }}>
                     <img src={t.img} alt={t.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   </div>
-                  <span style={{ fontSize: 12, fontWeight: 500, color: '#7a5c42', letterSpacing: '0.04em', textAlign: 'center' }}>{t.name}</span>
+                  <span style={{ fontSize: 13, fontWeight: 500, color: '#7a5c42', letterSpacing: '0.04em', textAlign: 'center' }}>{t.name}</span>
                 </Link>
               ))}
             </div>
@@ -577,7 +577,7 @@ export default function Home() {
                 <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.5) 0%, transparent 55%)' }} />
                 <div className="cat-overlay" style={{ position: 'absolute', inset: 0, background: 'rgba(212,165,116,0.15)' }} />
                 <div style={{ position: 'absolute', bottom: 18, left: 18 }}>
-                  <p style={{ fontFamily: "'Outfit', sans-serif", color: '#fff', fontSize: 15, fontWeight: 700, margin: 0 }}>{cat.name}</p>
+                  <p style={{ fontFamily: "'Outfit', sans-serif", color: '#fff', fontSize: 17, fontWeight: 700, margin: 0 }}>{cat.name}</p>
                 </div>
               </Link>
             ))}
@@ -600,7 +600,7 @@ export default function Home() {
                 </div>
                 <div>
                   <p style={{ fontFamily: "'Outfit', sans-serif", fontWeight: 700, fontSize: 16, margin: '0 0 6px', color: '#1c1209' }}>{f.title}</p>
-                  <p style={{ fontSize: 13, color: '#9a7a5a', margin: 0, lineHeight: 1.65, fontWeight: 300 }}>{f.desc}</p>
+                  <p style={{ fontSize: 14, color: '#9a7a5a', margin: 0, lineHeight: 1.65, fontWeight: 300 }}>{f.desc}</p>
                 </div>
               </div>
             ))}
@@ -619,10 +619,10 @@ export default function Home() {
     <h3 style={{ fontFamily: "'Outfit', sans-serif", fontSize: 'clamp(22px,2.8vw,36px)', fontWeight: 700, color: '#fff', margin: 0, lineHeight: 1.2, letterSpacing: '-0.02em' }}>
       Hautpflege, die<br />zu dir passt.
     </h3>
-    <p style={{ fontSize: 14, color: '#b8967a', margin: 0, lineHeight: 1.65, fontWeight: 300, maxWidth: 340 }}>
+    <p style={{ fontSize: 15, color: '#b8967a', margin: 0, lineHeight: 1.65, fontWeight: 300, maxWidth: 340 }}>
       Von der ersten Analyse bis zur perfekten Routine — wir begleiten dich mit ehrlicher Beratung und Produkten, die wirklich zu deiner Haut passen.
     </p>
-    <p style={{ fontSize: 14, color: '#b8967a', margin: 0, lineHeight: 1.65, fontWeight: 300, maxWidth: 340 }}>
+    <p style={{ fontSize: 15, color: '#b8967a', margin: 0, lineHeight: 1.65, fontWeight: 300, maxWidth: 340 }}>
       Keine leeren Versprechen, keine Massenware — nur das, was deine Haut wirklich braucht.
     </p>
   </div>
