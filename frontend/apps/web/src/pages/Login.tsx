@@ -64,6 +64,7 @@ function GenderButton({ label, emoji, selected, onClick }: {
         alignItems: 'center',
         gap: 4,
         fontFamily: 'inherit',
+        minWidth: 0,
       }}
     >
       <span style={{ fontSize: 20 }}>{emoji}</span>
@@ -231,23 +232,24 @@ export default function Login() {
   //Verify Screen:
   if (mode === 'verify') {
     return (
-      <div className='px-4 py-10 sm:px-6 lg:px-8'>
+      <div className='px-4 py-6 sm:py-10 sm:px-6 lg:px-8'>
         <form
           onSubmit={handleVerify}
           className='relative mx-auto w-full max-w-md overflow-hidden rounded-lg border border-border bg-background shadow-sm'
           noValidate
           >
-            <section className='flex flex-col gap-5 px-6 py-8 sm:px-8 lg:px-10'>
+            <section className='flex flex-col gap-5 px-4 py-6 sm:px-8 sm:px-8 lg:px-10'>
               <div className='space-y-2'>
-                <h2 className='text-2xl font-bold text-foreground'>E-Mail bestätigen</h2>
-                <p className='text-sm leading-6 text-muted-foreground'>Wir haben einen 6-stelligen Code an <strong>{pendingEmail}</strong> gesendet. Bitte gib ihn unten ein.</p>
+                <h2 className='text-xl sm:text-2xl font-bold text-foreground'>E-Mail bestätigen</h2>
+                <p className='text-sm leading-6 text-muted-foreground'>Wir haben einen 6-stelligen Code an <strong className="break-all">{pendingEmail}</strong> gesendet. Bitte gib ihn unten ein.</p>
               </div>
 
               <label className='flex flex-col gap-2 text-sm font-medium text-foreground'>
                 Bestätigungscode
                 <input
-                className='rounded-md border border-input bg-background px-3 py-2.5 text-xl font-normal outline-none transition focus:ring-2 focus:ring-[#D4A574] tracking-[0.3em] text-center'
+                className='rounded-md border border-input bg-background px-3 py-2.5 text-xl font-normal outline-none transition focus:ring-2 focus:ring-[#D4A574] tracking-[0.2em] sm:tracking-[0.3em] text-center'
                 type='text'
+                inputMode="numeric"
                 maxLength={6}
                 placeholder='- - - - - -'
                 value={verifyCode}
@@ -298,7 +300,7 @@ export default function Login() {
     : 'Speichere Favoriten, bezahle schneller und verwalte dein Hautpflegeprofil an einem Ort.'
 
   return (
-    <div className="px-4 py-10 sm:px-6 lg:px-8">
+    <div className="px-4 py-6 sm:py-10 sm:px-6 lg:px-8">
       <form
         onSubmit={handleSubmit}
         className="relative mx-auto w-full max-w-md overflow-hidden rounded-lg border border-border bg-background shadow-sm"
@@ -312,7 +314,7 @@ export default function Login() {
 
         <section className="flex flex-col gap-5 px-6 py-8 sm:px-8 lg:px-10">
           <div className="space-y-2 pr-10">
-            <h2 className="text-2xl font-bold text-foreground">{title}</h2>
+            <h2 className="text-xl sm:text-2xl font-bold text-foreground">{title}</h2>
             <p className="text-sm leading-6 text-muted-foreground">{subtitle}</p>
           </div>
 
@@ -424,7 +426,7 @@ export default function Login() {
             {mode === 'login' ? 'Anmelden' : 'Konto erstellen'}
           </button>
 
-          <button type="button" className="text-sm font-medium text-[#8A6337] hover:underline" onClick={switchMode}>
+          <button type="button" className="text-sm font-medium text-[#8A6337] hover:underline text-center" onClick={switchMode}>
             {mode === 'login' ? 'Neu bei SelfGlow? Konto erstellen' : 'Du hast bereits ein Konto? Anmelden'}
           </button>
         </section>
