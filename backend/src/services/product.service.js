@@ -14,10 +14,16 @@ function toArray(value) {
 
 function isSemanticQuery(search){
   if (!search) return false;
-  const words = search.trim().split(/\s+/);
-  const problemWords = ["gegen", "für", "bei", "problem"];
-  const hasProblemWord = problemWords.some((w) => search.toLowerCase().includes(w));
-  return words.length >= 3 || hasProblemWord;
+  const normalized = search.toLowerCase().trim();
+  const words = normalized.split(/\s+/);
+
+  const semanticWords = [
+    "gegen", "für", "bei", "problem", "akne", "pickel", "pickelmale", "rötungen", "poren", "pigmentflecken", "anti-aging",
+  ];
+
+  const hasSemanticWord = semanticWords.some((term) => normalized.includes(term));
+
+  return words.length >= 3 || hasSemanticWord;
 }
 
 //Review statistics for shop page
@@ -181,11 +187,11 @@ async function getAllProducts(query, options = {}) {
 
   //if there is no intelligent search, then query with filters
   if (!query.search) {
-    const celanWhere = {...where};
-    if (celanWhere.AND.length === 0) delete celanWhere.AND;
+    const cleanWhere = {...where};
+    if (cleanWhere.AND.length === 0) delete cleanWhere.AND;
 
     const products = await prisma.product.findMany({
-      where: celanWhere,
+      where: cleanWhere,
       orderBy: { name: "asc" },
     });
     const rankedProducts = useRelevanceSort
@@ -221,8 +227,9 @@ async function getAllProducts(query, options = {}) {
     console.error("Keyword search failed: ", err.message);
   }
 
+  if (useEmbedding) {
   try {
-    const MIN_SIMILARITY = 0.35;
+    const MIN_SIMILARITY = 0.30;
     const rawEmbedding = await searchByEmbedding(prisma, query.search, 60);
     const relevant = rawEmbedding.filter((p) => Number(p.similarity) >= MIN_SIMILARITY);
 
@@ -239,6 +246,7 @@ async function getAllProducts(query, options = {}) {
   } catch (err) {
     console.error("Embedding search failed: ", err.message);
   }
+}
 
 const merged = new Map();
 for (const p of keywordResults) merged.set(p.id, {...p, _semantic: false});
