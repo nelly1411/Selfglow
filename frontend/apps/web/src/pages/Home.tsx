@@ -58,6 +58,43 @@ const CSS = `
   @media (max-width: 560px) {
     .home-rec-grid { grid-template-columns: 1fr !important; }
   }
+  @media (max-width: 768px) {
+    .home-hero-inner { padding: 40px 20px !important; }  
+  }
+  @media (max-width: 768px) {
+    .home-cat-grid {
+      grid-template-columns: 1fr !important;
+      grid-template-rows: auto !important; 
+      }
+    .home-cat-grid .cat-card-main {
+      grid-row: span 1 !important;
+      height: 240px !important;
+    }
+    .home-cat-grid .cat-card-small {
+      height: 160px !important;
+    }
+  }
+  @media (max-width: 900px) {
+    .home-feat-grid { grid-template-columns: repeat(2, 1fr) !important; }
+  }
+  @media (max-width: 560px) {
+    .home-feat-grid { grid-template-columns: 1fr !important; }
+  }
+  @media (max-width: 768px) {
+    .home-community { grid-template-columns: 1fr !important; }
+    .home-community-img { min-height: 260px !importnat; }
+    .home-community-text { padding: 40px 20px !important; }
+  }
+  @media (max-width: 480px) {
+    .home-skin-circle { width: 72px !important; height: 72px !important; }
+    .home-skin-label { font-size: 11px !important; }
+  }
+  @media (max-width: 768px) {
+    .home-welcome-banner { padding: 0 20px !important; }
+  }
+  @media (max-width: 768px) {
+    .home-strip-inner { padding: 32px 16px !important; }
+  }
 `
 
 type RecommendedProduct = {
@@ -301,11 +338,11 @@ export default function Home() {
           <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(90deg, rgba(20,12,4,0.78) 0%, rgba(20,12,4,0.42) 55%, rgba(20,12,4,0.08) 100%)' }} />
         </div>
 
-        <div style={{ position: 'relative', zIndex: 1, maxWidth: 1200, margin: '0 auto', padding: '50px 48px', width: '100%' }}>
+        <div className="home-hero-inner" style={{ position: 'relative', zIndex: 1, maxWidth: 1200, margin: '0 auto', padding: '50px 48px', width: '100%' }}>
 
           {/* ── Willkommenscode Banner ── */}
           {(!firstName || !user?.usedWelcomeCode) && (
-            <div style={{ position: 'absolute', bottom: 20, left: 0, right: 0, zIndex: 2, padding: '0 48px', display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div className="home-welcome-banner" style={{ position: 'absolute', bottom: 20, left: 0, right: 0, zIndex: 2, padding: '0 48px', display: 'flex', alignItems: 'center', gap: 12 }}>
               
               <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', margin: 0, fontWeight: 300 }}>
                 {firstName ? 'Dein Willkommenscode:' : 'Registriere dich und spare 10% —'}
@@ -442,7 +479,7 @@ export default function Home() {
 
       {/* ── PERSONALIZED STRIP ── */}
       <section style={{ background: '#fff', padding: showRecommendations ? '38px 28px' : '64px 28px' }}>
-        <div style={{ maxWidth: showRecommendations ? 1040 : 1200, margin: '0 auto' }}>
+        <div className="home-strip-inner" style={{ maxWidth: showRecommendations ? 1040 : 1200, margin: '0 auto' }}>
           <div style={{ marginBottom: showRecommendations ? 20 : 40 }}>
             {!showRecommendations && (
               <p style={{ fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#C4925A', marginBottom: 6, fontWeight: 500 }}>
@@ -539,10 +576,10 @@ export default function Home() {
             <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16, opacity: recommendationsLoading ? 0.65 : 1 }}>
               {(gender === 'male' ? skinTypesMale : (!gender || gender === 'diverse') ? skinTypesDiverse : skinTypes).map((t) => (
                 <Link to={`/shop?skinType=${encodeURIComponent(t.value)}`} key={t.value} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, textDecoration: 'none', flex: '1 1 100px' }}>
-                  <div className="skin-circle" style={{ width: 100, height: 100, borderRadius: '50%', overflow: 'hidden' }}>
+                  <div className="skin-circle home-skin-circle" style={{ width: 100, height: 100, borderRadius: '50%', overflow: 'hidden' }}>
                     <img src={t.img} alt={t.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   </div>
-                  <span style={{ fontSize: 13, fontWeight: 500, color: '#7a5c42', letterSpacing: '0.04em', textAlign: 'center' }}>{t.name}</span>
+                  <span className="home-skin-label" style={{ fontSize: 13, fontWeight: 500, color: '#7a5c42', letterSpacing: '0.04em', textAlign: 'center' }}>{t.name}</span>
                 </Link>
               ))}
             </div>
@@ -559,8 +596,8 @@ export default function Home() {
               {getCategoriesLabel(gender)}
             </h2>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gridTemplateRows: '320px 320px', gap: 14 }}>
-            <Link to={`/shop?category=${encodeURIComponent(categories[0].value)}`} className="cat-card" style={{ gridRow: 'span 2', borderRadius: 20, overflow: 'hidden', position: 'relative', display: 'block' }}>
+          <div className="home-cat-grid" style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gridTemplateRows: '320px 320px', gap: 14 }}>
+            <Link to={`/shop?category=${encodeURIComponent(categories[0].value)}`} className="cat-card cat-card-main" style={{ gridRow: 'span 2', borderRadius: 20, overflow: 'hidden', position: 'relative', display: 'block' }}>
               <img src={categories[0].img} alt={categories[0].name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
               <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.55) 0%, transparent 50%)' }} />
               <div className="cat-overlay" style={{ position: 'absolute', inset: 0, background: 'rgba(212,165,116,0.18)' }} />
@@ -572,7 +609,7 @@ export default function Home() {
               </div>
             </Link>
             {categories.slice(1).map((cat) => (
-              <Link to={`/shop?category=${encodeURIComponent(cat.value)}`} key={cat.value} className="cat-card" style={{ borderRadius: 20, overflow: 'hidden', position: 'relative', display: 'block' }}>
+              <Link to={`/shop?category=${encodeURIComponent(cat.value)}`} key={cat.value} className="cat-card cat-card-small" style={{ borderRadius: 20, overflow: 'hidden', position: 'relative', display: 'block' }}>
                 <img src={cat.img} alt={cat.name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                 <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.5) 0%, transparent 55%)' }} />
                 <div className="cat-overlay" style={{ position: 'absolute', inset: 0, background: 'rgba(212,165,116,0.15)' }} />
@@ -592,7 +629,7 @@ export default function Home() {
             <p style={{ fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#C4925A', marginBottom: 8, fontWeight: 500 }}>Unser Versprechen</p>
             <h2 style={{ fontFamily: "'Outfit', sans-serif", fontSize: 'clamp(24px,3vw,38px)', fontWeight: 700, margin: 0, letterSpacing: '-0.02em' }}>Warum <span style={{ color: '#D4A574' }}>SelfGlow</span>?</h2>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20 }}>
+          <div className="home-feat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20 }}>
             {features.map((f) => (
               <div key={f.title} className="feat-card" style={{ background: '#FDF6EE', border: '1px solid #F0DCC8', borderRadius: 20, padding: '36px 28px', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 14 }}>
                 <div style={{ width: 48, height: 48, borderRadius: 14, background: '#fff', border: '1px solid #e8c9a0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -609,12 +646,12 @@ export default function Home() {
       </section>
 
      {/* ── COMMUNITY ── */}
-<section style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', minHeight: 460 }}>
-  <div style={{ position: 'relative', overflow: 'hidden' }}>
+<section className="home-community" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', minHeight: 460 }}>
+  <div className="home-community-img" style={{ position: 'relative', overflow: 'hidden' }}>
     <img src={gender === 'male' ? man7 : (!gender || gender === 'diverse') ? dev7 : "https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?w=900&h=700&fit=crop"} alt="Community" className="img-hover" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
     <div style={{ position: 'absolute', inset: 0, background: 'rgba(28,18,9,0.22)' }} />
   </div>
-  <div style={{ background: '#1c1209', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '60px clamp(28px,6vw,80px)', gap: 20 }}>
+  <div className="home-community-text" style={{ background: '#1c1209', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '60px clamp(28px,6vw,80px)', gap: 20 }}>
     <p style={{ fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#D4A574', fontWeight: 500, margin: 0 }}>Für strahlende Haut</p>
     <h3 style={{ fontFamily: "'Outfit', sans-serif", fontSize: 'clamp(22px,2.8vw,36px)', fontWeight: 700, color: '#fff', margin: 0, lineHeight: 1.2, letterSpacing: '-0.02em' }}>
       Hautpflege, die<br />zu dir passt.
