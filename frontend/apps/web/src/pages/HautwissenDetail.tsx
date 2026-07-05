@@ -340,8 +340,8 @@ export default function HautwissenDetail() {
 
   if (!problem) {
     return (
-      <main className="min-h-screen bg-[#FFF9F5] px-6 pt-32 !font-sans">
-        <div className="mx-auto max-w-3xl rounded-3xl bg-white p-8 shadow-sm !font-sans">
+      <main className="min-h-screen bg-[#FFF9F5] px-4 pt-24 sm:px-6 sm:pt-32 !font-sans">
+        <div className="mx-auto max-w-3xl rounded-3xl bg-white p-6 sm:p-8 shadow-sm !font-sans">
           <h1 className="text-3xl font-bold text-[#2a1c10] !font-sans">
             Hautproblem nicht gefunden
           </h1>
@@ -358,7 +358,7 @@ export default function HautwissenDetail() {
   }
 
   return (
-    <main className="min-h-screen bg-[#FFF9F5] px-6 pt-28 pb-16 !font-sans">
+    <main className="min-h-screen bg-[#FFF9F5] px-4 pt-24 pb-12 sm:px-6 sm:pt-28 sm:pb-16 !font-sans">
       <article className="mx-auto max-w-6xl !font-sans">
         <Link
           to="/hautwissen"
@@ -368,7 +368,7 @@ export default function HautwissenDetail() {
         </Link>
 
         <section className="grid overflow-hidden rounded-[36px] bg-white shadow-lg md:grid-cols-2 !font-sans">
-          <div className="h-[320px] md:h-auto !font-sans">
+          <div className="h-[220px] sm:h-[320px] md:h-auto !font-sans">
             <img
               src={problem.image}
               alt={problem.title}
@@ -376,16 +376,16 @@ export default function HautwissenDetail() {
             />
           </div>
 
-          <div className="flex flex-col justify-center p-8 md:p-12 !font-sans">
+          <div className="flex flex-col justify-center p-6 sm:p-8 md:p-12 !font-sans">
             <span className="mb-4 w-fit rounded-full bg-[#FDECEC] px-4 py-2 text-sm font-semibold text-[#b76b5f] !font-sans">
               Hautwissen
             </span>
 
-            <h1 className="text-4xl font-bold text-[#2a1c10] md:text-5xl !font-sans">
+            <h1 className="text-3xl font-bold text-[#2a1c10] sm:text-4xl md:text-5xl !font-sans">
               {problem.title}
             </h1>
 
-            <p className="mt-5 text-lg leading-8 text-gray-600 !font-sans">
+            <p className="mt-5 text-lg leading-7 text-gray-600 sm:leading-8 !font-sans">
               {problem.intro}
             </p>
 
@@ -415,9 +415,9 @@ export default function HautwissenDetail() {
           </div>
         </section> */}
 
-        <section className="mt-8 grid gap-6 md:grid-cols-2 !font-sans">
-          <div className="rounded-[32px] bg-white p-8 shadow-sm !font-sans">
-            <h2 className="text-2xl font-bold text-[#2a1c10] !font-sans">
+        <section className="mt-8 grid gap-4 sm:gap-6 md:grid-cols-2 !font-sans">
+          <div className="rounded-[32px] bg-white p-6 sm:p-8 shadow-sm !font-sans">
+            <h2 className="text-xl sm:text-2xl font-bold text-[#2a1c10] !font-sans">
               Warum entsteht das?
             </h2>
 
@@ -435,7 +435,7 @@ export default function HautwissenDetail() {
           </div>
 
           <div className="rounded-[32px] bg-white p-8 shadow-sm !font-sans">
-            <h2 className="text-2xl font-bold text-[#2a1c10] !font-sans">
+            <h2 className="text-xl sm:text-2xl font-bold text-[#2a1c10] !font-sans">
               Was kann helfen?
             </h2>
 
@@ -453,18 +453,18 @@ export default function HautwissenDetail() {
           </div>
         </section>
 
-        <section className="mt-8 rounded-[32px] bg-white p-8 shadow-sm !font-sans">
-          <h2 className="text-2xl font-bold text-[#2a1c10] !font-sans">
+        <section className="mt-8 rounded-[32px] bg-white p-6 sm:p-8 shadow-sm !font-sans">
+          <h2 className="text-xl sm:text-2xl font-bold text-[#2a1c10] !font-sans">
             Geeignete Inhaltsstoffe
           </h2>
 
-          <div className="mt-6 grid gap-5 md:grid-cols-2 !font-sans">
+          <div className="mt-6 grid gap-4 sm:gap-5 md:grid-cols-2 !font-sans">
             {problem.ingredients.map((ingredient) => (
               <div
                 key={ingredient.name}
-                className="rounded-3xl bg-[#FFF9F5] p-6 !font-sans"
+                className="rounded-3xl bg-[#FFF9F5] p-5 sm:p-6 !font-sans"
               >
-                <h3 className="text-xl font-bold text-[#2a1c10] !font-sans">
+                <h3 className="text-lg sm:text-xl font-bold text-[#2a1c10] !font-sans">
                   {ingredient.name}
                 </h3>
                 <p className="mt-3 leading-7 text-gray-600 !font-sans">
@@ -475,12 +475,12 @@ export default function HautwissenDetail() {
           </div>
         </section>
 
-        <section className="mt-10 rounded-[36px] bg-[#2a1c10] p-8 text-white md:p-10">
-          <h2 className="text-3xl font-bold !font-sans">
+        <section className="mt-10 rounded-[36px] bg-[#2a1c10] p-6 text-white sm:p-8 md:p-10">
+          <h2 className="text-2xl font-bold sm:text-3xl !font-sans">
             Du bist dir unsicher, was zu deiner Haut passt?
           </h2>
 
-          <p className="mt-4 max-w-2xl text-white/80 !font-sans">
+          <p className="mt-4 max-w-2xl text-sm text-white/80 sm:text-base !font-sans">
             Starte die KI-Beratung und erhalte passendere Empfehlungen für deine Hautpflege.
           </p>
 
@@ -495,7 +495,7 @@ export default function HautwissenDetail() {
       },
     })
   }
-  className="mt-7 rounded-full bg-[#D4A574] px-8 py-3 font-semibold text-white transition hover:bg-[#c4945f] !font-sans"
+  className="mt-7 w-full rounded-full bg-[#D4A574] px-8 py-3 text-center font-semibold text-white transition hover:bg-[#c4945f] sm:w-auto !font-sans"
 >
   KI-Beratung starten
 </button>
