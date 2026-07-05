@@ -94,16 +94,16 @@ export default function OrderDetail() {
   const items = parseOrderItems(order.items)
 
   return (
-    <div className="container mx-auto px-4 py-10">
+    <div className="container mx-auto px-4 py-6 sm:py-10">
       <button
         onClick={() => navigate('/profile')}
-        className="flex items-center gap-2 text-[#5F5F5F] hover:text-[#D4A574] mb-8"
+        className="flex items-center gap-2 text-[#5F5F5F] hover:text-[#D4A574] mb-6 sm:mb-8"
       >
         <ArrowLeft className="h-5 w-5" />
         Zurück zum Profil
       </button>
 
-      <div className="rounded-2xl border border-[#F0DCC8] bg-white p-6 mb-6 !font-sans">
+      <div className="rounded-2xl border border-[#F0DCC8] bg-white p-4 sm:p-6 mb-6 !font-sans">
         <h1 className="text-3xl font-bold mb-2">
           Bestellung #{order.id}
         </h1>
@@ -112,19 +112,19 @@ export default function OrderDetail() {
           {formatDate(order.createdAt)}
         </p>
 
-        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-          <MapPin className="h-4 w-4" />
+        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2 flex-wrap">
+          <MapPin className="h-4 w-4 mt-0.5 shrink-0" />
           {order.address}, {order.postal} {order.city}, {order.country}
         </div>
 
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Package className="h-4 w-4" />
+          <Package className="h-4 w-4 shrink-0" />
           Zahlungsart: {order.paymentMethod}
         </div>
       </div>
 
-      <div className="rounded-2xl border border-[#F0DCC8] bg-white p-6 !font-sans">
-        <h2 className="text-xl font-bold mb-6">
+      <div className="rounded-2xl border border-[#F0DCC8] bg-white p-4 sm:p-6 !font-sans">
+        <h2 className="text-lg sm:text-xl font-bold mb-4 sm:mb-6">
           Bestellte Produkte
         </h2>
 
@@ -132,9 +132,9 @@ export default function OrderDetail() {
           {items.map((item) => (
             <div
               key={`${order.id}-${item.id}`}
-              className="flex items-center gap-4 border-b border-[#F0DCC8] pb-4"
+              className="flex items-center gap-3 sm:gap-4 border-b border-[#F0DCC8] pb-4"
             >
-              <div className="w-20 h-20 rounded-xl overflow-hidden bg-[#F5F5F5]">
+              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden bg-[#F5F5F5] shrink-0">
                 {item.image && (
                   <img
                     src={item.image}
@@ -144,10 +144,10 @@ export default function OrderDetail() {
                 )}
               </div>
 
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 <Link
 to={`/product/${item.id}?from=order&orderId=${order.id}`}
-                  className="font-medium hover:text-[#D4A574]"
+                  className="font-medium hover:text-[#D4A574] line-clamp-2 block"
                 >
                   {item.name}
                 </Link>
@@ -157,17 +157,17 @@ to={`/product/${item.id}?from=order&orderId=${order.id}`}
                 </p>
               </div>
 
-              <div className="font-bold">
+              <div className="font-bold text-sm sm:text-base shrink-0">
                 {formatCurrency(item.price)}
               </div>
             </div>
           ))}
         </div>
 
-        <div className="mt-6 pt-6 border-t border-[#F0DCC8] flex justify-between items-center">
+        <div className="mt-6 pt-6 border-t border-[#F0DCC8] flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-0">
           <span className="font-medium">Gesamtbetrag</span>
 
-          <span className="text-xl font-bold text-[#D4A574]">
+          <span className="text-lg sm:text-xl font-bold text-[#D4A574]">
             {formatCurrency(order.totalPrice)}
           </span>
         </div>
