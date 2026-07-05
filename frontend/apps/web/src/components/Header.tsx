@@ -414,6 +414,26 @@ export default function Header() {
 
       </header>
 
+      {/*für mobile Suche: */}
+      {searchOpen && (
+        <div className="xl:hidden fixed top-[70px] left-0 w-full z-40 bg-white border-b border-[#f0e0cc] px-4 py-3 shadow-md">
+          <input 
+            type="text" 
+            value={searchTerm}
+            onChange={(e) => handleSearch(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                handleSearch(searchTerm)
+                setSearchOpen(false)
+              }
+            }}
+            placeholder="Produkte suchen"
+            className="w-full rounded-full border border-[#D4A574] px-4 py-2 outline-none"
+            autoFocus
+            />
+        </div>
+      )}
+
       {mobileOpen && (
   <div className="lg:hidden fixed top-[70px] left-0 w-full z-40 bg-white border-b border-[#f0e0cc] shadow-lg">
     <nav className="flex flex-col px-5 py-4 gap-3 text-[#4a3a2a] font-semibold">
