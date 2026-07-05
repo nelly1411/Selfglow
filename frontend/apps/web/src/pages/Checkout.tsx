@@ -363,7 +363,7 @@ const token = user?.token
   if (!user && !guestMode) {
     return (
       <div className="min-h-[70vh] flex items-center justify-center px-4">
-        <div className="bg-white border rounded-xl p-8 text-center max-w-md w-full shadow">
+        <div className="bg-white border rounded-xl p-6 sm:p-8 text-center max-w-md w-full shadow">
           <h2 className="text-xl font-semibold mb-3">Kasse</h2>
           <p className="text-sm text-gray-600 mb-6">Möchten Sie als Gast bestellen oder ein Konto verwenden?</p>
           <div className="flex flex-col gap-3">
@@ -387,9 +387,9 @@ const formatPrice = (value: number) =>
   const hasErrors = Object.values(errors).some(Boolean)
 
   return (
-    <div className="container mx-auto px-4 py-10 font-sans max-w-5xl">
+    <div className="container mx-auto px-4 py-6 sm:py-10 font-sans max-w-5xl">
 
-      <div className="flex items-center gap-3 mb-8">
+      <div className="flex items-center gap-3 mb-6 sm:mb-8">
         <Link to="/cart" className="hover:opacity-70 transition-opacity">
           <ArrowLeft className="h-5 w-5 text-gray-600" />
         </Link>
@@ -402,7 +402,7 @@ const formatPrice = (value: number) =>
         </div>
       )}
 
-      <div className="grid lg:grid-cols-2 gap-10">
+      <div className="grid lg:grid-cols-2 gap-8 lg:gap-10">
 
         {/* ── LEFT ── */}
         <div className="space-y-8">
@@ -417,7 +417,7 @@ const formatPrice = (value: number) =>
               </div>
             ) : (
               <>
-                <div className="grid grid-cols-2 gap-3 mb-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
                   <div>
                     <label className="text-xs text-gray-500 mb-1 block">Vorname *</label>
                     <input {...inputProps('firstName')} placeholder="Max"
@@ -431,7 +431,7 @@ const formatPrice = (value: number) =>
                     <ErrorMsg field="lastName" />
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="text-xs text-gray-500 mb-1 block">E-Mail *</label>
                     <input {...inputProps('email')} type="email" placeholder="max@beispiel.de" />
@@ -470,7 +470,7 @@ const formatPrice = (value: number) =>
               <input {...inputProps('address')} placeholder="Musterstraße 42" />
               <ErrorMsg field="address" />
             </div>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
               <div>
                 <label className="text-xs text-gray-500 mb-1 block">PLZ *</label>
                 <input {...inputProps('postal')} placeholder="10115" maxLength={5}
@@ -483,7 +483,7 @@ const formatPrice = (value: number) =>
                   onChange={e => { if (/^[a-zA-ZäöüÄÖÜßàáâ\s\-\.]*$/.test(e.target.value)) handleChange('city', e.target.value) }} />
                 <ErrorMsg field="city" />
               </div>
-              <div>
+              <div className="col-span-1 sm:col-span-2 md:col-span-1">
                 <label className="text-xs text-gray-500 mb-1 block">Land *</label>
                 <input {...inputProps('country')} placeholder="Deutschland"
                   onChange={e => { if (/^[a-zA-ZäöüÄÖÜßàáâ\s\-\.]*$/.test(e.target.value)) handleChange('country', e.target.value) }} />
@@ -497,14 +497,14 @@ const formatPrice = (value: number) =>
   <h2 className="font-semibold text-gray-800 mb-4 pb-2 border-b">
     Zahlungsmethode
   </h2>
-<div className="flex gap-3">
+<div className="flex flex-col sm:flex-row gap-3">
 
   {/* Klarna */}
   <button
     type="button"
     onClick={() => setPayment('klarna')}
     className={`
-      flex-1 h-[74px] rounded-2xl border transition-all duration-200
+      flex-1 h-[64px] sm:h-[74px] rounded-2xl border transition-all duration-200
       flex items-center justify-between px-5 bg-white
       ${payment === 'klarna'
         ? 'border-gray-400'
@@ -573,7 +573,7 @@ const formatPrice = (value: number) =>
         </div>
 
         {/* ── RECHTS – Bestellübersicht ── */}
-        <div className="bg-[#F5E6D3] p-6 rounded-xl h-fit sticky top-6">
+        <div className="bg-[#F5E6D3] p-5 sm:p-6 rounded-xl h-fit static lg:sticky lg:top-6">
           <h2 className="font-semibold mb-5 text-gray-800">Bestellübersicht</h2>
 
           <div className="space-y-4 max-h-60 overflow-y-auto pr-1">
@@ -658,7 +658,7 @@ const formatPrice = (value: number) =>
       </div>
       {showPaymentPopup && (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-        <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+        <div className="w-full max-w-md rounded-2xl bg-white p-5 sm:p-6 shadow-xl">
           <div className="mb-5 flex items-center justify-between">
             <h2 className="text-xl font-bold text-gray-900">
               {payment === 'klarna' ? 'Klarna Zahlung' : 'PayPal Zahlung'}

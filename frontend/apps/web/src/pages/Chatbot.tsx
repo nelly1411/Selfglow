@@ -562,10 +562,10 @@ useEffect(() => {
     <div className="min-h-[calc(100vh-160px)] bg-[#FBFAF7]">
       {conversationToDelete && (
         <div className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/40 px-4">
-          <div className="w-full max-w-lg rounded-[28px] bg-white p-8 shadow-2xl">
-            <h2 className="mb-4 text-2xl font-bold text-foreground">Chat löschen?</h2>
-            <p className="mb-8 text-muted-foreground">Möchtest du diesen Chatverlauf wirklich löschen?</p>
-            <div className="flex gap-4">
+          <div className="w-full max-w-lg rounded-[28px] bg-white p-6 sm:p-8 shadow-2xl">
+            <h2 className="mb-4 text-xl sm:text-2xl font-bold text-foreground">Chat löschen?</h2>
+            <p className="mb-6 sm:mb-8 text-muted-foreground">Möchtest du diesen Chatverlauf wirklich löschen?</p>
+            <div className="flex gap-3 sm:gap-4">
               <Button type="button" variant="outline" onClick={() => setConversationToDelete(null)}
                 className="flex-1 rounded-full border-border py-3 text-muted-foreground hover:bg-gray-50">
                 Abbrechen
@@ -662,7 +662,7 @@ useEffect(() => {
       )}
 
       <div className="container mx-auto max-w-6xl px-4 pb-5 lg:pb-6">
-        <div className="sticky top-0 z-20 mb-4 flex items-center gap-3 bg-[#FBFAF7] py-4 lg:py-5">
+        <div className="sticky top-0 z-20 mb-4 flex items-center gap-3 bg-[#FBFAF7] py-3 lg:py-5">
           <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#F5E6D3]">
             <Sparkles className="h-4 w-4 text-[#A97745]" />
           </div>
@@ -717,7 +717,7 @@ useEffect(() => {
 
             <h2 className="mb-3 text-sm font-semibold text-foreground">Chatverlauf</h2>
             {isLoadingHistory && <p className="mb-2 text-xs text-muted-foreground">Chats werden geladen...</p>}
-            <div className="max-h-[420px] space-y-2 overflow-y-auto pr-1 lg:max-h-[calc(100vh-18rem)]">
+            <div className="max-h-[220px] space-y-2 overflow-y-auto pr-1 lg:max-h-[calc(100vh-18rem)]">
               {chatState.conversations.map((conversation) => {
                 const isActive = conversation.id === chatState.activeConversationId
                 return (
@@ -746,7 +746,7 @@ useEffect(() => {
           </aside>
 
           <main className="space-y-4">
-            <section className="relative flex h-[75vh] flex-col rounded-lg border border-border bg-background overflow-hidden">
+            <section className="relative flex-h[60vh] sm:h-[68vh] lg:h-[75vh] flex-col rounded-lg border border-border bg-background overflow-hidden">
               {/* ── Wetter-Animation ── */}
               {weatherAnimation && (
                 <div className="pointer-events-none absolute inset-0 z-10 overflow-hidden rounded-lg">
@@ -845,7 +845,7 @@ useEffect(() => {
 
                     {/* Glow-Button: erscheint nach Hautanalyse-Nachrichten */}
                     {message.role === 'assistant' && glowSources[message.id] && (
-                      <div className="ml-9 mt-1">
+                      <div className="ml-0 sm:ml-9 mt-1">
                         {glowLoadingForMsg === message.id ? (
                           <div className="flex items-center gap-2 text-sm text-muted-foreground">
                             <Sparkles className="h-3.5 w-3.5 animate-pulse text-[#A97745]" />
@@ -866,7 +866,7 @@ useEffect(() => {
                     )}
 
                     {message.products && message.products.length > 0 && (
-                      <div className="ml-9 grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-3">
+                      <div className="ml-0 sm:ml-9 grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-3">
                         {message.products.slice(0, 3).map((product) => (
                           <div key={product.id} className="overflow-hidden rounded-lg border border-border bg-background transition-shadow hover:shadow-md">
                             <Link to={`/product/${product.id}?from=chatbot`} className="group block">
@@ -948,7 +948,7 @@ useEffect(() => {
               </form>
             </section>
 
-            <section className="rounded-lg border border-border bg-background p-4">
+            <section className="rounded-lg border border-border bg-background p-3 sm:p-4">
               <h2 className="mb-3 text-sm font-semibold text-foreground !font-sans">Schnell starten</h2>
               <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
                 {personalizedStarterQuestions.map((q) => (

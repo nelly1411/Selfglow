@@ -95,29 +95,29 @@ export default function Hautwissen() {
   }, [])
 
   return (
-    <main className="min-h-screen bg-[#FFF9F5] pt-32 pb-16 px-6 !font-sans">
+    <main className="min-h-screen bg-[#FFF9F5] px-4 pt-24 pb-12 sm:px-6 sm:pt-32 sm:pb-16 !font-sans">
       <div className="mx-auto max-w-6xl">
-        <section className="text-center mb-16">
-          <p className="text-[#D4A574] font-semibold uppercase tracking-wider font-sans">
+        <section className="text-center mb-10 sm:mb-16">
+          <p className="text-[#D4A574] font-semibold uppercase tracking-wider font-sans text-sm sm:text-base">
             SelfGlow Hautwissen
           </p>
 
-          <h1 className="mt-4 text-5xl font-bold text-[#2a1c10] !font-sans">
+          <h1 className="mt-4 text-3xl sm:text-4xl md:text-5xl font-bold text-[#2a1c10] !font-sans">
             Verstehe deine Haut besser
           </h1>
 
-          <p className="mt-6 max-w-2xl mx-auto text-lg text-gray-600 leading-8 font-sans">
+          <p className="mt-6 max-w-2xl mx-auto text-base sm:text-lg text-gray-600 leading-7 sm:leading-8 font-sans">
             Entdecke hilfreiche Informationen zu häufigen Hautproblemen
             und erfahre, was du tun kannst, um deine Haut optimal zu pflegen.
           </p>
         </section>
 
         <section id="hautprobleme">
-          <h2 className="mb-8 text-center text-3xl font-bold text-[#2a1c10] !font-sans">
+          <h2 className="mb-6 sm:mb-8 text-center text-2xl sm:text-3xl font-bold text-[#2a1c10] !font-sans">
             Häufige Hautprobleme
           </h2>
 
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {hautProbleme.map((item) => (
               <Link
                 key={item.slug}
@@ -128,12 +128,12 @@ export default function Hautwissen() {
                   <img
                     src={item.image}
                     alt={item.title}
-                    className="h-64 w-full object-cover transition duration-500 group-hover:scale-105"
+                    className="h-48 sm:h-64 w-full object-cover transition duration-500 group-hover:scale-105"
                   />
                 </div>
 
-                <div className="p-6">
-                  <h3 className="text-2xl font-bold text-[#2a1c10] !font-sans">
+                <div className="p-5 sm:p-6">
+                  <h3 className="text-xl sm:text-2xl font-bold text-[#2a1c10] !font-sans">
                     {item.title}
                   </h3>
 
