@@ -746,8 +746,7 @@ useEffect(() => {
           </aside>
 
           <main className="space-y-4">
-            <section className="relative flex-h[60vh] sm:h-[68vh] lg:h-[75vh] flex-col rounded-lg border border-border bg-background overflow-hidden">
-              {/* ── Wetter-Animation ── */}
+<section className="relative flex min-h-0 h-[calc(100dvh-180px)] flex-col rounded-lg border border-border bg-background overflow-hidden">              {/* ── Wetter-Animation ── */}
               {weatherAnimation && (
                 <div className="pointer-events-none absolute inset-0 z-10 overflow-hidden rounded-lg">
                   {weatherAnimation === 'clear' && (
