@@ -233,8 +233,7 @@ function ProductCard({ product }: { product: Product }) {
         </div>
       )}
 
-      <div className="group bg-background rounded-xl border border-border overflow-hidden hover:shadow-lg transition-shadow">
-        <div className="relative">
+<div className="group flex h-full flex-col rounded-xl border border-border bg-background overflow-hidden hover:shadow-lg transition-shadow">        <div className="relative">
           <Link to={`/product/${product.id}`} className="block">
             <div className="aspect-square overflow-hidden bg-[#F5F5F5]">
               <img
@@ -285,7 +284,7 @@ function ProductCard({ product }: { product: Product }) {
           )}
         </div>
 
-        <Link to={`/product/${product.id}`} className="block">
+<Link to={`/product/${product.id}`} className="block flex-1">
           <div className="p-4 pb-2">
             <p className="text-xs text-muted-foreground mb-1">
               {product.category}
@@ -354,8 +353,8 @@ function ProductCard({ product }: { product: Product }) {
           </div>
         </Link>
 
-        <div className="px-4 pb-4">
-          {isInCart && cartItem ? (
+<div className="mt-auto px-4 pb-4">
+            {isInCart && cartItem ? (
             <div className="w-full flex items-center justify-center gap-4 bg-[#D4A574] text-white rounded-full py-2 text-sm">
               <button
                 onClick={() => {
