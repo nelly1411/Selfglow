@@ -82,7 +82,7 @@ const CSS = `
   }
   @media (max-width: 768px) {
     .home-community { grid-template-columns: 1fr !important; }
-    .home-community-img { min-height: 260px !importnat; }
+    .home-community-img { min-height: 260px !important; }
     .home-community-text { padding: 40px 20px !important; }
   }
   @media (max-width: 480px) {
