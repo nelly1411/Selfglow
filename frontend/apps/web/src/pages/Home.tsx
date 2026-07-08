@@ -220,8 +220,6 @@ const optionStyle = {
 }
 
 export default function Home() {
-  const [email, setEmail]    = useState('')
-  const [subscribed, setSub] = useState(false)
   const [recommendedProducts, setRecommendedProducts] = useState<RecommendedProduct[]>([])
   const [recommendationPage, setRecommendationPage] = useState(0)
   const [recommendationsLoading, setRecommendationsLoading] = useState(false)

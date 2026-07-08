@@ -744,18 +744,31 @@ export default function Profile() {
         setSkinMsg(data.message || 'Bild konnte nicht gelöscht werden')
         return false
       }
-
+      
+      
       setSkinProfile(prev => {
-        if (!prev) return prev
-        const profileImages = (prev.profileImages || []).filter(image => image.id !== photo.id)
-        const latestProfileImage = prev.latestProfileImage?.id === photo.id
-          ? profileImages[0] || null
-          : prev.latestProfileImage || null
-        const latestAnalysis = photo.source === 'skin_analysis' && prev.latestAnalysis?.id === Number(photo.id.replace('skin_analysis-', ''))
-          ? { ...prev.latestAnalysis, imageData: null }
-          : prev.latestAnalysis || null
+        if (!prev || !photo.id) return prev
+      
+        const photoId = photo.id
+      
+        const profileImages = (prev.profileImages || []).filter(
+          image => image.id !== photoId
+        )
+      
+        const latestProfileImage =
+          prev.latestProfileImage?.id === photoId
+            ? profileImages[0] || null
+            : prev.latestProfileImage || null
+      
+        const latestAnalysis =
+          photo.source === 'skin_analysis' &&
+          prev.latestAnalysis?.id === Number(photoId.replace('skin_analysis-', ''))
+            ? { ...prev.latestAnalysis, imageData: null }
+            : prev.latestAnalysis || null
+      
         return { ...prev, latestProfileImage, latestAnalysis, profileImages }
       })
+      
       setSkinMsg('✓ Bild gelöscht')
       void loadSkinProfileContext()
       return true
