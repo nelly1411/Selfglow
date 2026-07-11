@@ -21,7 +21,7 @@ const {
 
 router.post  ("/register",       register);
 router.post  ("/login",          login);
-router.post  ("/verify-code", verifyCode),
+router.post  ("/verify-code", verifyCode);
 router.get   ("/address",        authMiddleware, getAddress);
 router.get   ("/profile-context", authMiddleware, getProfileContext);
 router.patch ("/skin-profile",    authMiddleware, updateSkinProfile);
