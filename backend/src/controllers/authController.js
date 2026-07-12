@@ -3,6 +3,7 @@ const bcrypt = require("bcrypt");
 const jwt    = require("jsonwebtoken");
 const prisma = require("../config/prisma");
 const { sendEmailConfirmation } = require("../services/mail.service");
+const checkoutService = require("../services/checkout.service");
 
 const EMAIL_PATTERN            = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const SPECIAL_CHARACTER_PATTERN = /[^A-Za-z0-9]/;
@@ -344,6 +345,8 @@ async function verifyCode(req, res){
       },
     });
 
+    await checkoutService.linkGuestOrdersToUser(user.id, user.email);
+
     return res.json({
       message: "E-Mail erfolgreich bestätigt. Du kannst dich jetzt anmelden."
     });
@@ -399,6 +402,9 @@ async function login(req, res) {
         message: "Bitte bestätige zuerst deine E-Mail-Adresse",
       });
     }
+
+await checkoutService.linkGuestOrdersToUser(user.id, user.email);
+
     const jwtSecret = getJwtSecret(res);
     if (!jwtSecret) return;
 

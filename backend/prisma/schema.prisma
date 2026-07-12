@@ -80,6 +80,7 @@ model Order {
   postal        String
   country       String
   items         String
+  guestEmail     String?
 
   userId Int?
   user   User? @relation(fields: [userId], references: [id])

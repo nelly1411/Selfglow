@@ -66,6 +66,7 @@ exports.createOrder = async (data, userId = null, userIp = 'unknown') => {
       country: shipping.country,
       items: JSON.stringify(items),
       ...(userId ? { userId } : {}),
+      ...(!userId && customer?.email ? { guestEmail: customer.email.trim().toLowerCase() } : {}),
     },
   })
 
@@ -84,6 +85,23 @@ exports.createOrder = async (data, userId = null, userIp = 'unknown') => {
   }
 
   return order
+}
+
+//connecting guest orders with an account
+exports.linkGuestOrdersToUser = async (userId, email) => {
+  if (!userId || !email) return
+
+  const normalizedEmail = email.trim().toLowerCase()
+
+  await prisma.order.updateMany({
+    where: {
+      guestEmail: normalizedEmail,
+      userId: null,
+    },
+    data: {
+      userId: Number(userId),
+    },
+  })
 }
 
 // ─── Orders by User ───────────────────────────────────────────────────────────
